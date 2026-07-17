@@ -1,0 +1,48 @@
+# ============================================================
+# Manifeste des sources de données
+# Chaque entrée est téléchargée par `fetch-data`
+# (ou : python -m demonstrateur.fetch)
+# Date de collecte + empreinte SHA-256 enregistrées dans
+# data/raw/_manifest.json — c'est la pièce "daté, sourcé".
+#
+# Champs :
+#   url        : lien de téléchargement direct
+#   filename   : nom du fichier local dans data/raw/
+#   licence    : licence de réutilisation (à citer dans chaque visuel)
+#   producteur : organisme producteur
+#   notes      : contexte, points à vérifier
+# ============================================================
+
+sources:
+
+  # --- DVF géolocalisées (Etalab), Corse, millésime 2024 ---
+  # Vérifier l'URL sur la fiche "Demandes de valeurs foncières
+  # géolocalisées" de data.gouv.fr au premier lancement.
+  dvf_2a_2024:
+    url: "https://files.data.gouv.fr/geo-dvf/latest/csv/2024/departements/2A.csv.gz"
+    filename: "dvf_2A_2024.csv.gz"
+    licence: "Licence Ouverte 2.0"
+    producteur: "DGFiP / Etalab — DVF géolocalisées"
+
+  dvf_2b_2024:
+    url: "https://files.data.gouv.fr/geo-dvf/latest/csv/2024/departements/2B.csv.gz"
+    filename: "dvf_2B_2024.csv.gz"
+    licence: "Licence Ouverte 2.0"
+    producteur: "DGFiP / Etalab — DVF géolocalisées"
+
+  # --- Contours des communes corses (région 94) ---
+  communes_corse:
+    url: "https://geo.api.gouv.fr/communes?codeRegion=94&format=geojson&geometry=contour"
+    filename: "communes_corse.geojson"
+    licence: "Licence Ouverte 2.0"
+    producteur: "DINUM — geo.api.gouv.fr"
+
+  # --- Jeu data.corsica : À COMPLÉTER après la présélection ---
+  # Modèle d'URL d'export CSV du portail (OpenDataSoft) :
+  # https://datacorsica.opendatasoft.com/api/explore/v2.1/catalog/datasets/<ID_DU_JEU>/exports/csv
+  #
+  # exemple_datacorsica:
+  #   url: "https://datacorsica.opendatasoft.com/api/explore/v2.1/catalog/datasets/<ID_DU_JEU>/exports/csv"
+  #   filename: "datacorsica_<theme>.csv"
+  #   licence: "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)"
+  #   producteur: "Collectivité de Corse — data.corsica"

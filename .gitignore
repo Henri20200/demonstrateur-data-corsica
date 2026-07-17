@@ -1,0 +1,24 @@
+# Environnements
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# PyCharm
+.idea/
+
+# Données : jamais commitées, reconstruites via sources.yaml + fetch-data
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+# ... sauf le manifeste de collecte, qui EST la traçabilité
+!data/raw/_manifest.json
+
+# Divers
+.DS_Store
+*.log
