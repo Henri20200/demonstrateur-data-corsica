@@ -61,7 +61,7 @@ sources:
   edf_mix_temps_reel:
     url: "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv"
     filename: "edf_mix_temps_reel.csv"
-    licence: "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)"
+    licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
     producteur: "EDF — Open Data Groupe EDF (production corse temps réel)"
     format: csv
     delimiter: ";"
@@ -79,7 +79,7 @@ sources:
   edf_courbe_charge_horaire:
     url: "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv"
     filename: "edf_courbe_charge_horaire.csv"
-    licence: "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)"
+    licence: "Licence Ouverte (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
     producteur: "EDF — Open Data Groupe EDF (Corse & Outre-mer)"
     format: csv
     delimiter: ";"
