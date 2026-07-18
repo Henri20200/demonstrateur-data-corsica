@@ -2,15 +2,23 @@
 # Manifeste des sources de données
 # Chaque entrée est téléchargée par `fetch-data`
 # (ou : python -m demonstrateur.fetch)
-# Date de collecte + empreinte SHA-256 enregistrées dans
-# data/raw/_manifest.json — c'est la pièce "daté, sourcé".
+# Date de collecte + empreinte SHA-256 + content-type enregistrés
+# dans data/raw/_manifest.json — c'est la pièce "daté, sourcé".
 #
 # Champs :
-#   url        : lien de téléchargement direct
-#   filename   : nom du fichier local dans data/raw/
-#   licence    : licence de réutilisation (à citer dans chaque visuel)
-#   producteur : organisme producteur
-#   notes      : contexte, points à vérifier
+#   url                : lien de téléchargement direct
+#   filename           : nom du fichier local dans data/raw/
+#   licence            : licence de réutilisation (à citer dans chaque visuel)
+#   producteur         : organisme producteur
+#   notes              : contexte, points à vérifier
+#
+# Champs de VALIDATION (fetch.py refuse d'enregistrer une donnée qui ne
+# passe pas ces contrôles — une page d'erreur HTML ne doit JAMAIS être
+# certifiée comme donnée dans le manifeste) :
+#   format             : csv | csv.gz | geojson | json
+#   delimiter          : séparateur CSV (défaut ",")
+#   colonnes_attendues : colonnes qui DOIVENT figurer dans l'en-tête
+#   cle_attendue       : clé racine obligatoire pour un JSON/GeoJSON
 # ============================================================
 
 sources:
@@ -23,12 +31,18 @@ sources:
     filename: "dvf_2A_2024.csv.gz"
     licence: "Licence Ouverte 2.0"
     producteur: "DGFiP / Etalab — DVF géolocalisées"
+    format: csv.gz
+    delimiter: ","
+    colonnes_attendues: [nature_mutation, valeur_fonciere, nom_commune, code_commune]
 
   dvf_2b_2024:
     url: "https://files.data.gouv.fr/geo-dvf/latest/csv/2024/departements/2B.csv.gz"
     filename: "dvf_2B_2024.csv.gz"
     licence: "Licence Ouverte 2.0"
     producteur: "DGFiP / Etalab — DVF géolocalisées"
+    format: csv.gz
+    delimiter: ","
+    colonnes_attendues: [nature_mutation, valeur_fonciere, nom_commune, code_commune]
 
   # --- Contours des communes corses (région 94) ---
   communes_corse:
@@ -36,13 +50,42 @@ sources:
     filename: "communes_corse.geojson"
     licence: "Licence Ouverte 2.0"
     producteur: "DINUM — geo.api.gouv.fr"
+    format: geojson
+    cle_attendue: features
 
-  # --- Jeu data.corsica : À COMPLÉTER après la présélection ---
-  # Modèle d'URL d'export CSV du portail (OpenDataSoft) :
-  # https://datacorsica.opendatasoft.com/api/explore/v2.1/catalog/datasets/<ID_DU_JEU>/exports/csv
-  #
-  # exemple_datacorsica:
-  #   url: "https://datacorsica.opendatasoft.com/api/explore/v2.1/catalog/datasets/<ID_DU_JEU>/exports/csv"
-  #   filename: "datacorsica_<theme>.csv"
-  #   licence: "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)"
-  #   producteur: "Collectivité de Corse — data.corsica"
+  # --- Mix électrique Corse en temps réel (EDF, pas de 15 min) ---
+  # Host migré vers le portail Groupe EDF : opendata-corse.edf.fr a son
+  # catalogue déjà déprécié (HTTP 410). La Corse est une zone non
+  # interconnectée (EDF SEI) : cette source EDF est LA source, sans repli RTE.
+  # Profondeur = fenêtre glissante ~14 j, pas de 15 min, tout "Estimé", en UTC.
+  edf_mix_temps_reel:
+    url: "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv"
+    filename: "edf_mix_temps_reel.csv"
+    licence: "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)"
+    producteur: "EDF — Open Data Groupe EDF (production corse temps réel)"
+    format: csv
+    delimiter: ";"
+    colonnes_attendues: [date, total, photovoltaique, filiere_enr_distrib, statut]
+    notes: >
+      Télémesures/estimations. filiere_enr_distrib = photovoltaique + eolien
+      + bioenergies + micro_hydro + solde_stockage (hors grande hydraulique et
+      hors liaisons) — vérifié empiriquement, écart nul. Horodatage UTC.
+
+  # --- Courbe de charge horaire par filière (historique, Corse & Outre-mer) ---
+  # ATTENTION : l'ancien host opendata-corse-outremer.edf.fr est une SPA morte
+  # (renvoyait du HTML en 200). Vrai host : opendata.edf.fr, même dataset id.
+  # 5 territoires (Corse + 4 Outre-mer) — FILTRER territoire = 'Corse'.
+  # Corse : horaire, 2019-01-01 -> 2024-12-31 (6 ans), 52 608 h, en UTC.
+  edf_courbe_charge_horaire:
+    url: "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv"
+    filename: "edf_courbe_charge_horaire.csv"
+    licence: "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)"
+    producteur: "EDF — Open Data Groupe EDF (Corse & Outre-mer)"
+    format: csv
+    delimiter: ";"
+    colonnes_attendues: [territoire, date_heure, production_totale_mw, photovoltaique_mw, statut]
+    notes: >
+      Filtrer sur territoire = 'Corse'. Contient aussi cout_moyen_de_production
+      (hors périmètre du démonstrateur). Fuseau UTC. Statut Corse : 2 ans validés
+      + 4 ans estimés. stockage_mw nul en Corse. Correspondance temps réel :
+      thermique_mw <-> filiere_thermique, importations_mw <-> liaisons.

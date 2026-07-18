@@ -2,10 +2,21 @@
 
 **Date butoir : fin août 2026** (rentrée = lancement de la prospection).
 
-## Question fermée (à figer AVANT d'explorer)
-> _À définir après présélection sur data.corsica._
-> Exemple de formulation cible : « Comment ont évolué X en Corse entre A et B,
-> et qu'est-ce que cela change pour [acheteur identifié] ? »
+## Question fermée (figée le 18/07/2026)
+> De quoi est faite l'électricité corse — maintenant, au fil de la journée,
+> et au fil des saisons — et quand est-elle la plus renouvelable ?
+
+Titres-affirmations que l'analyse doit valider, invalider ou chiffrer :
+1. « En ce moment, votre kWh corse est fait de X % de soleil » (temps réel, 15 min)
+2. « On voit les touristes arriver dans la courbe » (charge été vs printemps : +X %)
+3. « À midi, l'île tourne au soleil ; le soir, elle tire sur l'Italie » (profil horaire)
+4. « L'heure la plus verte pour consommer en Corse est XXhXX » (conclusion actionnable)
+
+
+## Test du prompt (critère éliminatoire)
+Si un LLM généraliste peut produire l'équivalent du livrable en 15 minutes,
+ce n'est pas le bon livrable. Ici : donnée d'il y a 15 minutes + pipeline
+récurrent + manifeste daté/empreinté → le test passe.
 
 Critères de choix du jeu de données :
 1. parle à un acheteur identifiable (collectivité, cabinet, fédération) ;
@@ -21,3 +32,5 @@ Critères de choix du jeu de données :
 
 ## Anti-dérive
 Timebox : 3-4 semaines. Si ça déborde : réduire l'ambition, pas la deadline.
+
+

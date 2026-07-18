@@ -1,0 +1,57 @@
+{
+  "dvf_2a_2024": {
+    "url": "https://files.data.gouv.fr/geo-dvf/latest/csv/2024/departements/2A.csv.gz",
+    "filename": "dvf_2A_2024.csv.gz",
+    "producteur": "DGFiP / Etalab — DVF géolocalisées",
+    "licence": "Licence Ouverte 2.0",
+    "format": "csv.gz",
+    "content_type": "text/csv",
+    "sha256": "93e9d80d1ffc0fcbd826ce7f5d8fee0768f09c754bdfa5a9c263684c76fcbb99",
+    "date_collecte": "2026-07-18",
+    "taille_octets": 209967
+  },
+  "dvf_2b_2024": {
+    "url": "https://files.data.gouv.fr/geo-dvf/latest/csv/2024/departements/2B.csv.gz",
+    "filename": "dvf_2B_2024.csv.gz",
+    "producteur": "DGFiP / Etalab — DVF géolocalisées",
+    "licence": "Licence Ouverte 2.0",
+    "format": "csv.gz",
+    "content_type": "text/csv",
+    "sha256": "589683cce606ddc83a4a92e79ae321dc43e95e846afc576af9d0bbc95d5de2c3",
+    "date_collecte": "2026-07-18",
+    "taille_octets": 282339
+  },
+  "communes_corse": {
+    "url": "https://geo.api.gouv.fr/communes?codeRegion=94&format=geojson&geometry=contour",
+    "filename": "communes_corse.geojson",
+    "producteur": "DINUM — geo.api.gouv.fr",
+    "licence": "Licence Ouverte 2.0",
+    "format": "geojson",
+    "content_type": "application/json; charset=utf-8",
+    "sha256": "6b193be059c4e22b0e53ddda3817be342a978762d4bb5e83e35acfbc4755aa0f",
+    "date_collecte": "2026-07-18",
+    "taille_octets": 4660934
+  },
+  "edf_mix_temps_reel": {
+    "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv",
+    "filename": "edf_mix_temps_reel.csv",
+    "producteur": "EDF — Open Data Groupe EDF (production corse temps réel)",
+    "licence": "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)",
+    "format": "csv",
+    "content_type": "text/csv; charset=utf-8",
+    "sha256": "7f7976b103b1dc7853447a28d13ad92355b16f76a15883629d5bdc12313b4749",
+    "date_collecte": "2026-07-18",
+    "taille_octets": 227937
+  },
+  "edf_courbe_charge_horaire": {
+    "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
+    "filename": "edf_courbe_charge_horaire.csv",
+    "producteur": "EDF — Open Data Groupe EDF (Corse & Outre-mer)",
+    "licence": "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)",
+    "format": "csv",
+    "content_type": "text/csv; charset=utf-8",
+    "sha256": "787ee649f4d66acaca41551c470ac1b0751817077c70bd79f2a18676c9117c99",
+    "date_collecte": "2026-07-18",
+    "taille_octets": 24815708
+  }
+}
