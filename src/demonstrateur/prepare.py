@@ -101,6 +101,9 @@ def courbe_corse_to_parquet() -> None:
     dest = (DATA_PROCESSED / "edf_courbe_corse.parquet").as_posix()
     con = duckdb.connect()
     src = f"read_csv_auto('{COURBE}', delim=';', header=true)"
+    # `production_totale_mw > 0` retire 3 lignes à 0 MW (heure fantôme des passages à
+    # l'heure d'été 2019, 2020 et 2024) : 52 605 h traitées sur les 52 608 h du brut.
+    # Écart documenté (cf. RECONNAISSANCE.md) — c'est le dénominateur de tous les ratios.
     corse = f"(SELECT * FROM {src} WHERE territoire='Corse' AND production_totale_mw > 0)"
 
     _auditer_null(con, corse, GRANDES_FILIERES, "courbe Corse")  # micro exemptée (doc)

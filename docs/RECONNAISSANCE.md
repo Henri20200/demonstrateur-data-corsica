@@ -172,6 +172,24 @@ Le chiffre live « en ce moment » (titre 1) garde `part_enr_distrib` d'EDF (leu
 Décisions prises après l'audit du 19/07 (`audit/`), sans refonte analytique :
 les résultats tiennent, on durcit fraîcheur, non-régression et formulations.
 
+### Statuts EDF « Validé » / « Estimé » (explication complète — la vitrine n'en porte que la mention courte)
+
+- **Périodes** : `Validé` = 2019-01-01 → 2020-12-31 (17 542 h traitées) ;
+  `Estimé` = 2021-2024 (35 063 h, **66,7 %** des heures traitées). Vérifié sur le brut.
+- **Mention portée par chaque visuel historique** (pied de figure, via `export_html(note=…)`) :
+  « Données EDF estimées à partir de 2021 (2019-2020 validées). »
+- **Robustesse directionnelle** (contrôle de l'audit, revérifié) : bond juin→juillet
+  **+24,9 %** sur les années validées / **+20,6 %** sur les estimées ; heure la plus verte
+  **14 h dans les deux sous-ensembles**. Attention à la lecture : ce découpage est
+  **confondu avec la période** (2019-2020 vs 2021-2024, parc ENR en croissance) — il
+  démontre que les directions tiennent, il n'isole PAS un effet de la qualité de mesure.
+
+### Volume traité : 52 605 h (et non 52 608)
+
+Le brut Corse compte 52 608 h ; `prepare` retire **3 lignes à 0 MW** (heure fantôme des
+passages à l'heure d'été 2019, 2020 et 2024) via `production_totale_mw > 0`. Tout chiffre
+« sur 2019-2024 » a donc pour dénominateur **52 605 heures**.
+
 ### Fraîcheur & traçabilité (remplace « au prochain fetch propre » de la section Licences)
 
 - `edf_mix_temps_reel` est marqué `glissant: true` → **re-téléchargé à chaque run** ;

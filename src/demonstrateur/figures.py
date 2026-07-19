@@ -26,6 +26,10 @@ MOIS = ["jan", "fév", "mar", "avr", "mai", "juin", "juil", "août", "sep", "oct
 SRC_MIX = "EDF — Open Data Groupe EDF (production corse, temps réel)"
 SRC_HIST = "EDF — Open Data Groupe EDF (Corse & Outre-mer)"
 
+# Mention légère du statut EDF, portée par chaque visuel historique (note de pied,
+# via export_html) ; l'explication complète est dans docs/RECONNAISSANCE.md.
+NOTE_ESTIME = "Données EDF estimées à partir de 2021 (2019-2020 validées)."
+
 # Seuils de fraîcheur du temps réel (heures) — cf. docstring du module.
 FRAICHEUR_AVERTIR_H = 24
 FRAICHEUR_BLOQUER_H = 48
@@ -220,12 +224,21 @@ def fig_t4_heure_verte() -> go.Figure:
         ))
     # repère 14h : cadre net (sans ombre ni trame), étendu au-dessus de la pile pour ressortir
     vert14 = float(df["decentralise"][df["h"] == 14].iloc[0])
+    tot14 = vert14 + float(df["grande_hydro"][df["h"] == 14].iloc[0])
     fig.add_shape(type="rect", x0=13.45, x1=14.55, y0=0, y1=110,
                   line=dict(color=PALETTE["accent"], width=2.8),
                   fillcolor="rgba(0,0,0,0)", layer="above")
-    fig.add_annotation(x=14, y=110, yshift=16, text=f"<b>14 h · {vert14:.0f} % renouvelable</b>",
+    # Libellé (décision du 19/07/2026, post-audit) : le chiffre principal reste l'ENR
+    # décentralisée, TOUJOURS qualifiée — jamais « renouvelable » seul ; le total avec
+    # la grande hydraulique (déjà dans la pile) est donné juste dessous.
+    fig.add_annotation(x=14, y=110, yshift=16,
+                       text=f"<b>14 h · {vert14:.0f} % renouvelable décentralisé</b>",
                        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
                        font=dict(family=SANS, size=17, color=PALETTE["accent"]))
+    fig.add_annotation(x=14, y=110, yanchor="top", yshift=-6,
+                       text=f"{tot14:.0f} % avec la grande hydraulique",
+                       showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=3,
+                       font=dict(family=SANS, size=14, color=PALETTE["ink"]))
     fig.update_layout(
         title=dict(text="L'heure la plus verte pour consommer en Corse"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
@@ -256,17 +269,21 @@ def main() -> int:
               "avertissement affiché sur le visuel.")
     export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix, sous_titre=sous_titre_t1)
     export_html(fig_t2_demande_mensuelle(), "t2_demande_mensuelle", SRC_HIST, d_hist,
-                sous_titre="Demande moyenne mois par mois — Corse, 2019-2024")
+                sous_titre="Demande moyenne mois par mois — Corse, 2019-2024",
+                note=NOTE_ESTIME)
     export_html(fig_t2b_surcroit_horaire(), "t2b_surcroit_horaire", SRC_HIST, d_hist,
                 sous_titre="Écart de demande moyenne juillet − juin, heure par heure — Corse, "
                            "2019-2024. La cause (résidents, tourisme, climatisation) n'est pas "
-                           "désagrégeable ici : on montre quand, pas pourquoi.")
+                           "désagrégeable ici : on montre quand, pas pourquoi.",
+                note=NOTE_ESTIME)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
                 sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
-                           "2019-2024. Interconnexions = câbles SACOI (Italie via la Sardaigne).")
+                           "2019-2024. Interconnexions = câbles SACOI (Italie via la Sardaigne).",
+                note=NOTE_ESTIME)
     export_html(fig_t4_heure_verte(), "t4_heure_verte", SRC_HIST, d_hist,
                 sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024. "
-                           "Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro.")
+                           "Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro.",
+                note=NOTE_ESTIME)
     print("\n5 visuels exportés dans outputs/")
     return code
 

@@ -74,7 +74,8 @@ def date_collecte(source_id: str) -> str:
     return manifest[source_id]["date_collecte"]
 
 
-def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = "") -> str:
+def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = "",
+                note: str = "") -> str:
     """Écrit outputs/<name>.html (Plotly, JS via CDN => fichier léger).
 
     Applique le template, incruste la mention de source obligatoire.
@@ -83,14 +84,19 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     source    : mention de source, ex. "EDF — Open Data Groupe EDF"
     collecte  : date de collecte, ex. date_collecte("edf_courbe_charge_horaire")
     sous_titre: ligne de contexte (périmètre, définition) sous le titre
+    note      : note méthodologique courte, en pied sous la mention de source
+                (ex. statut estimé des données)
     """
     fig.update_layout(template=template())
     if sous_titre:
         # Commentaire = sous-titre NATIF (un seul bloc avec le titre) : contrairement à
         # une annotation flottante, il ne peut plus télescoper la légende.
         fig.update_layout(title=dict(subtitle=dict(text=sous_titre)))
+    pied = f"Source : {source} — données collectées le {collecte}"
+    if note:
+        pied += f"<br>{note}"
     fig.add_annotation(
-        text=f"Source : {source} — données collectées le {collecte}",
+        text=pied,
         xref="paper", yref="paper", x=0, y=-0.22,
         showarrow=False, align="left", xanchor="left",
         # 14px + ink_soft : plancher dataviz + contraste WCAG AA (le gris muted échouait).
