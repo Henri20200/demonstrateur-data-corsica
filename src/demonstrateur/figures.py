@@ -40,7 +40,7 @@ def fig_t1_soleil() -> go.Figure:
         number=dict(suffix=" %", font=dict(family=SANS, size=64, color=PALETTE["solaire"])),
         gauge=dict(
             axis=dict(range=[0, 100], tickwidth=1, tickcolor=PALETTE["rule"],
-                      tickfont=dict(family=SANS, size=12, color=PALETTE["muted"])),
+                      tickfont=dict(family=SANS, size=14, color=PALETTE["ink_soft"])),
             bar=dict(color=PALETTE["solaire"], thickness=0.32),
             bgcolor=PALETTE["rule_soft"], borderwidth=0,
         ),
@@ -48,13 +48,17 @@ def fig_t1_soleil() -> go.Figure:
     ))
     fig.update_layout(
         title=dict(text="En ce moment, votre kWh corse est fait de <b>soleil</b>"),
-        height=460,
+        height=520,
     )
     return fig, quand, statut
 
 
-# --- Titre 2 : « on voit les touristes arriver » (bond juin→juillet) ----------
-def fig_t2_touristes() -> go.Figure:
+# --- Titre 2 : la demande grimpe l'été (le « combien », bond juin→juillet) -----
+# On montre le fait (+22 %) sans lui coller de cause : « touristes + climatiseurs »
+# agrège deux effets non désagrégeables avec les seules données EDF (production par
+# filière ≠ décomposition de la demande). Le « quand » — indice de la cause — est laissé
+# à fig_t2b_surcroit_horaire (surcroît concentré le soir), à chacun d'en tirer sa lecture.
+def fig_t2_demande_mensuelle() -> go.Figure:
     con = _con()
     df = con.execute(
         f"SELECT mois_local m, avg(production_totale_mw) charge FROM '{COURBE}' GROUP BY 1 ORDER BY 1"
@@ -64,7 +68,7 @@ def fig_t2_touristes() -> go.Figure:
     fig = go.Figure(go.Bar(
         x=MOIS, y=charge, marker_color=couleurs, width=0.62,
         text=[f"{int(v)}" if m in (6, 7) else "" for v, m in zip(charge, df["m"])],
-        textposition="outside", textfont=dict(family=SANS, size=12, color=PALETTE["ink"]),
+        textposition="outside", textfont=dict(family=SANS, size=15, color=PALETTE["ink"]),
         hovertemplate="%{x} : %{y:.0f} MW<extra></extra>",
     ))
     juin, juil = float(charge[df["m"] == 6].iloc[0]), float(charge[df["m"] == 7].iloc[0])
@@ -73,17 +77,50 @@ def fig_t2_touristes() -> go.Figure:
         showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=2, arrowcolor=PALETTE["accent"],
     )
     fig.add_annotation(
-        x=6.0, y=juil, yshift=26, text=f"<b>+{round(100*(juil-juin)/juin):d} %</b>",
-        showarrow=False, font=dict(family=SANS, size=15, color=PALETTE["accent"]),
+        x=6.0, y=juil, yshift=28, text=f"<b>+{round(100*(juil-juin)/juin):d} %</b>",
+        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
+        font=dict(family=SANS, size=17, color=PALETTE["accent"]),
     )
     fig.update_layout(
-        title=dict(text="L'été : touristes et climatiseurs font grimper la demande"),
-        yaxis=dict(title="Demande moyenne (MW)"), bargap=0.38, height=520,
+        title=dict(text="L'été, la demande d'électricité grimpe (+22 % en juillet)"),
+        yaxis=dict(title="Demande moyenne (MW)"), bargap=0.38, height=560,
     )
     return fig
 
 
-# --- Titre 3 : « à midi le soleil culmine ; le soir il retombe » --------------
+# --- Titre 2b : le « quand » — le surcroît de juillet se joue le soir ----------
+# Écart horaire juillet − juin de la demande moyenne : la bosse est le soir (16-22h)
+# et la nuit, pas un pic de milieu de journée. On donne l'indice, pas la conclusion.
+def fig_t2b_surcroit_horaire() -> go.Figure:
+    con = _con()
+    df = con.execute(
+        f"""SELECT heure_locale h,
+              avg(production_totale_mw) FILTER (WHERE mois_local = 7)
+              - avg(production_totale_mw) FILTER (WHERE mois_local = 6) AS delta
+            FROM '{COURBE}' GROUP BY 1 ORDER BY 1"""
+    ).df()
+    delta = df["delta"].round(0)
+    soir = df["h"].between(16, 22)
+    couleurs = [PALETTE["accent"] if s else PALETTE["muted"] for s in soir]
+    fig = go.Figure(go.Bar(
+        x=df["h"], y=delta, marker_color=couleurs,
+        hovertemplate="%{x}h : %{y:+.0f} MW<extra></extra>",
+    ))
+    fig.add_annotation(
+        x=19, y=float(delta.max()), yshift=22, text="<b>le soir (16-22 h)</b>",
+        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
+        font=dict(family=SANS, size=16, color=PALETTE["accent"]),
+    )
+    fig.update_layout(
+        title=dict(text="Ce surcroît se joue surtout le soir"),
+        xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
+        yaxis=dict(title="Surcroît juillet − juin (MW)"),
+        bargap=0.2, height=560,
+    )
+    return fig
+
+
+# --- Titre 3 : même à son zénith, le soleil ne détrône pas le fossile ----------
 def fig_t3_profil() -> go.Figure:
     con = _con()
     df = con.execute(f"""
@@ -94,32 +131,52 @@ def fig_t3_profil() -> go.Figure:
         FROM '{COURBE}' WHERE mois_local IN (6,7,8) GROUP BY 1 ORDER BY 1
     """).df()
     h = df["h"]
-    series = [
-        ("Thermique", df["thermique"], PALETTE["thermique"]),
-        ("Soleil", df["solaire"], PALETTE["solaire"]),
-        ("Interconnexions", df["imports"], PALETTE["imports"]),
-    ]
+    # Invariant qui fonde le titre : même à son maximum, le solaire ne passe JAMAIS
+    # devant le thermique. On le vérifie sur la donnée avant de figer le message.
+    if (df["solaire"] >= df["thermique"]).any():
+        heures = df.loc[df["solaire"] >= df["thermique"], "h"].tolist()
+        raise ValueError(f"T3 : le solaire atteint/dépasse le thermique aux heures {heures} — titre à revoir.")
+    i_pic = int(df["solaire"].idxmax())
+    h_pic = int(df.loc[i_pic, "h"])
+    sol_pic = float(df.loc[i_pic, "solaire"])
+    therm_pic = float(df.loc[i_pic, "thermique"])
+
+    # Étiquettes de valeur au zénith PORTÉES PAR LA COURBE (mode texte, sur le seul
+    # point du pic) : pas de pastille qui occulte les tracés, et elles se masquent avec
+    # leur série au clic sur la légende (une annotation de layout, elle, resterait).
+    txt_th = ["" if j != i_pic else f"{therm_pic:.0f} %" for j in range(len(df))]
+    txt_sol = ["" if j != i_pic else f"{sol_pic:.0f} %" for j in range(len(df))]
+
+    # Interconnexions en retrait (trait fin) ; soleil + thermique = protagonistes.
+    # z-order : imports dessous ; l'ordre de légende est rétabli par legendrank.
     fig = go.Figure()
-    for nom, y, col in series:
-        fig.add_trace(go.Scatter(
-            x=h, y=y, name=nom, mode="lines", line=dict(color=col, width=2.6),
-            hovertemplate=nom + " : %{y:.0f} %<extra></extra>",
-        ))
-    # repères pic solaire (~15h) / soir
-    for hh in (15, 21):
-        fig.add_vline(x=hh, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
-    fig.add_annotation(x=15, y=float(df["solaire"].max()), yshift=16,
-                       text="jusqu'à 36 % l'après-midi", showarrow=False,
-                       font=dict(family=SANS, size=12, color=PALETTE["solaire"]))
-    fig.add_annotation(x=21, y=float(df["solaire"][df["h"] == 21].iloc[0]), yshift=-18,
-                       text="6 % le soir", showarrow=False,
-                       font=dict(family=SANS, size=12, color=PALETTE["solaire"]))
+    fig.add_trace(go.Scatter(
+        x=h, y=df["imports"], name="Interconnexions", mode="lines", legendrank=3,
+        line=dict(color=PALETTE["muted"], width=1.0),
+        hovertemplate="Interconnexions : %{y:.0f} %<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=h, y=df["thermique"], name="Thermique", mode="lines+text", legendrank=1,
+        line=dict(color=PALETTE["thermique"], width=2.8),
+        text=txt_th, textposition="top center",
+        textfont=dict(family=SANS, size=15, color=PALETTE["thermique"]),
+        hovertemplate="Thermique : %{y:.0f} %<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=h, y=df["solaire"], name="Soleil", mode="lines+text", legendrank=2,
+        line=dict(color=PALETTE["solaire"], width=2.8),
+        text=txt_sol, textposition="bottom center",
+        textfont=dict(family=SANS, size=15, color=PALETTE["solaire"]),
+        hovertemplate="Soleil : %{y:.0f} %<extra></extra>",
+    ))
+    # Repère au zénith solaire : le thermique reste au-dessus du soleil à son maximum.
+    fig.add_vline(x=h_pic, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
     fig.update_layout(
-        title=dict(text="À la mi-journée le soleil culmine ; le soir, l'île rallume ses moteurs"),
+        title=dict(text="Même à son zénith, le soleil ne détrône pas le fossile"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h"),
         yaxis=dict(title="Part du mix (%)", ticksuffix=" %"),
         legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
-        height=520,
+        height=600,
     )
     return fig
 
@@ -155,14 +212,15 @@ def fig_t4_heure_verte() -> go.Figure:
     fig.add_shape(type="rect", x0=13.45, x1=14.55, y0=0, y1=110,
                   line=dict(color=PALETTE["accent"], width=2.8),
                   fillcolor="rgba(0,0,0,0)", layer="above")
-    fig.add_annotation(x=14, y=110, yshift=14, text=f"<b>14 h · {vert14:.0f} % renouvelable</b>",
-                       showarrow=False, font=dict(family=SANS, size=13.5, color=PALETTE["accent"]))
+    fig.add_annotation(x=14, y=110, yshift=16, text=f"<b>14 h · {vert14:.0f} % renouvelable</b>",
+                       showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
+                       font=dict(family=SANS, size=16, color=PALETTE["accent"]))
     fig.update_layout(
         title=dict(text="L'heure la plus verte pour consommer en Corse"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
         yaxis=dict(title="Part du mix (%)", range=[0, 122], ticksuffix=" %"),
         legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
-        height=560,
+        height=640,
     )
     return fig
 
@@ -174,15 +232,19 @@ def main() -> int:
     fig1, quand, statut = fig_t1_soleil()
     export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix,
                 sous_titre=f"Dernier relevé du {quand} (statut : {statut.lower()})")
-    export_html(fig_t2_touristes(), "t2_touristes", SRC_HIST, d_hist,
+    export_html(fig_t2_demande_mensuelle(), "t2_demande_mensuelle", SRC_HIST, d_hist,
                 sous_titre="Demande moyenne mois par mois — Corse, 2019-2024")
+    export_html(fig_t2b_surcroit_horaire(), "t2b_surcroit_horaire", SRC_HIST, d_hist,
+                sous_titre="Écart de demande moyenne juillet − juin, heure par heure — Corse, "
+                           "2019-2024. La cause (résidents, tourisme, climatisation) n'est pas "
+                           "désagrégeable ici : on montre quand, pas pourquoi.")
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
                 sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
                            "2019-2024. Interconnexions = câbles SACOI (Italie via la Sardaigne).")
     export_html(fig_t4_heure_verte(), "t4_heure_verte", SRC_HIST, d_hist,
                 sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024. "
                            "Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro.")
-    print("\n4 visuels exportés dans outputs/")
+    print("\n5 visuels exportés dans outputs/")
     return 0
 
 

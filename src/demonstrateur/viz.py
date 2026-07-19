@@ -34,24 +34,34 @@ SANS = "system-ui, -apple-system, 'Segoe UI', sans-serif"
 
 
 def template() -> go.layout.Template:
-    """Template Plotly : fond neutre, sans-serif, filets discrets."""
+    """Template Plotly : fond neutre, sans-serif, texte lisible, filets discrets.
+
+    Lisibilité : étiquettes d'axes et légende en **encre pleine** (pas de gris) et
+    généreusement dimensionnées ; seuls la grille et les filets restent discrets. Le
+    tooltip est blanc sur encre — contraste garanti quelle que soit la couleur tracée.
+    """
     axis = dict(
         gridcolor=PALETTE["rule_soft"], griddash="solid", zeroline=False,
         linecolor=PALETTE["rule"], ticks="outside", tickcolor=PALETTE["rule"],
-        tickfont=dict(family=SANS, size=12, color=PALETTE["ink_soft"]),
-        title=dict(font=dict(family=SANS, size=14, color=PALETTE["ink"]), standoff=20),
+        tickfont=dict(family=SANS, size=15, color=PALETTE["ink"]),
+        title=dict(font=dict(family=SANS, size=16, color=PALETTE["ink"]), standoff=18),
     )
     return go.layout.Template(layout=dict(
         paper_bgcolor=PALETTE["surface"], plot_bgcolor=PALETTE["surface"],
-        font=dict(family=SANS, size=13, color=PALETTE["ink"]),
-        title=dict(font=dict(family=SANS, size=23, color=PALETTE["ink"]), x=0.01, xanchor="left"),
+        font=dict(family=SANS, size=14, color=PALETTE["ink"]),
+        title=dict(
+            font=dict(family=SANS, size=25, color=PALETTE["ink"]),
+            x=0.01, xanchor="left",
+            subtitle=dict(font=dict(family=SANS, size=16, color=PALETTE["ink_soft"])),
+        ),
         colorway=[PALETTE["solaire"], PALETTE["renouv"], PALETTE["hydro"],
                   PALETTE["imports"], PALETTE["thermique"]],
         xaxis=axis, yaxis=axis,
-        legend=dict(font=dict(family=SANS, size=12, color=PALETTE["ink_soft"]),
+        legend=dict(font=dict(family=SANS, size=15, color=PALETTE["ink"]),
                     bgcolor="rgba(0,0,0,0)"),
-        margin=dict(t=88, b=96, l=90, r=48),
-        hoverlabel=dict(font=dict(family=SANS, size=12)),
+        margin=dict(t=132, b=112, l=104, r=54),
+        hoverlabel=dict(bgcolor=PALETTE["ink"], bordercolor=PALETTE["ink"],
+                        font=dict(family=SANS, size=14, color="#FFFFFF")),
     ))
 
 
@@ -73,16 +83,14 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     """
     fig.update_layout(template=template())
     if sous_titre:
-        fig.add_annotation(
-            text=sous_titre, xref="paper", yref="paper", x=0.01, y=1.10,
-            showarrow=False, align="left", xanchor="left",
-            font=dict(family=SANS, size=13, color=PALETTE["ink_soft"]),
-        )
+        # Commentaire = sous-titre NATIF (un seul bloc avec le titre) : contrairement à
+        # une annotation flottante, il ne peut plus télescoper la légende.
+        fig.update_layout(title=dict(subtitle=dict(text=sous_titre)))
     fig.add_annotation(
         text=f"Source : {source} — données collectées le {collecte}",
-        xref="paper", yref="paper", x=0, y=-0.16,
+        xref="paper", yref="paper", x=0, y=-0.22,
         showarrow=False, align="left", xanchor="left",
-        font=dict(family=SANS, size=11, color=PALETTE["muted"]),
+        font=dict(family=SANS, size=12.5, color=PALETTE["muted"]),
     )
     dest = OUTPUTS / f"{name}.html"
     fig.write_html(dest, include_plotlyjs="cdn", full_html=True)
