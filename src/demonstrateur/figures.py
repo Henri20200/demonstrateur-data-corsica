@@ -1,8 +1,12 @@
-"""Construit les 4 visuels du démonstrateur depuis data/processed, exporte outputs/*.html.
+"""Construit les 5 visuels du démonstrateur depuis data/processed, exporte outputs/*.html.
 
 Chaque figure : une question du BRIEF, un périmètre écrit sur la figure, la charte
 Pacioli (via viz.export_html). Usage :
     python -m demonstrateur.figures
+
+Fraîcheur du temps réel (décision du 19/07/2026, post-audit) : au-delà de 24 h,
+T1 porte un avertissement visible ; au-delà de 48 h, le titre « en ce moment »
+est bloqué (titre dégradé en « au dernier relevé ») et le run termine en code 1.
 """
 
 from __future__ import annotations
@@ -22,19 +26,24 @@ MOIS = ["jan", "fév", "mar", "avr", "mai", "juin", "juil", "août", "sep", "oct
 SRC_MIX = "EDF — Open Data Groupe EDF (production corse, temps réel)"
 SRC_HIST = "EDF — Open Data Groupe EDF (Corse & Outre-mer)"
 
+# Seuils de fraîcheur du temps réel (heures) — cf. docstring du module.
+FRAICHEUR_AVERTIR_H = 24
+FRAICHEUR_BLOQUER_H = 48
+
 
 def _con():
     return duckdb.connect()
 
 
 # --- Titre 1 : « en ce moment, X % de soleil » -------------------------------
-def fig_t1_soleil() -> go.Figure:
+def fig_t1_soleil() -> tuple[go.Figure, str, str, float]:
     con = _con()
     r = con.execute(
-        f"""SELECT part_soleil, strftime(timezone('Europe/Paris',"date"),'%d/%m/%Y à %Hh%M'), statut
+        f"""SELECT part_soleil, strftime(timezone('Europe/Paris',"date"),'%d/%m/%Y à %Hh%M'),
+                   statut, extract(epoch FROM (now() - "date"))/3600.0
             FROM '{MIX}' ORDER BY "date" DESC LIMIT 1"""
     ).fetchone()
-    val, quand, statut = r
+    val, quand, statut, age_h = r
     fig = go.Figure(go.Indicator(
         mode="gauge+number", value=val,
         number=dict(suffix=" %", font=dict(family=SANS, size=64, color=PALETTE["solaire"])),
@@ -46,11 +55,13 @@ def fig_t1_soleil() -> go.Figure:
         ),
         domain=dict(x=[0, 1], y=[0, 0.82]),
     ))
-    fig.update_layout(
-        title=dict(text="En ce moment, votre kWh corse est fait de <b>soleil</b>"),
-        height=520,
-    )
-    return fig, quand, statut
+    # Au-delà du seuil de blocage, l'affirmation « en ce moment » n'est plus tenable :
+    # titre dégradé (garde-fou 7 de RECONNAISSANCE.md — « dégrader proprement »).
+    titre = ("En ce moment, votre kWh corse est fait de <b>soleil</b>"
+             if age_h <= FRAICHEUR_BLOQUER_H
+             else "Au dernier relevé, votre kWh corse était fait de <b>soleil</b>")
+    fig.update_layout(title=dict(text=titre), height=520)
+    return fig, quand, statut, float(age_h)
 
 
 # --- Titre 2 : la demande grimpe l'été (le « combien », bond juin→juillet) -----
@@ -228,10 +239,22 @@ def fig_t4_heure_verte() -> go.Figure:
 def main() -> int:
     d_mix = date_collecte("edf_mix_temps_reel")
     d_hist = date_collecte("edf_courbe_charge_horaire")
+    code = 0
 
-    fig1, quand, statut = fig_t1_soleil()
-    export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix,
-                sous_titre=f"Dernier relevé du {quand} (statut : {statut.lower()})")
+    fig1, quand, statut, age_h = fig_t1_soleil()
+    sous_titre_t1 = f"Dernier relevé du {quand} (statut : {statut.lower()})"
+    if age_h > FRAICHEUR_BLOQUER_H:
+        sous_titre_t1 = ("⚠ Relevé de plus de 48 h : l'affichage « en ce moment » est "
+                         "suspendu. " + sous_titre_t1)
+        print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_BLOQUER_H} h) — "
+              "titre « en ce moment » bloqué, visuel dégradé, run en échec.")
+        code = 1
+    elif age_h > FRAICHEUR_AVERTIR_H:
+        sous_titre_t1 = (f"⚠ Relevé de plus de {FRAICHEUR_AVERTIR_H} h — collecte à "
+                         "relancer. " + sous_titre_t1)
+        print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_AVERTIR_H} h) — "
+              "avertissement affiché sur le visuel.")
+    export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix, sous_titre=sous_titre_t1)
     export_html(fig_t2_demande_mensuelle(), "t2_demande_mensuelle", SRC_HIST, d_hist,
                 sous_titre="Demande moyenne mois par mois — Corse, 2019-2024")
     export_html(fig_t2b_surcroit_horaire(), "t2b_surcroit_horaire", SRC_HIST, d_hist,
@@ -245,7 +268,7 @@ def main() -> int:
                 sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024. "
                            "Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro.")
     print("\n5 visuels exportés dans outputs/")
-    return 0
+    return code
 
 
 if __name__ == "__main__":

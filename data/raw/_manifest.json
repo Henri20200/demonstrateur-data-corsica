@@ -36,18 +36,18 @@
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv",
     "filename": "edf_mix_temps_reel.csv",
     "producteur": "EDF — Open Data Groupe EDF (production corse temps réel)",
-    "licence": "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)",
+    "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "7f7976b103b1dc7853447a28d13ad92355b16f76a15883629d5bdc12313b4749",
-    "date_collecte": "2026-07-18",
-    "taille_octets": 227937
+    "sha256": "94505acfb0fd5a03eaae429bddf7c7d3d995e2635267fdd5ca4f1dd0ae9a6161",
+    "date_collecte": "2026-07-19",
+    "taille_octets": 228798
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
     "filename": "edf_courbe_charge_horaire.csv",
     "producteur": "EDF — Open Data Groupe EDF (Corse & Outre-mer)",
-    "licence": "Licence Ouverte 2.0 (à confirmer sur la fiche du jeu)",
+    "licence": "Licence Ouverte (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
     "sha256": "787ee649f4d66acaca41551c470ac1b0751817077c70bd79f2a18676c9117c99",

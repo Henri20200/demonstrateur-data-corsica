@@ -42,8 +42,12 @@ Pipeline linéaire en trois temps, un module par étape sous `src/demonstrateur/
 calcule son empreinte SHA-256 et écrit **`data/raw/_manifest.json`**. Ce manifeste est
 LE cœur de la traçabilité : il enregistre URL, producteur, licence, date de collecte et
 taille. C'est le seul fichier de `data/` versionné (tout le reste est régénérable, donc
-gitignoré). Une source déjà présente avec une empreinte n'est pas retéléchargée ; les échecs
-n'interrompent pas les autres sources (retour code 1 en fin de run).
+gitignoré). Politique de fraîcheur : une source `glissant: true` (mix temps réel) est
+re-téléchargée à **chaque** run ; une source figée déjà présente avec une empreinte n'est
+pas retéléchargée mais ses métadonnées (licence, producteur, URL) sont resynchronisées
+depuis `sources.yaml`, et le manifeste est réécrit à chaque run. Un rafraîchissement qui
+échoue conserve la donnée précédente (téléchargement en `.part`, remplacement atomique) ;
+les échecs n'interrompent pas les autres sources (retour code 1 en fin de run).
 
 **`prepare.py`** → DuckDB lit les `.csv.gz` directement (sans tout charger en mémoire) et
 produit des Parquet dans `data/processed/`. Ajouter une transformation = une fonction ici,

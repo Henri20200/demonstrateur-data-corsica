@@ -10,6 +10,8 @@
 #   filename           : nom du fichier local dans data/raw/
 #   licence            : licence de réutilisation (à citer dans chaque visuel)
 #   producteur         : organisme producteur
+#   glissant           : true = jeu à fenêtre glissante, re-téléchargé à CHAQUE
+#                        run (le cache n'est jamais un succès pour un jeu périssable)
 #   notes              : contexte, points à vérifier
 #
 # Champs de VALIDATION (fetch.py refuse d'enregistrer une donnée qui ne
@@ -63,6 +65,7 @@ sources:
     filename: "edf_mix_temps_reel.csv"
     licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
     producteur: "EDF — Open Data Groupe EDF (production corse temps réel)"
+    glissant: true   # fenêtre ~14 j : sans re-téléchargement, « en ce moment » périme
     format: csv
     delimiter: ";"
     colonnes_attendues: [date, total, photovoltaique, filiere_enr_distrib, statut]

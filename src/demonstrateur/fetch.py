@@ -6,7 +6,19 @@ Usage :
 
 Pour chaque source : téléchargement en streaming, empreinte SHA-256,
 content-type et date de collecte enregistrés dans data/raw/_manifest.json.
-Un fichier déjà présent avec la même empreinte n'est pas retéléchargé.
+
+Politique de fraîcheur (audit du 19/07/2026 — un succès ne doit jamais
+signifier « données anciennes ignorées ») :
+ - source `glissant: true` (fenêtre glissante, ex. mix temps réel) :
+   re-téléchargée à CHAQUE run — le cache n'est jamais un succès pour un
+   jeu périssable ;
+ - source figée déjà présente avec empreinte : pas de re-téléchargement,
+   mais ses champs déclaratifs (url, licence, producteur, format) sont
+   resynchronisés depuis sources.yaml ;
+ - le manifeste est réécrit à chaque run, cache valide compris ;
+ - téléchargement en `.part` puis remplacement atomique : un
+   rafraîchissement qui échoue CONSERVE le fichier et l'entrée de
+   manifeste précédents (et le run termine en code 1).
 
 Garde-fou (raison d'être du projet : "IA sourcée") : le contenu téléchargé
 est VALIDÉ (cf. _valider) avant d'être certifié dans le manifeste. Une page
@@ -57,6 +69,26 @@ def _download(url: str, dest: Path) -> tuple[str, str]:
                 f.write(chunk)
                 h.update(chunk)
     return h.hexdigest(), content_type
+
+
+def _sync_declaratif(entry: dict, meta: dict) -> list[str]:
+    """Resynchronise les champs déclaratifs d'une entrée de manifeste depuis sources.yaml.
+
+    L'empreinte, la date de collecte et la taille restent celles de la donnée
+    réellement téléchargée ; seuls url / licence / producteur / format suivent
+    la déclaration courante. Renvoie la liste des champs modifiés.
+    """
+    modifies = []
+    for champ in ("url", "licence", "producteur"):
+        val = meta.get(champ, "")
+        if entry.get(champ) != val:
+            entry[champ] = val
+            modifies.append(champ)
+    fmt = _format(meta)
+    if entry.get("format") != fmt:
+        entry["format"] = fmt
+        modifies.append("format")
+    return modifies
 
 
 def _format(meta: dict) -> str:
@@ -126,23 +158,34 @@ def main() -> int:
     for source_id, meta in sources.items():
         dest = DATA_RAW / meta["filename"]
         already = manifest.get(source_id, {})
+        glissant = bool(meta.get("glissant"))
+        certifie = dest.exists() and bool(already.get("sha256"))
 
-        if dest.exists() and already.get("sha256"):
-            print(f"[=] {source_id} : déjà présent ({dest.name}), ignoré.")
+        if certifie and not glissant:
+            # Cache valide pour une source figée : pas de re-téléchargement, mais
+            # les métadonnées déclaratives suivent toujours sources.yaml.
+            modifies = _sync_declaratif(already, meta)
+            suffixe = f" — métadonnées resynchronisées ({', '.join(modifies)})" if modifies else ""
+            print(f"[=] {source_id} : déjà présent ({dest.name}), empreinte conservée{suffixe}.")
             continue
 
-        print(f"[>] {source_id} : téléchargement…")
+        verbe = "rafraîchissement (jeu glissant)" if certifie else "téléchargement"
+        print(f"[>] {source_id} : {verbe}…")
+        # Téléchargement en .part puis remplacement atomique : un échec ne doit
+        # jamais détruire une donnée déjà certifiée (cas du rafraîchissement).
+        part = dest.with_name(dest.name + ".part")
         try:
-            sha, content_type = _download(meta["url"], dest)
-            _valider(dest, meta, content_type)
+            sha, content_type = _download(meta["url"], part)
+            _valider(part, meta, content_type)
         except Exception as exc:  # noqa: BLE001 — on continue avec les autres sources
-            # Ne jamais laisser un fichier douteux ni une entrée de manifeste
-            # trompeuse : on supprime ce qui a pu être écrit.
-            dest.unlink(missing_ok=True)
-            manifest.pop(source_id, None)
+            part.unlink(missing_ok=True)
+            if not certifie:
+                # Premier téléchargement raté : aucune entrée trompeuse ne subsiste.
+                manifest.pop(source_id, None)
             print(f"[!] {source_id} : ÉCHEC — {exc}")
             failures.append(source_id)
             continue
+        part.replace(dest)
 
         manifest[source_id] = {
             "url": meta["url"],
@@ -157,6 +200,10 @@ def main() -> int:
         }
         _save_manifest(manifest)
         print(f"[ok] {source_id} : {dest.name} ({dest.stat().st_size:,} octets, {content_type})")
+
+    # Réécrit le manifeste même sans re-téléchargement : les resynchronisations
+    # de métadonnées (licences…) doivent être visibles à chaque run.
+    _save_manifest(manifest)
 
     if failures:
         print(f"\n{len(failures)} source(s) en échec : {', '.join(failures)}")

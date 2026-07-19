@@ -167,6 +167,19 @@ Le chiffre live « en ce moment » (titre 1) garde `part_enr_distrib` d'EDF (leu
   2024) étaient jetées du numérateur ENR mais gardées au dénominateur. L'heure (14h) et le
   fuseau (local) sont **inchangés** entre les deux passes ; seul le numérateur a été corrigé.
 
+## Addenda du 19/07/2026 (post-audit de fiabilité)
+
+Décisions prises après l'audit du 19/07 (`audit/`), sans refonte analytique :
+les résultats tiennent, on durcit fraîcheur, non-régression et formulations.
+
+### Fraîcheur & traçabilité (remplace « au prochain fetch propre » de la section Licences)
+
+- `edf_mix_temps_reel` est marqué `glissant: true` → **re-téléchargé à chaque run** ;
+  les métadonnées du manifeste (licences…) sont **resynchronisées à chaque run** même
+  sans re-téléchargement. Fait le 19/07 : les deux libellés « à confirmer » ont disparu.
+- Visuel T1 : **avertissement** au-delà de 24 h ; au-delà de 48 h, le titre
+  « en ce moment » est **bloqué** (titre dégradé « au dernier relevé », run en code 1).
+
 ## À banquer pour la vague 2
 
 `cout_moyen_de_production_eur_mwh` (hors périmètre ici) alimenterait un angle
