@@ -149,7 +149,11 @@ Le chiffre live « en ce moment » (titre 1) garde `part_enr_distrib` d'EDF (leu
   thermique 58 %). « Câbles / interconnexions » dans le titre ; **SACOI/Sardaigne** en note.
 - **Titre 4 — « l'heure la plus verte = XXhXX »** : ✅ **14h**, robuste (top 3 : 14h/15h/13h ;
   même heure aux deux définitions). ENR distribuée **34,4 %** (déf sym) / 48,1 % (avec grande
-  hydro), **sur l'année**. Périmètre d'affichage = année (étiqueté) — **reco, à confirmer**.
+  hydro), **sur l'année 2019-2024** (filtre prouvé : aucune clause de saison, 2 192 obs à 14h).
+  **Dérivation du chiffre** : à la 1re passe il sortait 28,6 % ; le +5,8 pt vient *entièrement*
+  du `coalesce` du bug NULL micro-hydro 2024 — sans lui, 366/2192 obs de 14h (toute l'année
+  2024) étaient jetées du numérateur ENR mais gardées au dénominateur. L'heure (14h) et le
+  fuseau (local) sont **inchangés** entre les deux passes ; seul le numérateur a été corrigé.
 
 ## À banquer pour la vague 2
 
