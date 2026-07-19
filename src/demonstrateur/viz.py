@@ -38,8 +38,8 @@ def template() -> go.layout.Template:
     axis = dict(
         gridcolor=PALETTE["rule_soft"], griddash="solid", zeroline=False,
         linecolor=PALETTE["rule"], ticks="outside", tickcolor=PALETTE["rule"],
-        tickfont=dict(family=SANS, size=12, color=PALETTE["muted"]),
-        title=dict(font=dict(family=SANS, size=13, color=PALETTE["ink_soft"])),
+        tickfont=dict(family=SANS, size=12, color=PALETTE["ink_soft"]),
+        title=dict(font=dict(family=SANS, size=14, color=PALETTE["ink"]), standoff=20),
     )
     return go.layout.Template(layout=dict(
         paper_bgcolor=PALETTE["surface"], plot_bgcolor=PALETTE["surface"],
@@ -50,7 +50,7 @@ def template() -> go.layout.Template:
         xaxis=axis, yaxis=axis,
         legend=dict(font=dict(family=SANS, size=12, color=PALETTE["ink_soft"]),
                     bgcolor="rgba(0,0,0,0)"),
-        margin=dict(t=88, b=96, l=72, r=48),
+        margin=dict(t=88, b=96, l=90, r=48),
         hoverlabel=dict(font=dict(family=SANS, size=12)),
     ))
 

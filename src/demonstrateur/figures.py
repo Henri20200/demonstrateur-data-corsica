@@ -31,7 +31,7 @@ def _con():
 def fig_t1_soleil() -> go.Figure:
     con = _con()
     r = con.execute(
-        f"""SELECT part_soleil, strftime(timezone('Europe/Paris',"date"),'%d/%m à %Hh%M'), statut
+        f"""SELECT part_soleil, strftime(timezone('Europe/Paris',"date"),'%d/%m/%Y à %Hh%M'), statut
             FROM '{MIX}' ORDER BY "date" DESC LIMIT 1"""
     ).fetchone()
     val, quand, statut = r
@@ -77,7 +77,7 @@ def fig_t2_touristes() -> go.Figure:
         showarrow=False, font=dict(family=SANS, size=15, color=PALETTE["accent"]),
     )
     fig.update_layout(
-        title=dict(text="On voit les touristes arriver dans la courbe"),
+        title=dict(text="L'été : touristes et climatiseurs font grimper la demande"),
         yaxis=dict(title="Demande moyenne (MW)"), bargap=0.38, height=520,
     )
     return fig
@@ -105,17 +105,17 @@ def fig_t3_profil() -> go.Figure:
             x=h, y=y, name=nom, mode="lines", line=dict(color=col, width=2.6),
             hovertemplate=nom + " : %{y:.0f} %<extra></extra>",
         ))
-    # repères midi/soir
-    for hh, lab in [(14, "midi"), (21, "soir")]:
+    # repères pic solaire (~15h) / soir
+    for hh in (15, 21):
         fig.add_vline(x=hh, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
-    fig.add_annotation(x=14, y=float(df["solaire"].max()), yshift=14,
-                       text="35 % à midi", showarrow=False,
+    fig.add_annotation(x=15, y=float(df["solaire"].max()), yshift=16,
+                       text="jusqu'à 36 % l'après-midi", showarrow=False,
                        font=dict(family=SANS, size=12, color=PALETTE["solaire"]))
-    fig.add_annotation(x=21, y=float(df["solaire"][df["h"] >= 20].iloc[1]), yshift=-18,
+    fig.add_annotation(x=21, y=float(df["solaire"][df["h"] == 21].iloc[0]), yshift=-18,
                        text="6 % le soir", showarrow=False,
                        font=dict(family=SANS, size=12, color=PALETTE["solaire"]))
     fig.update_layout(
-        title=dict(text="À midi le soleil culmine ; le soir, l'île rallume ses moteurs"),
+        title=dict(text="À la mi-journée le soleil culmine ; le soir, l'île rallume ses moteurs"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h"),
         yaxis=dict(title="Part du mix (%)", ticksuffix=" %"),
         legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
@@ -150,19 +150,17 @@ def fig_t4_heure_verte() -> go.Figure:
             stackgroup="mix", fillcolor=col,
             hovertemplate=nom + " : %{y:.0f} %<extra></extra>",
         ))
-    # repère 14h — cadre légèrement surélevé pour le détacher de la bande
+    # repère 14h : cadre net (sans ombre ni trame), étendu au-dessus de la pile pour ressortir
     vert14 = float(df["decentralise"][df["h"] == 14].iloc[0])
-    fig.add_shape(type="rect", x0=13.72, x1=14.58, y0=0, y1=104,   # ombre portée (relief)
-                  line=dict(width=0), fillcolor="rgba(27,34,56,0.16)", layer="above")
-    fig.add_shape(type="rect", x0=13.55, x1=14.45, y0=0, y1=105,   # cadre terracotta surélevé
-                  line=dict(color=PALETTE["accent"], width=2.6),
-                  fillcolor="rgba(162,61,42,0.05)", layer="above")
-    fig.add_annotation(x=14, y=105, yshift=13, text=f"<b>14 h · {vert14:.0f} % renouvelable</b>",
-                       showarrow=False, font=dict(family=SANS, size=13, color=PALETTE["accent"]))
+    fig.add_shape(type="rect", x0=13.45, x1=14.55, y0=0, y1=110,
+                  line=dict(color=PALETTE["accent"], width=2.8),
+                  fillcolor="rgba(0,0,0,0)", layer="above")
+    fig.add_annotation(x=14, y=110, yshift=14, text=f"<b>14 h · {vert14:.0f} % renouvelable</b>",
+                       showarrow=False, font=dict(family=SANS, size=13.5, color=PALETTE["accent"]))
     fig.update_layout(
         title=dict(text="L'heure la plus verte pour consommer en Corse"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
-        yaxis=dict(title="Part du mix (%)", range=[0, 112], ticksuffix=" %"),
+        yaxis=dict(title="Part du mix (%)", range=[0, 122], ticksuffix=" %"),
         legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
         height=560,
     )
