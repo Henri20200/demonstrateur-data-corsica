@@ -122,9 +122,14 @@ Le chiffre live « en ce moment » (titre 1) garde `part_enr_distrib` d'EDF (leu
 5. **Échanges** : sur l'historique 6 ans, `importations_mw` **peut être négatif** (min −27 MW,
    **607 h d'export**). « Tire sur l'Italie » vrai **en moyenne**, pas « en permanence » ; le
    temps réel 14 j d'été n'a montré aucun export.
-6. **Étiqueter les périmètres** : le titre 3 (profil) est un récit **estival** ; le titre 4
-   (heure verte) est une **conclusion annuelle**. Ne jamais juxtaposer un % d'été et un %
-   annuel sans mention — sinon un lecteur voit une incohérence là où il y a deux périmètres.
+6. **Populations comparables** (règle générale, pas cosmétique) : t3 (profil) est un récit
+   **estival** ; t4 (heure verte) est une **conclusion annuelle** — filtre vérifié :
+   `territoire='Corse'` sans clause de saison, 2019-2024, 12 mois, 2 192 obs à 14h. Deux %
+   qu'un lecteur compare de tête doivent partager la **même population**, sinon la différence
+   de population s'écrit **sur la figure**. C'est une **obligation** dès qu'une métrique en
+   **contient** une autre (ENR distribuée ⊇ solaire) : sinon « 34 % ENR < 35 % solaire » se
+   lit « ils ne savent pas compter », pas « nuance de périmètre ». **Corollaire : ne PAS poser
+   t3 et t4 côte à côte** — adjacents, le lecteur soustrait avant de lire les étiquettes.
 7. **Crédibilité sur l'historique, pas sur le live** : partie solide = courbe 6 ans (host
    stable, partiellement validée) ; partie fragile = temps réel (portail en fermeture, 100 %
    estimé, 14 j). Zone non interconnectée (EDF SEI) sans repli RTE → si le live tombe,
