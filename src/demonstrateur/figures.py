@@ -40,7 +40,7 @@ def fig_t1_soleil() -> go.Figure:
         number=dict(suffix=" %", font=dict(family=SANS, size=64, color=PALETTE["solaire"])),
         gauge=dict(
             axis=dict(range=[0, 100], tickwidth=1, tickcolor=PALETTE["rule"],
-                      tickfont=dict(family=SANS, size=14, color=PALETTE["ink_soft"])),
+                      tickfont=dict(family=SANS, size=15, color=PALETTE["ink_soft"])),
             bar=dict(color=PALETTE["solaire"], thickness=0.32),
             bgcolor=PALETTE["rule_soft"], borderwidth=0,
         ),
@@ -68,7 +68,7 @@ def fig_t2_demande_mensuelle() -> go.Figure:
     fig = go.Figure(go.Bar(
         x=MOIS, y=charge, marker_color=couleurs, width=0.62,
         text=[f"{int(v)}" if m in (6, 7) else "" for v, m in zip(charge, df["m"])],
-        textposition="outside", textfont=dict(family=SANS, size=15, color=PALETTE["ink"]),
+        textposition="outside", textfont=dict(family=SANS, size=16, color=PALETTE["ink"]),
         hovertemplate="%{x} : %{y:.0f} MW<extra></extra>",
     ))
     juin, juil = float(charge[df["m"] == 6].iloc[0]), float(charge[df["m"] == 7].iloc[0])
@@ -79,7 +79,7 @@ def fig_t2_demande_mensuelle() -> go.Figure:
     fig.add_annotation(
         x=6.0, y=juil, yshift=28, text=f"<b>+{round(100*(juil-juin)/juin):d} %</b>",
         showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
-        font=dict(family=SANS, size=17, color=PALETTE["accent"]),
+        font=dict(family=SANS, size=18, color=PALETTE["accent"]),
     )
     fig.update_layout(
         title=dict(text="L'été, la demande d'électricité grimpe (+22 % en juillet)"),
@@ -109,7 +109,7 @@ def fig_t2b_surcroit_horaire() -> go.Figure:
     fig.add_annotation(
         x=19, y=float(delta.max()), yshift=22, text="<b>le soir (16-22 h)</b>",
         showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
-        font=dict(family=SANS, size=16, color=PALETTE["accent"]),
+        font=dict(family=SANS, size=17, color=PALETTE["accent"]),
     )
     fig.update_layout(
         title=dict(text="Ce surcroît se joue surtout le soir"),
@@ -159,14 +159,14 @@ def fig_t3_profil() -> go.Figure:
         x=h, y=df["thermique"], name="Thermique", mode="lines+text", legendrank=1,
         line=dict(color=PALETTE["thermique"], width=2.8),
         text=txt_th, textposition="top center",
-        textfont=dict(family=SANS, size=15, color=PALETTE["thermique"]),
+        textfont=dict(family=SANS, size=16, color=PALETTE["thermique"]),
         hovertemplate="Thermique : %{y:.0f} %<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=h, y=df["solaire"], name="Soleil", mode="lines+text", legendrank=2,
         line=dict(color=PALETTE["solaire"], width=2.8),
         text=txt_sol, textposition="bottom center",
-        textfont=dict(family=SANS, size=15, color=PALETTE["solaire"]),
+        textfont=dict(family=SANS, size=16, color=PALETTE["solaire"]),
         hovertemplate="Soleil : %{y:.0f} %<extra></extra>",
     ))
     # Repère au zénith solaire : le thermique reste au-dessus du soleil à son maximum.
@@ -214,7 +214,7 @@ def fig_t4_heure_verte() -> go.Figure:
                   fillcolor="rgba(0,0,0,0)", layer="above")
     fig.add_annotation(x=14, y=110, yshift=16, text=f"<b>14 h · {vert14:.0f} % renouvelable</b>",
                        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
-                       font=dict(family=SANS, size=16, color=PALETTE["accent"]))
+                       font=dict(family=SANS, size=17, color=PALETTE["accent"]))
     fig.update_layout(
         title=dict(text="L'heure la plus verte pour consommer en Corse"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),

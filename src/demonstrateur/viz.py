@@ -40,28 +40,31 @@ def template() -> go.layout.Template:
     généreusement dimensionnées ; seuls la grille et les filets restent discrets. Le
     tooltip est blanc sur encre — contraste garanti quelle que soit la couleur tracée.
     """
+    # Échelle typographique : plancher 14px pour tout texte (usage dataviz — RSS,
+    # Datawrapper, gov.uk) ; ticks/légende/étiquettes à 16, titres d'axes à 18. Encre
+    # pleine partout (contraste ~18:1, WCAG AAA) — seuls grille et filets sont discrets.
     axis = dict(
         gridcolor=PALETTE["rule_soft"], griddash="solid", zeroline=False,
         linecolor=PALETTE["rule"], ticks="outside", tickcolor=PALETTE["rule"],
-        tickfont=dict(family=SANS, size=15, color=PALETTE["ink"]),
-        title=dict(font=dict(family=SANS, size=16, color=PALETTE["ink"]), standoff=18),
+        tickfont=dict(family=SANS, size=16, color=PALETTE["ink"]),
+        title=dict(font=dict(family=SANS, size=18, color=PALETTE["ink"]), standoff=18),
     )
     return go.layout.Template(layout=dict(
         paper_bgcolor=PALETTE["surface"], plot_bgcolor=PALETTE["surface"],
-        font=dict(family=SANS, size=14, color=PALETTE["ink"]),
+        font=dict(family=SANS, size=16, color=PALETTE["ink"]),
         title=dict(
-            font=dict(family=SANS, size=25, color=PALETTE["ink"]),
+            font=dict(family=SANS, size=27, color=PALETTE["ink"]),
             x=0.01, xanchor="left",
-            subtitle=dict(font=dict(family=SANS, size=16, color=PALETTE["ink_soft"])),
+            subtitle=dict(font=dict(family=SANS, size=17, color=PALETTE["ink_soft"])),
         ),
         colorway=[PALETTE["solaire"], PALETTE["renouv"], PALETTE["hydro"],
                   PALETTE["imports"], PALETTE["thermique"]],
         xaxis=axis, yaxis=axis,
-        legend=dict(font=dict(family=SANS, size=15, color=PALETTE["ink"]),
+        legend=dict(font=dict(family=SANS, size=16, color=PALETTE["ink"]),
                     bgcolor="rgba(0,0,0,0)"),
-        margin=dict(t=132, b=112, l=104, r=54),
+        margin=dict(t=144, b=120, l=116, r=56),
         hoverlabel=dict(bgcolor=PALETTE["ink"], bordercolor=PALETTE["ink"],
-                        font=dict(family=SANS, size=14, color="#FFFFFF")),
+                        font=dict(family=SANS, size=15, color="#FFFFFF")),
     ))
 
 
@@ -90,7 +93,8 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
         text=f"Source : {source} — données collectées le {collecte}",
         xref="paper", yref="paper", x=0, y=-0.22,
         showarrow=False, align="left", xanchor="left",
-        font=dict(family=SANS, size=12.5, color=PALETTE["muted"]),
+        # 14px + ink_soft : plancher dataviz + contraste WCAG AA (le gris muted échouait).
+        font=dict(family=SANS, size=14, color=PALETTE["ink_soft"]),
     )
     dest = OUTPUTS / f"{name}.html"
     fig.write_html(dest, include_plotlyjs="cdn", full_html=True)
