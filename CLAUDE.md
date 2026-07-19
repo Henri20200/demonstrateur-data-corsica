@@ -8,7 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Ce qu'est ce projet
 
 Démonstrateur d'analyse de données ouvertes corses. Le livrable final : des
-visualisations HTML autonomes, datées et sourcées, intégrables en iframe sur une vitrine.
+visualisations HTML datées et sourcées, déployables en iframe sans dépendance tierce
+(`plotly.min.js` mutualisé dans `outputs/` — déployer le dossier d'un bloc).
 Le repo lui-même est une preuve de sérieux — il doit rester propre et reproductible.
 
 La question fermée (électricité corse : mix, profil horaire, saisonnalité) et les critères

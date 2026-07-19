@@ -25,7 +25,8 @@ Critères de choix du jeu de données :
 4. croisable avec une source nationale (INSEE, DVF) → démontrer l'assemblage multi-sources.
 
 ## Définition de « fini »
-- [ ] une page interactive exportée en HTML autonome (intégrable en iframe sur la vitrine)
+- [ ] une page interactive exportée en HTML déployable en iframe sans dépendance
+      tierce (pas de CDN ; `plotly.min.js` mutualisé dans `outputs/`, à déployer d'un bloc)
 - [ ] une note méthodologique : sources, dates de collecte, limites, licences
 - [ ] ce repo public et propre (le repo EST une preuve de sérieux)
 - [ ] mention de source visible sur chaque visuel

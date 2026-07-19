@@ -1,4 +1,7 @@
-"""Export des visualisations en HTML autonome, intégrable en iframe sur la vitrine.
+"""Export des visualisations en HTML déployable en iframe sans dépendance tierce.
+
+Plotly n'est pas chargé depuis un CDN : `plotly.min.js` est écrit UNE fois dans
+outputs/ et partagé par tous les visuels — le dossier outputs/ se déploie d'un bloc.
 
 La mention de source « Source … — données collectées le … » est câblée dans
 l'export : le sourçage n'est pas optionnel. Le style (palette énergie lisible,
@@ -76,7 +79,7 @@ def date_collecte(source_id: str) -> str:
 
 def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = "",
                 note: str = "") -> str:
-    """Écrit outputs/<name>.html (Plotly, JS via CDN => fichier léger).
+    """Écrit outputs/<name>.html (fichier léger, plotly.min.js mutualisé dans outputs/).
 
     Applique le template, incruste la mention de source obligatoire.
     fig       : figure Plotly
@@ -103,6 +106,8 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
         font=dict(family=SANS, size=14, color=PALETTE["ink_soft"]),
     )
     dest = OUTPUTS / f"{name}.html"
-    fig.write_html(dest, include_plotlyjs="cdn", full_html=True)
+    # "directory" : pas de CDN (le visuel se charge sans réseau tiers) ni de JS
+    # embarqué par fichier (~4,5 Mo x5) — une seule copie partagée dans outputs/.
+    fig.write_html(dest, include_plotlyjs="directory", full_html=True)
     print(f"[ok] {dest}")
     return str(dest)
