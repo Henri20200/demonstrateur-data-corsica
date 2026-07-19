@@ -28,7 +28,8 @@ fetch-data                          # = python -m demonstrateur.fetch : téléch
 python -m demonstrateur.prepare     # data/raw/*.csv.gz -> data/processed/*.parquet (via DuckDB)
 
 # Qualité
-pytest                              # tests de fumée
+pytest                              # fumée + résultats (les tests de résultats exigent
+                                    # fetch-data + prepare ; sinon ils sont sautés)
 pytest tests/test_smoke.py::test_sources_yaml_est_valide   # un seul test
 ruff check src                      # lint (line-length 100)
 ruff format src

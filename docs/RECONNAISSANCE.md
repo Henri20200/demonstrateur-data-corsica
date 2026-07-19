@@ -197,6 +197,8 @@ passages à l'heure d'été 2019, 2020 et 2024) via `production_totale_mw > 0`. 
   sans re-téléchargement. Fait le 19/07 : les deux libellés « à confirmer » ont disparu.
 - Visuel T1 : **avertissement** au-delà de 24 h ; au-delà de 48 h, le titre
   « en ce moment » est **bloqué** (titre dégradé « au dernier relevé », run en code 1).
+- Les chiffres publiés sont verrouillés par `tests/test_resultats.py` (bond, argmax 14 h,
+  solaire < thermique l'été, surcroît du soir, fraîcheur < 48 h).
 
 ## À banquer pour la vague 2
 
