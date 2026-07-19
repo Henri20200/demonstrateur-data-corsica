@@ -125,8 +125,12 @@ def courbe_corse_to_parquet() -> None:
     )
     # Garde de sortie : à l'AGRÉGAT (par heure), l'ensemble ENR ne peut passer sous son
     # sous-ensemble solaire — c'est l'invariant qui a révélé le bug NULL 2024. (Au niveau
-    # ligne, la production nette nocturne peut être < 0 et le violer légitimement : PV/micro
-    # négatifs = auxiliaires, convention EDF ; ~1 % des lignes, sans objet à l'agrégat.)
+    # ligne, la production nette nocturne peut être < 0 et le violer légitimement —
+    # auxiliaires, convention EDF. Deux périmètres à ne pas confondre : PAR FILIÈRE,
+    # c'est fréquent (PV < 0 : 20 429 h, soit 38,8 % ; éolien 13 017 ; bio 4 856 ;
+    # micro 2 233) ; l'AGRÉGAT enr_distrib_mw < 0 est rare car les termes se
+    # compensent : 2 750 h (5,2 %), part minimale −1,39 %. Sans objet à l'agrégat
+    # horaire ; les figures clampent à 0 via greatest().)
     viol = con.execute(
         f"""SELECT count(*) FROM (
               SELECT heure_locale FROM '{dest}'

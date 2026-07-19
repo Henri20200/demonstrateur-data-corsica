@@ -190,6 +190,13 @@ Le brut Corse compte 52 608 h ; `prepare` retire **3 lignes à 0 MW** (heure fan
 passages à l'heure d'été 2019, 2020 et 2024) via `production_totale_mw > 0`. Tout chiffre
 « sur 2019-2024 » a donc pour dénominateur **52 605 heures**.
 
+### Filières négatives la nuit (auxiliaires, convention EDF) — deux périmètres
+
+- **Par filière** (fréquent) : PV < 0 sur 20 429 h (38,8 %), éolien 13 017, bio 4 856,
+  micro 2 233.
+- **Agrégat** `ENR_sym` < 0 (rare, les termes se compensent) : **2 750 h (5,2 %)**,
+  part minimale **−1,39 %**. Sans objet à l'agrégat horaire ; clampé à 0 dans les figures.
+
 ### Fraîcheur & traçabilité (remplace « au prochain fetch propre » de la section Licences)
 
 - `edf_mix_temps_reel` est marqué `glissant: true` → **re-téléchargé à chaque run** ;
