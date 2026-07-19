@@ -1,0 +1,81 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+> Le repo est en français (docstrings, commentaires, messages CLI). Garde cette langue
+> dans le code et la doc que tu produis.
+
+## Ce qu'est ce projet
+
+Démonstrateur d'analyse de données ouvertes corses. Le livrable final : des
+visualisations HTML datées et sourcées, déployables en iframe sans dépendance tierce
+(`plotly.min.js` mutualisé dans `outputs/` — déployer le dossier d'un bloc).
+Le repo lui-même est une preuve de sérieux — il doit rester propre et reproductible.
+
+La question fermée (électricité corse : mix, profil horaire, saisonnalité) et les critères
+de « fini » sont figés dans **`docs/BRIEF.md`** — lis-le avant toute décision de contenu ou
+de périmètre. Le **« test du prompt »** y est le critère éliminatoire : si un LLM généraliste
+pouvait produire le livrable en 15 min, ce n'est pas le bon livrable. Ce qui fait passer le
+test : donnée fraîche (pas de 15 min) + pipeline récurrent + manifeste daté/empreinté.
+
+## Commandes
+
+```bash
+# Installation (l'environnement .venv existe déjà)
+uv pip install -e ".[dev]"          # + ".[insee]" si besoin de pynsee
+
+# Pipeline, dans l'ordre
+fetch-data                          # = python -m demonstrateur.fetch : télécharge sources.yaml -> data/raw/
+python -m demonstrateur.prepare     # data/raw/*.csv.gz -> data/processed/*.parquet (via DuckDB)
+
+# Qualité
+pytest                              # fumée + résultats (les tests de résultats exigent
+                                    # fetch-data + prepare ; sinon ils sont sautés)
+pytest tests/test_smoke.py::test_sources_yaml_est_valide   # un seul test
+ruff check src                      # lint (line-length 100)
+ruff format src
+```
+
+## Architecture
+
+Pipeline linéaire en trois temps, un module par étape sous `src/demonstrateur/` :
+
+**`fetch.py`** (`fetch-data`) → lit `sources.yaml`, télécharge chaque source en streaming,
+calcule son empreinte SHA-256 et écrit **`data/raw/_manifest.json`**. Ce manifeste est
+LE cœur de la traçabilité : il enregistre URL, producteur, licence, date de collecte et
+taille. C'est le seul fichier de `data/` versionné (tout le reste est régénérable, donc
+gitignoré). Politique de fraîcheur : une source `glissant: true` (mix temps réel) est
+re-téléchargée à **chaque** run ; une source figée déjà présente avec une empreinte n'est
+pas retéléchargée mais ses métadonnées (licence, producteur, URL) sont resynchronisées
+depuis `sources.yaml`, et le manifeste est réécrit à chaque run. Un rafraîchissement qui
+échoue conserve la donnée précédente (téléchargement en `.part`, remplacement atomique) ;
+les échecs n'interrompent pas les autres sources (retour code 1 en fin de run).
+
+**`prepare.py`** → DuckDB lit les `.csv.gz` directement (sans tout charger en mémoire) et
+produit des Parquet dans `data/processed/`. Ajouter une transformation = une fonction ici,
+appelée depuis `main()`.
+
+**`viz.py`** → **toute figure destinée au livrable DOIT sortir par `export_html(fig, name, source, collecte)`**.
+Cette fonction incruste le pied de page « Source … — données collectées le … » : le sourçage
+n'est pas optionnel, il est câblé dans l'export. Récupère la date via
+`date_collecte(source_id)`, qui la lit dans `_manifest.json`.
+
+**`config.py`** → tous les chemins (`DATA_RAW`, `DATA_PROCESSED`, `OUTPUTS`, `MANIFEST_FILE`,
+`SOURCES_FILE`) sont dérivés de `ROOT`. **Aucun chemin en dur ailleurs** — importer depuis
+`config`. L'import crée les dossiers de données au besoin.
+
+**`notebooks/`** = brouillons d'exploration uniquement. Ce qui part au livrable est reporté
+dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pipeline.
+
+## Règles propres à ce repo
+
+- **Ajouter une source de données** = ajouter une entrée dans `sources.yaml` (champs requis :
+  `url`, `filename`, `licence`, `producteur` — le test de fumée les vérifie), puis `fetch-data`.
+  Rien ne se télécharge « à la main ».
+- **Les URL des sources peuvent changer** ; plusieurs sont marquées « à vérifier / à confirmer »
+  dans `sources.yaml`. En cas d'échec de `fetch-data`, vérifier l'URL sur la fiche du jeu.
+- **Ne jamais committer `data/raw/` ou `data/processed/`** (sauf `_manifest.json`). Tout se
+  régénère depuis `sources.yaml`.
+- **Chaque visuel cite sa source et sa date** — via `viz.export_html`, pas à la main.
+- Licences des données : Licence Ouverte 2.0 (Etalab) sauf mention contraire ; réutilisation
+  libre avec mention du producteur.
