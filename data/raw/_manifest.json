@@ -53,5 +53,16 @@
     "sha256": "787ee649f4d66acaca41551c470ac1b0751817077c70bd79f2a18676c9117c99",
     "date_collecte": "2026-07-18",
     "taille_octets": 24815708
+  },
+  "edf_ecretement_corse": {
+    "url": "https://www.data.gouv.fr/api/1/datasets/r/ed02d0f2-3cf4-4ab0-a92c-322cd0496ef1",
+    "filename": "edf_ecretement_corse.csv",
+    "producteur": "EDF — Open Data Groupe EDF (limitations sûreté système, Corse & Outre-mer)",
+    "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
+    "format": "csv",
+    "content_type": "text/csv; charset=utf-8",
+    "sha256": "d5ec8d752d245e8bd5d25c54464fcd4c48a1ce3b5029ceadb16f3dbe368a6d57",
+    "date_collecte": "2026-07-19",
+    "taille_octets": 10504
   }
 }

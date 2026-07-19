@@ -89,3 +89,27 @@ sources:
       (hors périmètre du démonstrateur). Fuseau UTC. Statut Corse : 2 ans validés
       + 4 ans estimés. stockage_mw nul en Corse. Correspondance temps réel :
       thermique_mw <-> filiere_thermique, importations_mw <-> liaisons.
+
+  # --- Écrêtement ENR : limitations de production au titre de la sûreté système ---
+  # Preuve chiffrée du "plafond de verre" du solaire insulaire. La Corse (ZNI) plafonne
+  # l'injection instantanée des ENR intermittentes (PV + éolien SANS stockage) : 30 %
+  # (arrêté du 23/04/2008) relevé à 35 % puis 45 %. Au-delà, le producteur est déconnecté
+  # ou limité ("dernier arrivé en file, premier déconnecté" ; exception si couplé stockage).
+  # Ce jeu chiffre, mois par mois, les heures max de déconnexion/limitation du PV.
+  # Mensuel 2016-2023, multi-territoires -> FILTRER territoire = 'Corse' (comme la courbe).
+  # Host EDF volatil (opendata-corse.edf.fr = 410 ; opendata.edf.fr a migré vers data-fair) :
+  # on passe par le PERMALIEN data.gouv.fr, stable et redirigé (302) vers la ressource EDF.
+  edf_ecretement_corse:
+    url: "https://www.data.gouv.fr/api/1/datasets/r/ed02d0f2-3cf4-4ab0-a92c-322cd0496ef1"
+    filename: "edf_ecretement_corse.csv"
+    licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
+    producteur: "EDF — Open Data Groupe EDF (limitations sûreté système, Corse & Outre-mer)"
+    format: csv
+    delimiter: ","
+    colonnes_attendues: ["Territoire", "Mois", "Durée (h)"]
+    notes: >
+      Heures mensuelles max de déconnexion/limitation du PV au-delà du seuil d'injection
+      des ENR intermittentes (35 % sur la période couverte, relevé ensuite vers 45 %).
+      Colonne "Taux d'ENR interfacée par EP accepté (%)" renseignée à partir de 2019.
+      Ressource EDF sous-jacente (backend data-fair, cible du 302) :
+      https://opendata.edf.fr/data-fair/api/v1/datasets/deconnexions-des-installations-photovoltaiques/convert
