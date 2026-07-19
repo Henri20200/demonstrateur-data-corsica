@@ -98,12 +98,24 @@ Le chiffre live « en ce moment » (titre 1) garde `part_enr_distrib` d'EDF (leu
 
 ## Données manquantes & qualité (garde-fous `prepare`)
 
-- **NULL micro-hydro 2024** : sommer `pv+eol+bio+micro` SANS `coalesce` jette les 8 783 lignes
-  2024 du numérateur → l'ENR passe **sous** le solaire (impossible). Correctif :
-  **`coalesce(colonne, 0)` sur toute somme de filières**. Validé par le **bouclage 2024**
-  (`total` = somme des filières hors micro à 0,04 MW près) : la micro absente l'est **des deux
-  côtés du ratio**, donc les parts ne sont pas biaisées. Contrôle automatique à garder :
-  **ENR ≥ solaire à chaque heure** (0 violation après correctif).
+- **NULL dans un numérateur = jamais neutre s'il reste au dénominateur.** Sommer
+  `pv+eol+bio+micro` SANS `coalesce` jette les 8 783 lignes 2024 (micro-hydro NULL toute
+  l'année) du numérateur → l'ENR passe **sous** le solaire, **−5,8 pt à 14h sans lever
+  d'erreur** : l'erreur qui *passe*, pas celle qui plante (elle serait partie en démo).
+  **Règle `prepare` (pas un `coalesce` aveugle)** :
+  1. **auditer les NULL par colonne** avant tout ratio ;
+  2. par filière, trancher **zéro-vrai** (filière à l'arrêt = 0 MW → `coalesce(,0)` légitime)
+     vs **donnée manquante** (panne de collecte → la ligne ne doit pas peser au dénominateur,
+     sinon dilution) ;
+  3. ne **jamais** coalescer aveuglément une **grande** filière : si le trou frappait le PV ou
+     le thermique, `+0` fabriquerait un faux aplomb à deux chiffres.
+  **Cas micro-hydro 2024** : `coalesce(,0)` est correct *ici* car le **bouclage 2024** prouve
+  que `production_totale_mw` **exclut aussi** la micro (0,04 MW) — filière absente des deux
+  côtés du ratio, donc pas de dilution. Contrôle automatique conservé : **ENR ≥ solaire à
+  chaque heure** (0 violation).
+  **À écrire sur la vitrine (note méthodo)** : « micro-hydraulique non décomptée en 2024
+  (≈8 783 h), traitée comme 0 car exclue aussi du total » — un expert EDF qui connaît
+  l'incident est rassuré de le voir écrit ; qu'il le découvre en posant la question coûte la salle.
 - **Ligne aberrante temps réel** : cf. bouclage > 50 MW ci-dessus (drop).
 - **Signe `solde_stockage`** : positif = décharge (restitution réseau, inclus dans l'ENR
   produite) ; charge (< 0) **non observée** sur la fenêtre 14 j — inférence, pas preuve.
