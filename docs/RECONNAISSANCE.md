@@ -236,6 +236,41 @@ la heatmap T5. Vérifié empiriquement (DuckDB + pandas sur le brut).
   silencieusement la lecture calendaire de la heatmap.
 - **Millésime** : jeu arrêté à 2023 ; vérifier périodiquement si EDF publie 2024+.
 
+## Addendum du 20/07/2026 — Jeu 4 : `entsoe_sardaigne_*` (visuel T6, Corse vs Sardaigne)
+
+Reconnaissance de la génération sarde (ENTSO-E Transparency Platform), validée par 2
+appels-test réels avant construction. **La Corse N'EST PAS une zone ENTSO-E** (incluse
+dans la France) : ENTSO-E ne sert QUE pour la Sardaigne ; la Corse reste sur EDF.
+
+- **Source** : zone de marché **IT-Sardinia** (EIC `10Y1001A1001A74G`), API REST,
+  documentType A75 (Actual Generation per Production Type), processType A16. On ignore
+  les 2 zones virtuelles d'interconnexion SACO* (liaisons Corse↔Sardaigne, zéro génération).
+- **Accès** : `securityToken` via `${ENTSOE_TOKEN}` (jamais dans le dépôt ; secret GitHub
+  Actions en CI, variable d'env en local). Limite ~1 an/requête → 1 entrée `sources.yaml`
+  par année (2019-2024, fenêtre de la courbe corse).
+- **Format XML** `GL_MarketDocument`. Garde-fou `racine_attendue` : une requête en erreur
+  (jeton, période, pas de données) renvoie **HTTP 200 + `Acknowledgement_MarketDocument`**,
+  à ne JAMAIS empreinter comme donnée (même logique que le rideau HTML des CSV).
+- **curveType A03** (« blocs de taille variable ») : les heures manquantes RECONDUISENT la
+  dernière valeur (report), y compris jusqu'à la fin de période — **jamais un zéro**. Un
+  remplissage à zéro fabriquerait un mix faux. `prepare` reconstruit par report.
+- **Direction** : ne garder que les séries `inBiddingZone_Domain` (génération) ; les
+  `outBiddingZone` (pompage STEP B10, artefacts B16) sont de la **consommation**.
+- **Résolution mixte** : 2024 mêle PT60M et 25 périodes PT15M (bascule italienne) →
+  reconstruction au pas natif puis agrégation à l'heure.
+- **Mapping PSR → filières EDF** : fossiles (B02-B08) → thermique ; B10/B11/B12 → hydro ;
+  B16 → solaire ; B18/B19 → éolien ; B01/B17 → bioénergies ; reste (dont **B25 stockage**,
+  apparu en 2024) → autre. `prepare` **échoue** sur un code non mappé (a intercepté B25).
+- **Comparabilité (règle populations comparables)** : la génération A75 n'a **pas d'imports**
+  (Sardaigne exportatrice via SAPEI/SACOI) ; la Corse importe 27,8 % de sa demande. T6
+  compare donc la **génération locale seule** (imports corses exclus et renormalisés).
+- **Faits verrouillés** (`tests/test_resultats.py`) : Sardaigne 65 % thermique (dont
+  **charbon 32 % + gaz de synthèse IGCC 32 %**, centrale Sarlux), éolien 14,8 % (≈ 15× la
+  Corse), hydro 3,7 %, solaire 9,1 %. Corse (génération seule) : thermique 55 %, hydro 28 %,
+  solaire 15 %, éolien 1 %. Fuseau Europe/Rome = Europe/Paris.
+- **Millésime** : 2019-2024 (années pleines). Réactualisable pour 2025+ (ajouter l'entrée
+  `sources.yaml`). Fichiers figés (non `glissant`) → non re-téléchargés une fois empreintés.
+
 ## À banquer pour la vague 2
 
 `cout_moyen_de_production_eur_mwh` (hors périmètre ici) alimenterait un angle

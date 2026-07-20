@@ -10,11 +10,13 @@ pas passer inaperçue. Nécessite le pipeline : `fetch-data` puis
 import duckdb
 import pytest
 
-from demonstrateur.config import DATA_PROCESSED
+from demonstrateur.config import DATA_PROCESSED, DATA_RAW
 
 COURBE = DATA_PROCESSED / "edf_courbe_corse.parquet"
 MIX = DATA_PROCESSED / "edf_mix_corse.parquet"
 ECRET = DATA_PROCESSED / "edf_ecretement_corse.parquet"
+SARD = DATA_PROCESSED / "entsoe_sardaigne.parquet"
+SARD_XML = DATA_RAW / "entsoe_sardaigne_2023.xml"
 
 besoin_courbe = pytest.mark.skipif(
     not COURBE.exists(), reason="data/processed absent — lancer fetch-data puis prepare"
@@ -24,6 +26,12 @@ besoin_mix = pytest.mark.skipif(
 )
 besoin_ecret = pytest.mark.skipif(
     not ECRET.exists(), reason="data/processed absent — lancer fetch-data puis prepare"
+)
+besoin_sard = pytest.mark.skipif(
+    not SARD.exists(), reason="parquet Sardaigne absent — fetch-data (jeton ENTSO-E) puis prepare"
+)
+besoin_sard_xml = pytest.mark.skipif(
+    not SARD_XML.exists(), reason="XML Sardaigne absent — fetch-data (jeton ENTSO-E) requis"
 )
 
 
@@ -135,6 +143,45 @@ def test_ecretement_record_mai_2020(con):
     )
     assert taux == pytest.approx(90.5, abs=0.1), (
         f"taux accepté du pire mois = {taux} % — la note de T5 cite 90,5 %"
+    )
+
+
+@besoin_sard
+def test_sardaigne_thermique_domine(con):
+    """T6 : Sardaigne ~65 % thermique (majoritaire), Corse ~55 % (génération seule)."""
+    s = con.execute(
+        f"""SELECT 100.0*sum(thermique_mw)/sum(production_totale_mw),
+                   100.0*sum(eolien_mw)/sum(production_totale_mw)
+            FROM '{SARD.as_posix()}'"""
+    ).fetchone()
+    assert s[0] == pytest.approx(65.1, abs=1.0), (
+        f"thermique sarde = {s[0]:.1f} % — le titre « deux îles thermiques » de T6 à revoir"
+    )
+    # Contraste éolien du sous-titre : Sardaigne ~15 %, Corse ~1 % (≈ 15×).
+    c_eol = con.execute(
+        f"""SELECT 100.0*sum(eolien_mw)/sum(thermique_mw+hydraulique_mw+photovoltaique_mw
+                   +eolien_mw+bioenergies_mw) FROM '{COURBE.as_posix()}'"""
+    ).fetchone()[0]
+    assert s[1] / c_eol >= 10, (
+        f"éolien sarde {s[1]:.1f} % vs corse {c_eol:.1f} % — le « 15 fois plus » de T6 ne tient plus"
+    )
+
+
+@besoin_sard_xml
+def test_sardaigne_charbon_igcc():
+    """T6 note « 32 % charbon + 32 % IGCC » : reconstruit sur le XML brut 2023 (via le parser)."""
+    from collections import defaultdict
+
+    from demonstrateur.prepare import _lignes_entsoe_horaires
+
+    energie = defaultdict(float)
+    for ligne in _lignes_entsoe_horaires(SARD_XML):
+        energie[ligne["code"]] += ligne["mw"]
+    tot = sum(energie.values())
+    charbon = 100 * energie["B05"] / tot   # houille
+    igcc = 100 * energie["B03"] / tot      # gaz de synthèse (Sarlux)
+    assert charbon + igcc >= 55, (
+        f"charbon+IGCC = {charbon+igcc:.0f} % (2023) — la note de T6 sur le charbon ne tient plus"
     )
 
 

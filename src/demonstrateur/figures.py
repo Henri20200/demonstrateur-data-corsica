@@ -368,10 +368,13 @@ def fig_t6_corse_sardaigne() -> go.Figure:
     fig.update_layout(
         title=dict(text="Deux îles thermiques — mais la Sardaigne brûle du charbon"),
         barmode="stack",
-        xaxis=dict(range=[0, 100], ticksuffix=" %", showgrid=False),
+        # Axe X masqué : les segments portent déjà leur %, l'axe ne ferait que
+        # télescoper le pied de page (barres à 100 %, l'échelle est évidente).
+        xaxis=dict(range=[0, 100], showgrid=False, showticklabels=False,
+                   ticks="", showline=False, zeroline=False),
         yaxis=dict(showgrid=False, ticks="", autorange="reversed"),  # Corse en haut
-        legend=dict(orientation="h", y=-0.16, x=0),
-        margin=dict(t=144, b=170, l=116, r=56),
+        legend=dict(orientation="h", y=-0.14, x=0, traceorder="normal"),
+        margin=dict(t=144, b=150, l=116, r=56),
         height=520,
     )
     return fig
@@ -428,8 +431,8 @@ def main() -> int:
                                "périmètre égal :<br>génération locale seule (les 27,8 % d'imports "
                                "corses sont exclus et le reste renormalisé ; la Sardaigne, "
                                "exportatrice, n'importe pas).",
-                    note="La Sardaigne (10× plus grande) fait 30 % de son courant au charbon et "
-                         "29 % au gaz de synthèse (IGCC), quasi absents en Corse ;<br>elle a 15 "
+                    note="La Sardaigne (10× plus grande) fait 32 % de son courant au charbon et "
+                         "32 % au gaz de synthèse (IGCC), quasi absents en Corse ;<br>elle a 15 "
                          "fois plus d'éolien. La Corse compense par la grande hydraulique et les "
                          "câbles. Corse estimée à partir de 2021.")
         print("\n7 visuels exportés dans outputs/")
