@@ -75,6 +75,18 @@ def test_masquage_secret():
     assert "abc123" not in _masquer(msg, ["abc123"])
 
 
+def test_masquage_secret_url_encode():
+    """Régression CI 20/07 : httpx encode l'url (espace -> %20), déjouant le simple
+    remplacement de valeur. Le caviardage de securityToken= doit tenir quand même."""
+    # Secret parasité par un préfixe « valeur = » (incident du secret GitHub mal collé).
+    secret = "valeur = 7a5e6020-dead-beef"
+    msg = ("Client error '400' for url 'https://web-api.tp.entsoe.eu/api?"
+           "securityToken=valeur%20=%207a5e6020-dead-beef&documentType=A75'")
+    masque = _masquer(msg, [secret])
+    assert "7a5e6020" not in masque, "le jeton (même url-encodé) ne doit pas fuiter"
+    assert "securityToken=•••" in masque
+
+
 def test_arborescence():
     for rel in ("data/raw", "data/processed", "outputs", "src/demonstrateur"):
         assert (ROOT / rel).exists(), f"dossier manquant : {rel}"
