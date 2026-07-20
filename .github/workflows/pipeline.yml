@@ -51,6 +51,11 @@ jobs:
         # Une source en échec ne bloque pas la publication des autres (philosophie de
         # fetch.py) ; l'échec est re-signalé en fin de run pour rester visible.
         continue-on-error: true
+        env:
+          # Jeton API ENTSO-E (étude Corse vs Sardaigne) : secret de dépôt à créer
+          # dans Settings → Secrets and variables → Actions. Vide tant qu'aucune
+          # source de sources.yaml ne référence ${ENTSOE_TOKEN} — sans effet d'ici là.
+          ENTSOE_TOKEN: ${{ secrets.ENTSOE_TOKEN }}
         run: fetch-data
 
       - name: Préparation (Parquet)

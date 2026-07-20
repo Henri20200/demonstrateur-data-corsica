@@ -41,7 +41,9 @@ ruff format src
 Pipeline linéaire en trois temps, un module par étape sous `src/demonstrateur/` :
 
 **`fetch.py`** (`fetch-data`) → lit `sources.yaml`, télécharge chaque source en streaming,
-calcule son empreinte SHA-256 et écrit **`data/raw/_manifest.json`**. Ce manifeste est
+calcule son empreinte SHA-256 et écrit **`data/raw/_manifest.json`**. Une `url` peut
+référencer une variable d'environnement `${NOM}` (jeton d'API) : expansion au
+téléchargement uniquement, jamais de secret dans le manifeste ni les logs. Ce manifeste est
 LE cœur de la traçabilité : il enregistre URL, producteur, licence, date de collecte et
 taille. C'est le seul fichier de `data/` versionné (tout le reste est régénérable, donc
 gitignoré). Politique de fraîcheur : une source `glissant: true` (mix temps réel) est

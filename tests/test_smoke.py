@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from demonstrateur.config import ROOT, SOURCES_FILE
-from demonstrateur.fetch import _valider
+from demonstrateur.fetch import _expanser_env, _masquer, _valider
 
 
 def test_sources_yaml_est_valide():
@@ -42,6 +42,37 @@ def test_valider_accepte_csv_conforme(tmp_path):
     meta = {"filename": "ok.csv", "format": "csv", "delimiter": ";",
             "colonnes_attendues": ["territoire", "date_heure"]}
     _valider(p, meta, "text/csv; charset=utf-8")
+
+
+def test_expansion_env(monkeypatch):
+    """Un ${NOM} dans l'url est remplacé par la variable d'environnement."""
+    monkeypatch.setenv("JETON_TEST", "abc123")
+    url, secrets = _expanser_env("https://api.example/data?securityToken=${JETON_TEST}")
+    assert url == "https://api.example/data?securityToken=abc123"
+    assert secrets == ["abc123"]
+
+
+def test_expansion_env_variable_absente(monkeypatch):
+    """Variable absente (ou vide) = erreur claire citant le NOM, jamais de valeur."""
+    monkeypatch.delenv("JETON_TEST", raising=False)
+    with pytest.raises(ValueError, match=r"\$\{JETON_TEST\}"):
+        _expanser_env("https://api.example/data?securityToken=${JETON_TEST}")
+    monkeypatch.setenv("JETON_TEST", "")
+    with pytest.raises(ValueError, match=r"\$\{JETON_TEST\}"):
+        _expanser_env("https://api.example/data?securityToken=${JETON_TEST}")
+
+
+def test_expansion_env_sans_variable():
+    """Une url ordinaire traverse sans modification ni secret."""
+    url, secrets = _expanser_env("https://files.data.gouv.fr/x.csv.gz")
+    assert url == "https://files.data.gouv.fr/x.csv.gz"
+    assert secrets == []
+
+
+def test_masquage_secret():
+    """Un message d'erreur (ex. httpx citant l'url) ne doit jamais exposer le jeton."""
+    msg = "HTTP 401 pour https://api.example/data?securityToken=abc123"
+    assert "abc123" not in _masquer(msg, ["abc123"])
 
 
 def test_arborescence():
