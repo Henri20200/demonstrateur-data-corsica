@@ -7,7 +7,7 @@
     "format": "csv.gz",
     "content_type": "text/csv",
     "sha256": "93e9d80d1ffc0fcbd826ce7f5d8fee0768f09c754bdfa5a9c263684c76fcbb99",
-    "date_collecte": "2026-07-18",
+    "date_collecte": "2026-07-20",
     "taille_octets": 209967
   },
   "dvf_2b_2024": {
@@ -18,7 +18,7 @@
     "format": "csv.gz",
     "content_type": "text/csv",
     "sha256": "589683cce606ddc83a4a92e79ae321dc43e95e846afc576af9d0bbc95d5de2c3",
-    "date_collecte": "2026-07-18",
+    "date_collecte": "2026-07-20",
     "taille_octets": 282339
   },
   "communes_corse": {
@@ -29,7 +29,7 @@
     "format": "geojson",
     "content_type": "application/json; charset=utf-8",
     "sha256": "6b193be059c4e22b0e53ddda3817be342a978762d4bb5e83e35acfbc4755aa0f",
-    "date_collecte": "2026-07-18",
+    "date_collecte": "2026-07-20",
     "taille_octets": 4660934
   },
   "edf_mix_temps_reel": {
@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "94505acfb0fd5a03eaae429bddf7c7d3d995e2635267fdd5ca4f1dd0ae9a6161",
-    "date_collecte": "2026-07-19",
-    "taille_octets": 228798
+    "sha256": "4ec5be9156d6ddffeb307838e9e2bddd917ab2a6e21a5ce3c1e03b96b9077b13",
+    "date_collecte": "2026-07-20",
+    "taille_octets": 229200
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -51,7 +51,7 @@
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
     "sha256": "787ee649f4d66acaca41551c470ac1b0751817077c70bd79f2a18676c9117c99",
-    "date_collecte": "2026-07-18",
+    "date_collecte": "2026-07-20",
     "taille_octets": 24815708
   },
   "edf_ecretement_corse": {
@@ -62,7 +62,7 @@
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
     "sha256": "d5ec8d752d245e8bd5d25c54464fcd4c48a1ce3b5029ceadb16f3dbe368a6d57",
-    "date_collecte": "2026-07-19",
+    "date_collecte": "2026-07-20",
     "taille_octets": 10504
   }
 }
