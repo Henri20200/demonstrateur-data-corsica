@@ -120,3 +120,59 @@ sources:
       Colonne "Taux d'ENR interfacée par EP accepté (%)" renseignée à partir de 2019.
       Ressource EDF sous-jacente (backend data-fair, cible du 302) :
       https://opendata.edf.fr/data-fair/api/v1/datasets/deconnexions-des-installations-photovoltaiques/convert
+
+  # --- Génération sarde par filière (ENTSO-E) : comparaison Corse vs Sardaigne ---
+  # La Corse N'EST PAS une zone de marché ENTSO-E (incluse dans la France) : ENTSO-E ne
+  # sert QUE pour la Sardaigne. Zone IT-Sardinia (EIC 10Y1001A1001A74G) ; on ignore les
+  # 2 zones virtuelles d'interconnexion SACO* (liaisons Corse↔Sardaigne, zéro génération).
+  # API REST : documentType=A75 (Actual Generation per Production Type), processType=A16
+  # (réalisé). L'API plafonne A75 à 1 an par requête -> UNE entrée par année (2019-2024,
+  # fenêtre de la courbe corse). securityToken via ${ENTSOE_TOKEN} (jamais dans le dépôt ;
+  # secret GitHub Actions en CI). Réponse XML GL_MarketDocument, horaire, curveType A03
+  # (heures manquantes = report de la dernière valeur, PAS des zéros — reconstruit dans
+  # prepare). racine_attendue verrouille le garde-fou : une requête en erreur renvoie
+  # HTTP 200 + Acknowledgement_MarketDocument, à ne jamais empreinter comme donnée.
+  # Fuseau Europe/Rome (= Europe/Paris). Licence : réutilisation ENTSO-E (CC-BY 4.0,
+  # attribution). Génération métrée : PAS d'imports (Sardaigne exportatrice via SAPEI/SACOI).
+  entsoe_sardaigne_2019:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=201901010000&periodEnd=202001010000"
+    filename: "entsoe_sardaigne_2019.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+  entsoe_sardaigne_2020:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202001010000&periodEnd=202101010000"
+    filename: "entsoe_sardaigne_2020.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+  entsoe_sardaigne_2021:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202101010000&periodEnd=202201010000"
+    filename: "entsoe_sardaigne_2021.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+  entsoe_sardaigne_2022:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202201010000&periodEnd=202301010000"
+    filename: "entsoe_sardaigne_2022.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+  entsoe_sardaigne_2023:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202301010000&periodEnd=202401010000"
+    filename: "entsoe_sardaigne_2023.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+  entsoe_sardaigne_2024:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202401010000&periodEnd=202501010000"
+    filename: "entsoe_sardaigne_2024.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument

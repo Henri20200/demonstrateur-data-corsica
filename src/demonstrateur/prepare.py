@@ -17,14 +17,34 @@ Garde-fous (cf. docs/RECONNAISSANCE.md) :
 from __future__ import annotations
 
 import sys
+import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta
 
 import duckdb
+import pandas as pd
 
 from .config import DATA_PROCESSED, DATA_RAW
 
 MIX = (DATA_RAW / "edf_mix_temps_reel.csv").as_posix()
 COURBE = (DATA_RAW / "edf_courbe_charge_horaire.csv").as_posix()
 ECRET = (DATA_RAW / "edf_ecretement_corse.csv").as_posix()
+ENTSOE_ANNEES = range(2019, 2025)  # fenêtre alignée sur la courbe corse
+
+# Codes PSR ENTSO-E -> filières (mêmes libellés que la Corse, pour comparer).
+# On agrège les fossiles en « thermique » ; B10 (STEP) en génération -> hydraulique ;
+# déchets (B17) avec bioénergies comme le classement EDF. La Sardaigne a du charbon (B05)
+# et du gaz de synthèse IGCC (B03, centrale Sarlux), d'où un thermique majoritaire.
+PSR_VERS_FILIERE = {
+    "B02": "thermique", "B03": "thermique", "B04": "thermique", "B05": "thermique",
+    "B06": "thermique", "B07": "thermique", "B08": "thermique",
+    "B10": "hydraulique", "B11": "hydraulique", "B12": "hydraulique",
+    "B16": "solaire",
+    "B18": "eolien", "B19": "eolien",
+    "B01": "bioenergies", "B17": "bioenergies",
+    "B09": "autre", "B13": "autre", "B14": "autre", "B15": "autre", "B20": "autre",
+    "B25": "autre",  # stockage (batteries, décharge) — apparu en 2024, pas d'équivalent EDF
+}
+_PT_MINUTES = {"PT15M": 15, "PT30M": 30, "PT60M": 60}
 
 # Filières historiques toujours renseignées (leur NULL = incident à signaler, pas à masquer).
 GRANDES_FILIERES = [
@@ -188,11 +208,133 @@ def ecretement_corse_to_parquet() -> None:
     print(f"[ok] {dest} — {n} mois ({annees} années pleines, Corse) — écrêtement PV")
 
 
+def _lignes_entsoe_horaires(path) -> list[dict]:
+    """Reconstruit la génération horaire (MW) d'un GL_MarketDocument ENTSO-E.
+
+    Trois pièges gérés (validés empiriquement sur IT-Sardinia 2019-2024) :
+     - **curveType A03** : les positions manquantes RECONDUISENT la dernière valeur
+       (report), y compris du dernier point jusqu'à la fin de la période — jamais un
+       zéro. Un remplissage à zéro fabriquerait un mix faux.
+     - **direction** : on ne garde que les séries `inBiddingZone_Domain` (génération) ;
+       les `outBiddingZone` (pompage STEP, artefacts) sont de la consommation.
+     - **résolution mixte** : 2024 mêle PT60M et PT15M (bascule italienne) ; on
+       reconstruit au pas natif puis on agrège à l'heure (moyenne des sous-pas).
+    Renvoie des lignes {date_heure (UTC), code, mw} déjà agrégées à l'heure.
+    """
+    root = ET.parse(path).getroot()
+    ns = root.tag[1:root.tag.find("}")]
+
+    def q(tag):
+        return f"{{{ns}}}{tag}"
+
+    # (heure UTC, code) -> [somme des sous-pas, nombre de sous-pas] pour la moyenne.
+    horaire: dict[tuple, list] = {}
+    for ts in root.findall(q("TimeSeries")):
+        if ts.find(q("inBiddingZone_Domain.mRID")) is None:
+            continue  # série OUT = consommation, hors génération
+        code = ts.find(q("MktPSRType") + "/" + q("psrType")).text
+        for period in ts.findall(q("Period")):
+            res = period.find(q("resolution")).text
+            pas = _PT_MINUTES.get(res)
+            if pas is None:
+                raise ValueError(f"{path} : résolution {res!r} non gérée")
+            debut = datetime.fromisoformat(
+                period.find(q("timeInterval") + "/" + q("start")).text.replace("Z", "+00:00")
+            )
+            fin = datetime.fromisoformat(
+                period.find(q("timeInterval") + "/" + q("end")).text.replace("Z", "+00:00")
+            )
+            n_pas = int((fin - debut) / timedelta(minutes=pas))
+            valeurs = {
+                int(p.find(q("position")).text): float(p.find(q("quantity")).text)
+                for p in period.findall(q("Point"))
+            }
+            # Report A03 : on parcourt tous les pas, en gardant la dernière valeur connue.
+            derniere = 0.0
+            for i in range(1, n_pas + 1):
+                if i in valeurs:
+                    derniere = valeurs[i]
+                instant = debut + timedelta(minutes=pas * (i - 1))
+                # UTC naïf (tzinfo retiré) : même convention que la courbe corse, pour
+                # que extract('year') reste en UTC et que timezone('Europe/Rome', …)
+                # calcule l'heure locale comme pour la Corse (sinon dérive de bord d'année).
+                heure = instant.replace(tzinfo=None, minute=0, second=0, microsecond=0)
+                acc = horaire.setdefault((heure, code), [0.0, 0])
+                acc[0] += derniere
+                acc[1] += 1
+
+    return [
+        {"date_heure": heure, "code": code, "mw": somme / n}
+        for (heure, code), (somme, n) in horaire.items()
+    ]
+
+
+def entsoe_sardaigne_to_parquet() -> None:
+    """Parquet de la génération sarde par filière (ENTSO-E), miroir de la courbe corse.
+
+    Assemble les 6 fichiers annuels, mappe les codes PSR sur les filières EDF, convertit
+    en heure locale (Europe/Rome = Europe/Paris), et écrit un pas horaire avec parts.
+    Génération métrée : PAS d'imports (la Sardaigne exporte via SAPEI/SACOI, hors A75).
+    """
+    dest = (DATA_PROCESSED / "entsoe_sardaigne.parquet").as_posix()
+    lignes = []
+    for an in ENTSOE_ANNEES:
+        src = DATA_RAW / f"entsoe_sardaigne_{an}.xml"
+        if not src.exists():
+            raise FileNotFoundError(f"{src} manquant — lancer fetch-data (jeton ENTSO-E requis)")
+        lignes.extend(_lignes_entsoe_horaires(src))
+    brut = pd.DataFrame(lignes)
+    brut["filiere"] = brut["code"].map(PSR_VERS_FILIERE)
+    inconnus = sorted(brut.loc[brut["filiere"].isna(), "code"].unique())
+    if inconnus:
+        raise ValueError(f"codes PSR ENTSO-E non mappés {inconnus} — compléter PSR_VERS_FILIERE")
+
+    con = duckdb.connect()
+    con.register("brut", brut)
+    con.execute(
+        f"""
+        COPY (
+          WITH large AS (
+            SELECT date_heure, filiere, sum(mw) AS mw
+            FROM brut GROUP BY 1, 2
+          ),
+          par_filiere AS (
+            SELECT date_heure,
+              coalesce(sum(mw) FILTER (WHERE filiere='thermique'), 0)   AS thermique_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='hydraulique'), 0) AS hydraulique_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='solaire'), 0)     AS solaire_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='eolien'), 0)      AS eolien_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='bioenergies'), 0) AS bioenergies_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='autre'), 0)       AS autre_mw
+            FROM large GROUP BY 1
+          )
+          SELECT date_heure,
+            extract('year' FROM date_heure)                        AS annee,
+            extract('hour' FROM timezone('Europe/Rome', date_heure)) AS heure_locale,
+            thermique_mw, hydraulique_mw, solaire_mw, eolien_mw, bioenergies_mw, autre_mw,
+            (thermique_mw + hydraulique_mw + solaire_mw + eolien_mw
+             + bioenergies_mw + autre_mw)                          AS production_totale_mw
+          FROM par_filiere
+          WHERE (thermique_mw + hydraulique_mw + solaire_mw + eolien_mw
+                 + bioenergies_mw + autre_mw) > 0
+        ) TO '{dest}' (FORMAT PARQUET)
+        """
+    )
+    n, a, b = con.execute(
+        f"SELECT count(*), min(annee), max(annee) FROM '{dest}'"
+    ).fetchone()
+    print(f"[ok] {dest} — {n:,} heures (Sardaigne {a}-{b}) — génération par filière")
+
+
 def main() -> int:
     dvf_corse_to_parquet()
     mix_temps_reel_to_parquet()
     courbe_corse_to_parquet()
     ecretement_corse_to_parquet()
+    if all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES):
+        entsoe_sardaigne_to_parquet()
+    else:
+        print("[=] entsoe_sardaigne : fichiers annuels absents (jeton ENTSO-E ?) — étape sautée.")
     print("\nPréparation terminée : data/processed/")
     return 0
 
