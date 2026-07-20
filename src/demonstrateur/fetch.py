@@ -40,6 +40,7 @@ import json
 import os
 import re
 import sys
+import xml.etree.ElementTree as ET
 from datetime import date
 from pathlib import Path
 
@@ -135,10 +136,17 @@ def _format(meta: dict) -> str:
     if meta.get("format"):
         return str(meta["format"]).lower()
     nom = meta["filename"].lower()
-    for ext in ("csv.gz", "geojson", "json", "csv"):
+    for ext in ("csv.gz", "geojson", "json", "xml", "csv"):
         if nom.endswith("." + ext):
             return ext
     return ""
+
+
+def _racine_xml(dest: Path) -> str:
+    """Nom local (sans namespace) de l'élément racine d'un XML."""
+    # iterparse 'start' : lit juste la balise ouvrante, sans charger tout l'arbre.
+    _, elem = next(ET.iterparse(dest, events=("start",)))
+    return elem.tag.split("}")[-1]
 
 
 def _entete_csv(dest: Path, gz: bool) -> str:
@@ -181,6 +189,20 @@ def _valider(dest: Path, meta: dict, content_type: str) -> None:
         cle = meta.get("cle_attendue")
         if cle and (not isinstance(obj, dict) or cle not in obj):
             raise ValueError(f"clé racine {cle!r} absente du JSON")
+    elif fmt == "xml":
+        # Piège ENTSO-E : une requête en erreur (jeton, pas de données, période)
+        # renvoie HTTP 200 + un `Acknowledgement_MarketDocument` — jamais l'empreinter
+        # comme donnée. On exige donc la racine attendue (ex. GL_MarketDocument).
+        try:
+            racine = _racine_xml(dest)
+        except ET.ParseError as exc:
+            raise ValueError(f"XML invalide : {exc}") from exc
+        attendue = meta.get("racine_attendue")
+        if attendue and racine != attendue:
+            raise ValueError(
+                f"racine XML {racine!r} (attendu {attendue!r}) — réponse d'erreur "
+                "probable (Acknowledgement), pas la donnée"
+            )
     # format inconnu : on s'en tient au rideau HTML ci-dessus.
 
 

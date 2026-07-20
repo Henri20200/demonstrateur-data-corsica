@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "pandas>=2.2",
     "duckdb>=1.0",
+    # lxml non requis : parsing ENTSO-E via xml.etree (stdlib).
     # Épinglé : la version de Plotly détermine le contenu des HTML et du plotly.min.js
     # commités dans outputs/ — le CI planifié doit produire les mêmes octets qu'en local.
     "plotly==6.9.0",
