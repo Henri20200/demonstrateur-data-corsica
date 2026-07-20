@@ -24,6 +24,7 @@ from .config import DATA_PROCESSED, DATA_RAW
 
 MIX = (DATA_RAW / "edf_mix_temps_reel.csv").as_posix()
 COURBE = (DATA_RAW / "edf_courbe_charge_horaire.csv").as_posix()
+ECRET = (DATA_RAW / "edf_ecretement_corse.csv").as_posix()
 
 # Filières historiques toujours renseignées (leur NULL = incident à signaler, pas à masquer).
 GRANDES_FILIERES = [
@@ -143,10 +144,55 @@ def courbe_corse_to_parquet() -> None:
     print(f"[ok] {dest} — {n:,} heures (Corse 2019-2024) — garde ENR>=solaire OK")
 
 
+def ecretement_corse_to_parquet() -> None:
+    """Parquet de l'écrêtement PV (limitations sûreté système), filtré Corse.
+
+    CSV bancal : BOM en tête et lignes à 3 champs avant 2019 (le taux accepté
+    n'existe qu'à partir de 2019) — sniffing désactivé, colonnes déclarées,
+    null_padding. Audit des NULL : `duree_h` doit être complète (ses zéros sont
+    de vrais zéros — mois sans limitation) ; `taux_pct` NULL avant 2019 = donnée
+    manquante DOCUMENTÉE, jamais coalescée (cf. règle NULL de RECONNAISSANCE.md).
+    """
+    dest = (DATA_PROCESSED / "edf_ecretement_corse.parquet").as_posix()
+    con = duckdb.connect()
+    src = (
+        f"read_csv('{ECRET}', header=false, skip=1, delim=',', auto_detect=false, "
+        "null_padding=true, columns={'territoire':'VARCHAR','mois':'VARCHAR',"
+        "'duree_h':'DOUBLE','taux_pct':'DOUBLE'})"
+    )
+    corse = f"(SELECT * FROM {src} WHERE territoire='Corse')"
+
+    _auditer_null(con, corse, ["mois", "duree_h"], "écrêtement Corse")
+
+    con.execute(
+        f"""
+        COPY (
+          SELECT mois, duree_h, taux_pct,
+            cast(substr(mois, 1, 4) AS INTEGER) AS annee,
+            cast(substr(mois, 6, 2) AS INTEGER) AS mois_cal
+          FROM {corse}
+        ) TO '{dest}' (FORMAT PARQUET)
+        """
+    )
+    # Garde : années PLEINES uniquement (12 mois chacune). Une année partielle
+    # (ex. millésime en cours ajouté par EDF) fausserait la lecture calendaire de
+    # la heatmap — la traiter explicitement le jour venu, pas la laisser passer.
+    n, annees = con.execute(
+        f"SELECT count(*), count(DISTINCT annee) FROM '{dest}'"
+    ).fetchone()
+    if n != annees * 12:
+        raise ValueError(
+            f"écrêtement Corse : {n} mois pour {annees} année(s) — série calendaire "
+            "incomplète (année partielle ?) : adapter la heatmap avant de publier."
+        )
+    print(f"[ok] {dest} — {n} mois ({annees} années pleines, Corse) — écrêtement PV")
+
+
 def main() -> int:
     dvf_corse_to_parquet()
     mix_temps_reel_to_parquet()
     courbe_corse_to_parquet()
+    ecretement_corse_to_parquet()
     print("\nPréparation terminée : data/processed/")
     return 0
 
