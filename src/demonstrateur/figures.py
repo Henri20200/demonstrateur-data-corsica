@@ -12,6 +12,7 @@ est bloqué (titre dégradé en « au dernier relevé ») et le run termine en c
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 import duckdb
 import plotly.graph_objects as go
@@ -22,6 +23,7 @@ from .viz import NEUTRE_ZERO, PALETTE, RAMPE_SOLAIRE, SANS, date_collecte, expor
 MIX = (DATA_PROCESSED / "edf_mix_corse.parquet").as_posix()
 COURBE = (DATA_PROCESSED / "edf_courbe_corse.parquet").as_posix()
 ECRET = (DATA_PROCESSED / "edf_ecretement_corse.parquet").as_posix()
+SARD = (DATA_PROCESSED / "entsoe_sardaigne.parquet").as_posix()
 MOIS = ["jan", "fév", "mar", "avr", "mai", "juin", "juil", "août", "sep", "oct", "nov", "déc"]
 
 SRC_MIX = "EDF — Open Data Groupe EDF (production corse, temps réel)"
@@ -311,6 +313,70 @@ def fig_t5_ecretement() -> go.Figure:
     return fig
 
 
+# --- Titre 6 : « deux îles thermiques, mais la Sardaigne brûle du charbon » ---
+def fig_t6_corse_sardaigne() -> go.Figure:
+    """Barres 100 % empilées : mix de génération local, Corse vs Sardaigne (2019-2024).
+
+    Comparaison honnête = GÉNÉRATION seule : on exclut les imports corses (27,8 % de la
+    demande) et on renormalise, car la Sardaigne (exportatrice) n'a pas de poste import
+    dans les données ENTSO-E. Les deux îles sont thermiques (~55 / 65 %), mais la Sardaigne
+    brûle du charbon (+ gaz de synthèse IGCC) quand la Corse tient au fioul + grande hydro.
+    """
+    con = _con()
+    sard = con.execute(f"""
+      SELECT 'Sardaigne' AS ile,
+        100.0*sum(thermique_mw)/sum(production_totale_mw)   AS thermique,
+        100.0*sum(hydraulique_mw)/sum(production_totale_mw) AS hydraulique,
+        100.0*sum(solaire_mw)/sum(production_totale_mw)     AS solaire,
+        100.0*sum(eolien_mw)/sum(production_totale_mw)      AS eolien,
+        100.0*sum(bioenergies_mw)/sum(production_totale_mw) AS bioenergies,
+        100.0*sum(autre_mw)/sum(production_totale_mw)       AS autre
+      FROM '{SARD}'""").df().iloc[0]
+    corse = con.execute(f"""
+      WITH b AS (
+        SELECT sum(thermique_mw) th,
+               sum(hydraulique_mw+coalesce(micro_hydraulique_mw,0)) hy,
+               sum(photovoltaique_mw) so, sum(eolien_mw) eo, sum(bioenergies_mw) bi
+        FROM '{COURBE}')
+      SELECT 100.0*th/(th+hy+so+eo+bi) thermique, 100.0*hy/(th+hy+so+eo+bi) hydraulique,
+             100.0*so/(th+hy+so+eo+bi) solaire, 100.0*eo/(th+hy+so+eo+bi) eolien,
+             100.0*bi/(th+hy+so+eo+bi) bioenergies, 0.0 autre
+      FROM b""").df().iloc[0]
+
+    # Ordre d'empilement : deux verts (hydro sauge / éolien forêt) jamais adjacents.
+    filieres = [
+        ("thermique",   "Thermique",   PALETTE["thermique"]),
+        ("hydraulique", "Gde hydraulique", PALETTE["hydro"]),
+        ("solaire",     "Solaire",     PALETTE["solaire"]),
+        ("eolien",      "Éolien",      PALETTE["renouv"]),
+        ("bioenergies", "Bioénergies", PALETTE["accent"]),
+        ("autre",       "Autre",       PALETTE["imports"]),
+    ]
+    iles = ["Corse", "Sardaigne"]
+    fig = go.Figure()
+    for cle, libelle, couleur in filieres:
+        vals = [float(corse[cle]), float(sard[cle])]
+        # Étiquette directe dans le segment si assez large (sinon illisible).
+        textes = [f"{v:.0f}%" if v >= 5 else "" for v in vals]
+        fig.add_trace(go.Bar(
+            y=iles, x=vals, name=libelle, orientation="h",
+            marker=dict(color=couleur, line=dict(width=2, color=PALETTE["surface"])),
+            text=textes, textposition="inside", insidetextanchor="middle",
+            textfont=dict(family=SANS, size=15, color="#FFFFFF"),
+            hovertemplate="%{y} — " + libelle + " : %{x:.1f}%<extra></extra>",
+        ))
+    fig.update_layout(
+        title=dict(text="Deux îles thermiques — mais la Sardaigne brûle du charbon"),
+        barmode="stack",
+        xaxis=dict(range=[0, 100], ticksuffix=" %", showgrid=False),
+        yaxis=dict(showgrid=False, ticks="", autorange="reversed"),  # Corse en haut
+        legend=dict(orientation="h", y=-0.16, x=0),
+        margin=dict(t=144, b=170, l=116, r=56),
+        height=520,
+    )
+    return fig
+
+
 def main() -> int:
     d_mix = date_collecte("edf_mix_temps_reel")
     d_hist = date_collecte("edf_courbe_charge_horaire")
@@ -354,7 +420,21 @@ def main() -> int:
                 note="81 % des heures de bridage ont lieu de mars à juin. Même au pire mois "
                      "(mai 2020 : 141 h),<br>90,5 % de la production ENR intermittente a été "
                      "acceptée — l'écrêtement borne une durée, pas l'énergie perdue du réseau.")
-    print("\n6 visuels exportés dans outputs/")
+    if Path(SARD).exists():
+        export_html(fig_t6_corse_sardaigne(), "t6_corse_sardaigne",
+                    "EDF (Corse) & ENTSO-E / Terna (Sardaigne)",
+                    date_collecte("entsoe_sardaigne_2024"),
+                    sous_titre="Mix de génération électrique, moyenne 2019-2024. Comparaison à "
+                               "périmètre égal :<br>génération locale seule (les 27,8 % d'imports "
+                               "corses sont exclus et le reste renormalisé ; la Sardaigne, "
+                               "exportatrice, n'importe pas).",
+                    note="La Sardaigne (10× plus grande) fait 30 % de son courant au charbon et "
+                         "29 % au gaz de synthèse (IGCC), quasi absents en Corse ;<br>elle a 15 "
+                         "fois plus d'éolien. La Corse compense par la grande hydraulique et les "
+                         "câbles. Corse estimée à partir de 2021.")
+        print("\n7 visuels exportés dans outputs/")
+    else:
+        print("\n6 visuels exportés dans outputs/ (t6 Sardaigne sauté — parquet ENTSO-E absent)")
     return code
 
 
