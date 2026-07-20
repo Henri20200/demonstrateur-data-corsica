@@ -24,6 +24,12 @@ Garde-fou (raison d'être du projet : "IA sourcée") : le contenu téléchargé
 est VALIDÉ (cf. _valider) avant d'être certifié dans le manifeste. Une page
 d'erreur HTML renvoyée en HTTP 200 ne doit jamais recevoir un SHA-256
 d'apparence légitime — un tel faux positif est pire que pas d'entrée du tout.
+
+Secrets : une url de sources.yaml peut référencer une variable d'environnement
+avec `${NOM}` (ex. jeton d'API ENTSO-E). L'expansion n'a lieu qu'au moment du
+téléchargement : le manifeste et les messages d'erreur ne contiennent JAMAIS la
+valeur du secret (seulement le gabarit `${NOM}`). Variable absente ou vide =
+échec de la source, sans interrompre les autres.
 """
 
 from __future__ import annotations
@@ -31,6 +37,8 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import os
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -41,6 +49,7 @@ import yaml
 from .config import DATA_RAW, MANIFEST_FILE, SOURCES_FILE
 
 _HTML_TYPES = {"text/html", "application/xhtml+xml"}
+_VAR_ENV_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
 
 
 def _load_manifest() -> dict:
@@ -53,6 +62,36 @@ def _save_manifest(manifest: dict) -> None:
     MANIFEST_FILE.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
     )
+
+
+def _expanser_env(url: str) -> tuple[str, list[str]]:
+    """Remplace les `${NOM}` d'une url par les variables d'environnement.
+
+    Renvoie (url expansée, valeurs de secrets injectées — à masquer dans tout
+    message). Lève ValueError si une variable est absente ou vide : l'erreur ne
+    cite que le NOM de la variable, jamais une valeur.
+    """
+    secrets: list[str] = []
+
+    def _rempl(m: re.Match) -> str:
+        nom = m.group(1)
+        val = os.environ.get(nom, "")
+        if not val:
+            raise ValueError(
+                f"variable d'environnement ${{{nom}}} absente ou vide — "
+                "définir le secret avant de lancer fetch-data"
+            )
+        secrets.append(val)
+        return val
+
+    return _VAR_ENV_RE.sub(_rempl, url), secrets
+
+
+def _masquer(texte: str, secrets: list[str]) -> str:
+    """Remplace toute valeur de secret par ••• (les erreurs httpx citent l'url)."""
+    for val in secrets:
+        texte = texte.replace(val, "•••")
+    return texte
 
 
 def _download(url: str, dest: Path) -> tuple[str, str]:
@@ -174,20 +213,24 @@ def main() -> int:
         # Téléchargement en .part puis remplacement atomique : un échec ne doit
         # jamais détruire une donnée déjà certifiée (cas du rafraîchissement).
         part = dest.with_name(dest.name + ".part")
+        secrets: list[str] = []
         try:
-            sha, content_type = _download(meta["url"], part)
+            url_reelle, secrets = _expanser_env(meta["url"])
+            sha, content_type = _download(url_reelle, part)
             _valider(part, meta, content_type)
         except Exception as exc:  # noqa: BLE001 — on continue avec les autres sources
             part.unlink(missing_ok=True)
             if not certifie:
                 # Premier téléchargement raté : aucune entrée trompeuse ne subsiste.
                 manifest.pop(source_id, None)
-            print(f"[!] {source_id} : ÉCHEC — {exc}")
+            print(f"[!] {source_id} : ÉCHEC — {_masquer(str(exc), secrets)}")
             failures.append(source_id)
             continue
         part.replace(dest)
 
         manifest[source_id] = {
+            # Toujours le gabarit de sources.yaml, jamais l'url expansée :
+            # aucun secret ne doit atterrir dans le manifeste versionné.
             "url": meta["url"],
             "filename": meta["filename"],
             "producteur": meta.get("producteur", ""),
