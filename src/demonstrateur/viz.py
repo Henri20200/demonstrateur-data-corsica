@@ -108,6 +108,9 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     dest = OUTPUTS / f"{name}.html"
     # "directory" : pas de CDN (le visuel se charge sans réseau tiers) ni de JS
     # embarqué par fichier (~4,5 Mo x5) — une seule copie partagée dans outputs/.
-    fig.write_html(dest, include_plotlyjs="directory", full_html=True)
+    # div_id fixe : sans lui, Plotly tire un UUID à chaque export et deux runs sur les
+    # mêmes données produisent des fichiers différents — or la planification ne committe
+    # que ce qui a réellement changé.
+    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name)
     print(f"[ok] {dest}")
     return str(dest)
