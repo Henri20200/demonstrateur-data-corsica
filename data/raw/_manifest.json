@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "dac8a2063b38128b6bbb0f63f05b0fd35e1590473ad89ec00ffb4ccc32b3209d",
+    "sha256": "904d1ed9ddb9d3105bc87e9f6210a21405f0ba2d21e81a5948d3666ebb339d08",
     "date_collecte": "2026-07-20",
-    "taille_octets": 229255
+    "taille_octets": 229258
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -64,5 +64,71 @@
     "sha256": "d5ec8d752d245e8bd5d25c54464fcd4c48a1ce3b5029ceadb16f3dbe368a6d57",
     "date_collecte": "2026-07-20",
     "taille_octets": 10504
+  },
+  "entsoe_sardaigne_2019": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=201901010000&periodEnd=202001010000",
+    "filename": "entsoe_sardaigne_2019.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "3620bd4f4e2419d162b8e2625df97668d42bcd459f7716896d0a7573ff00fce9",
+    "date_collecte": "2026-07-20",
+    "taille_octets": 5215435
+  },
+  "entsoe_sardaigne_2020": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202001010000&periodEnd=202101010000",
+    "filename": "entsoe_sardaigne_2020.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "aa42bbefbddc5df4ea1d1b656d75ae3c1bc112f90477b2a4f851a20337a9c2c9",
+    "date_collecte": "2026-07-20",
+    "taille_octets": 5302859
+  },
+  "entsoe_sardaigne_2021": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202101010000&periodEnd=202201010000",
+    "filename": "entsoe_sardaigne_2021.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "3092f678f928ca325281a7e851d17d4d0cf635d443841937c66e1796a0172503",
+    "date_collecte": "2026-07-20",
+    "taille_octets": 5498749
+  },
+  "entsoe_sardaigne_2022": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202201010000&periodEnd=202301010000",
+    "filename": "entsoe_sardaigne_2022.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "664faca48bf65c6c01f45b28a4f1c58d8d3425c70c8dd1e1f0854d4e1457599d",
+    "date_collecte": "2026-07-20",
+    "taille_octets": 5658461
+  },
+  "entsoe_sardaigne_2023": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202301010000&periodEnd=202401010000",
+    "filename": "entsoe_sardaigne_2023.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "8e5c542b28fd201e00b1b10f78bb5078979b321a92a65c393de037c506fc3260",
+    "date_collecte": "2026-07-20",
+    "taille_octets": 5672803
+  },
+  "entsoe_sardaigne_2024": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202401010000&periodEnd=202501010000",
+    "filename": "entsoe_sardaigne_2024.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "6a69847be4ec13641272e2311e544d5db4e0f24460aa5f4dff9f05f1fc337f9e",
+    "date_collecte": "2026-07-20",
+    "taille_octets": 5912656
   }
 }
