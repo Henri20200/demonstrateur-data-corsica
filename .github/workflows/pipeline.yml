@@ -1,0 +1,88 @@
+# Rafraîchissement planifié du pipeline : fetch → prepare → figures → verrous → commit.
+# Garde frais le mix temps réel (T1 « en ce moment » avertit > 24 h et bloque > 48 h) :
+# seuls outputs/ et data/raw/_manifest.json — déjà versionnés — sont commités.
+# Ne tourne que depuis la branche par défaut (règle GitHub pour les crons).
+
+name: pipeline
+
+on:
+  schedule:
+    # Toutes les 6 h, décalé de l'heure pile (les crons « pile » subissent plus de retards).
+    - cron: "23 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Jamais deux runs en parallèle : ils committeraient l'un sur l'autre.
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  rafraichir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Installer le pipeline
+        run: python -m pip install -e . pytest
+
+      # data/ n'est pas versionné : ce cache inter-runs joue le rôle du disque local.
+      # Les sources figées ne sont ainsi pas re-téléchargées, et si le rafraîchissement
+      # du temps réel échoue, fetch conserve le relevé précédent (au lieu de repartir
+      # de zéro et de faire échouer prepare).
+      - name: Restaurer data/raw des runs précédents
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: data-raw-${{ github.run_id }}
+          restore-keys: data-raw-
+
+      - name: Collecte (fetch-data)
+        id: fetch
+        # Une source en échec ne bloque pas la publication des autres (philosophie de
+        # fetch.py) ; l'échec est re-signalé en fin de run pour rester visible.
+        continue-on-error: true
+        run: fetch-data
+
+      - name: Préparation (Parquet)
+        run: python -m demonstrateur.prepare
+
+      - name: Figures
+        id: figures
+        # Code 1 = relevé > 48 h : le visuel T1 dégradé (affichage suspendu) doit être
+        # publié quand même — c'est lui qui dit la vérité au lecteur.
+        continue-on-error: true
+        run: python -m demonstrateur.figures
+
+      # Garde-fou avant publication : si un verrou de résultat casse (données EDF
+      # révisées, changement de version de lib…), on ne committe rien et le run alerte.
+      - name: Verrous de résultats
+        run: pytest
+
+      - name: Committer visuels + manifeste si changement
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add outputs data/raw/_manifest.json
+          if git diff --cached --quiet; then
+            echo "Aucun changement à publier."
+          else
+            git commit -m "chore(data): rafraîchissement planifié des visuels et du manifeste"
+            git pull --rebase origin master
+            git push origin master
+          fi
+
+      - name: Signaler un échec de collecte ou de fraîcheur
+        if: steps.fetch.outcome == 'failure' || steps.figures.outcome == 'failure'
+        run: |
+          echo "::error::Collecte ou fraîcheur en échec (fetch=${{ steps.fetch.outcome }}, figures=${{ steps.figures.outcome }}) — voir les étapes ci-dessus."
+          exit 1
