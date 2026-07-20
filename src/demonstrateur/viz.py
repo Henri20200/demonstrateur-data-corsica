@@ -35,6 +35,15 @@ PALETTE = {
 
 SANS = "system-ui, -apple-system, 'Segoe UI', sans-serif"
 
+# Rampe séquentielle « or solaire » (magnitude, heatmap T5) : clarté monotone,
+# pas >= 0.06, teinte unique — validée (validateur dataviz, mode ordinal). Le bout
+# clair reste volontairement proche de la surface (un zéro doit se lire « rien ») :
+# compensé par étiquettes directes sur les fortes valeurs, tooltip et colorbar.
+RAMPE_SOLAIRE = ["#F0E1BD", "#DEC28A", "#C9A057", "#B07A2B", "#8D5E1E", "#6A4616"]
+# Teinte « aucun événement » des cellules à zéro : neutre chaud, hors rampe, pour
+# distinguer « rien » de « un peu » (deux natures, pas deux magnitudes).
+NEUTRE_ZERO = "#EFEDE8"
+
 
 def template() -> go.layout.Template:
     """Template Plotly : fond neutre, sans-serif, texte lisible, filets discrets.

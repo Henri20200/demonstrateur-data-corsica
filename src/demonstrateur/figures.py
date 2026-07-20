@@ -1,4 +1,4 @@
-"""Construit les 5 visuels du démonstrateur depuis data/processed, exporte outputs/*.html.
+"""Construit les 6 visuels du démonstrateur depuis data/processed, exporte outputs/*.html.
 
 Chaque figure : une question du BRIEF, un périmètre écrit sur la figure, la charte
 Pacioli (via viz.export_html). Usage :
@@ -17,14 +17,16 @@ import duckdb
 import plotly.graph_objects as go
 
 from .config import DATA_PROCESSED
-from .viz import PALETTE, SANS, date_collecte, export_html
+from .viz import NEUTRE_ZERO, PALETTE, RAMPE_SOLAIRE, SANS, date_collecte, export_html
 
 MIX = (DATA_PROCESSED / "edf_mix_corse.parquet").as_posix()
 COURBE = (DATA_PROCESSED / "edf_courbe_corse.parquet").as_posix()
+ECRET = (DATA_PROCESSED / "edf_ecretement_corse.parquet").as_posix()
 MOIS = ["jan", "fév", "mar", "avr", "mai", "juin", "juil", "août", "sep", "oct", "nov", "déc"]
 
 SRC_MIX = "EDF — Open Data Groupe EDF (production corse, temps réel)"
 SRC_HIST = "EDF — Open Data Groupe EDF (Corse & Outre-mer)"
+SRC_ECRET = "EDF — Open Data Groupe EDF (limitations sûreté système)"
 
 # Mention légère du statut EDF, portée par chaque visuel historique (note de pied,
 # via export_html) ; l'explication complète est dans docs/RECONNAISSANCE.md.
@@ -249,6 +251,66 @@ def fig_t4_heure_verte() -> go.Figure:
     return fig
 
 
+# --- Titre 5 : « c'est au printemps que la Corse bride son solaire » ---------
+def fig_t5_ecretement() -> go.Figure:
+    """Heatmap année × mois des heures de limitation/déconnexion du PV.
+
+    Deux faits sur une seule grille : le couloir mars-juin (saisonnalité — soleil
+    généreux + demande molle = plafond d'injection atteint) et des lignes qui
+    foncent d'année en année (progression du parc PV face au plafond).
+    """
+    con = _con()
+    df = con.execute(
+        f"SELECT annee, mois_cal, duree_h FROM '{ECRET}' ORDER BY annee, mois_cal"
+    ).df()
+    grille = df.pivot(index="annee", columns="mois_cal", values="duree_h")
+    annees = [str(a) for a in grille.index]
+    zmax = float(df["duree_h"].max())
+
+    # Palier neutre pour le zéro exact (« rien ne s'est passé »), puis rampe or
+    # continue (« combien »). Le décroché à 0,5 h évite qu'un mois à 2 h de
+    # limitation se confonde avec un mois sans aucune limitation.
+    eps = 0.5 / zmax
+    echelle = [(0.0, NEUTRE_ZERO), (eps, NEUTRE_ZERO)]
+    echelle += [
+        (eps + (1 - eps) * i / (len(RAMPE_SOLAIRE) - 1), c)
+        for i, c in enumerate(RAMPE_SOLAIRE)
+    ]
+
+    fig = go.Figure(go.Heatmap(
+        z=grille.values, x=MOIS, y=annees,
+        xgap=2, ygap=2, zmin=0, zmax=zmax,
+        colorscale=echelle,
+        colorbar=dict(
+            title=dict(text="Heures de<br>limitation<br>dans le mois",
+                       font=dict(family=SANS, size=14, color=PALETTE["ink"])),
+            tickfont=dict(family=SANS, size=14, color=PALETTE["ink"]),
+            outlinewidth=0, thickness=14, len=0.92,
+        ),
+        hovertemplate="%{x} %{y} : %{z:.0f} h de limitation<extra></extra>",
+    ))
+    # Étiquettes directes sélectives : uniquement les mois >= 100 h (cellules
+    # sombres, texte blanc lisible) — jamais une valeur sur chaque cellule.
+    for _, r in df[df["duree_h"] >= 100].iterrows():
+        fig.add_annotation(
+            x=MOIS[int(r["mois_cal"]) - 1], y=str(int(r["annee"])),
+            text=f"{r['duree_h']:.0f} h", showarrow=False,
+            font=dict(family=SANS, size=14, color="#FFFFFF"),
+        )
+    fig.update_layout(
+        title=dict(text="C'est au printemps, pas en été, que la Corse bride son solaire"),
+        # 2016 en haut : la lecture descend le temps, et le bas (récent) fonce.
+        yaxis=dict(autorange="reversed", showgrid=False, ticks=""),
+        xaxis=dict(showgrid=False, ticks=""),
+        # Pied à trois lignes (source + note en 2 lignes) : marge basse élargie ET
+        # hauteur relevée, sinon la zone de tracé rétrécit, l'axe des années
+        # s'éclaircit et le pied remonte dans les libellés de mois.
+        margin=dict(t=144, b=150, l=116, r=56),
+        height=640,
+    )
+    return fig
+
+
 def main() -> int:
     d_mix = date_collecte("edf_mix_temps_reel")
     d_hist = date_collecte("edf_courbe_charge_horaire")
@@ -284,7 +346,15 @@ def main() -> int:
                 sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024. "
                            "Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro.",
                 note=NOTE_ESTIME)
-    print("\n5 visuels exportés dans outputs/")
+    export_html(fig_t5_ecretement(), "t5_ecretement_solaire", SRC_ECRET,
+                date_collecte("edf_ecretement_corse"),
+                sous_titre="Heures de limitation ou de déconnexion imposées au photovoltaïque par "
+                           "le plafond d'injection<br>— durée maximale subie par un producteur, "
+                           "mois par mois. Corse, 2016-2023.",
+                note="81 % des heures de bridage ont lieu de mars à juin. Même au pire mois "
+                     "(mai 2020 : 141 h),<br>90,5 % de la production ENR intermittente a été "
+                     "acceptée — l'écrêtement borne une durée, pas l'énergie perdue du réseau.")
+    print("\n6 visuels exportés dans outputs/")
     return code
 
 

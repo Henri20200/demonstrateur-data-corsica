@@ -207,6 +207,35 @@ passages à l'heure d'été 2019, 2020 et 2024) via `production_totale_mw > 0`. 
 - Les chiffres publiés sont verrouillés par `tests/test_resultats.py` (bond, argmax 14 h,
   solaire < thermique l'été, surcroît du soir, fraîcheur < 48 h).
 
+## Addendum du 20/07/2026 — Jeu 3 : `edf_ecretement_corse` (visuel T5)
+
+Reconnaissance du jeu « limitations sûreté système » (écrêtement PV), validée avant
+la heatmap T5. Vérifié empiriquement (DuckDB + pandas sur le brut).
+
+- **Structure** : CSV `,` avec **BOM UTF-8** et **lignes à 3 champs avant 2019**
+  (la colonne « Taux d'ENR interfacée par EP accepté (%) » n'existe qu'à partir de
+  2019). `prepare` désactive le sniffing (`auto_detect=false`, colonnes déclarées,
+  `null_padding`) — le sniffer DuckDB échoue sinon.
+- **Audit des NULL** (règle du repo) : `duree_h` **complète** sur 96 mois Corse —
+  ses zéros sont de **vrais zéros** (mois sans limitation). `taux_pct` NULL sur
+  2016-2018 = **manquant documenté**, jamais coalescé.
+- **Sémantique — garde-fou d'honnêteté** : « Durée (h) » = durée **maximale** de
+  limitation/déconnexion subie par **un** producteur PV (« dernier arrivé en file,
+  premier déconnecté »), PAS l'énergie perdue du système. Contrepoint chiffré porté
+  par la note de T5 : même au pire mois (mai 2020), **90,5 %** de l'ENR intermittente
+  a été acceptée. Ne jamais titrer en « énergie verte perdue » sans autre source.
+- **Faits verrouillés** (`tests/test_resultats.py`) : **81 %** des heures de bridage
+  de **mars à juin** (1 645 h / 2 035 h) ; pic calendaire en **mai** ; juillet-août
+  < 1 % ; record **mai 2020 : 141 h** (creux de demande Covid + printemps) ;
+  progression annuelle 54 h (2016) → 356 h (2023).
+- **Mise en perspective ZNI** (couche initié, pas sur la figure) : la Corse concentre
+  l'essentiel de l'écrêtement des zones EDF non interconnectées — 2 035 h cumulées
+  2016-2023, contre 198 h à La Réunion, 14 h en Guadeloupe, 0 en Guyane/Martinique.
+- **Garde `prepare`** : années **pleines** uniquement (n = années × 12) — un
+  millésime partiel ajouté par EDF ferait échouer la préparation au lieu de fausser
+  silencieusement la lecture calendaire de la heatmap.
+- **Millésime** : jeu arrêté à 2023 ; vérifier périodiquement si EDF publie 2024+.
+
 ## À banquer pour la vague 2
 
 `cout_moyen_de_production_eur_mwh` (hors périmètre ici) alimenterait un angle

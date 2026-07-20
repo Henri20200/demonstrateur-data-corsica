@@ -14,12 +14,16 @@ from demonstrateur.config import DATA_PROCESSED
 
 COURBE = DATA_PROCESSED / "edf_courbe_corse.parquet"
 MIX = DATA_PROCESSED / "edf_mix_corse.parquet"
+ECRET = DATA_PROCESSED / "edf_ecretement_corse.parquet"
 
 besoin_courbe = pytest.mark.skipif(
     not COURBE.exists(), reason="data/processed absent — lancer fetch-data puis prepare"
 )
 besoin_mix = pytest.mark.skipif(
     not MIX.exists(), reason="data/processed absent — lancer fetch-data puis prepare"
+)
+besoin_ecret = pytest.mark.skipif(
+    not ECRET.exists(), reason="data/processed absent — lancer fetch-data puis prepare"
 )
 
 
@@ -97,6 +101,40 @@ def test_surcroit_juillet_le_soir(con):
     h_max = int(df.loc[df["delta"].idxmax(), "heure_locale"])
     assert 16 <= h_max <= 22, (
         f"pic du surcroît à {h_max} h — hors de la plage « le soir (16-22 h) » de T2b"
+    )
+
+
+@besoin_ecret
+def test_ecretement_printemps(con):
+    """T5 : « 81 % de mars à juin », pic calendaire en mai, été quasi nul."""
+    df = con.execute(
+        f"SELECT mois_cal, sum(duree_h) AS h FROM '{ECRET.as_posix()}' GROUP BY 1"
+    ).df()
+    total = df["h"].sum()
+    part_printemps = 100 * df[df["mois_cal"].isin([3, 4, 5, 6])]["h"].sum() / total
+    assert round(part_printemps) == 81, (
+        f"part mars-juin = {part_printemps:.1f} % — le « 81 % » publié par T5 ne tient plus"
+    )
+    pic = int(df.loc[df["h"].idxmax(), "mois_cal"])
+    assert pic == 5, f"pic calendaire en {pic} — T5 raconte un pic en mai"
+    part_ete = 100 * df[df["mois_cal"].isin([7, 8])]["h"].sum() / total
+    assert part_ete < 1, (
+        f"juillet-août = {part_ete:.1f} % du bridage — le « pas en été » de T5 ne tient plus"
+    )
+
+
+@besoin_ecret
+def test_ecretement_record_mai_2020(con):
+    """T5 note « mai 2020 : 141 h, 90,5 % d'ENR acceptée » : le record doit tenir."""
+    mois, h, taux = con.execute(
+        f"""SELECT mois, duree_h, taux_pct FROM '{ECRET.as_posix()}'
+            ORDER BY duree_h DESC LIMIT 1"""
+    ).fetchone()
+    assert mois == "2020-05" and h == pytest.approx(141, abs=0.5), (
+        f"pire mois = {mois} ({h:.0f} h) — la note de T5 cite mai 2020 : 141 h"
+    )
+    assert taux == pytest.approx(90.5, abs=0.1), (
+        f"taux accepté du pire mois = {taux} % — la note de T5 cite 90,5 %"
     )
 
 
