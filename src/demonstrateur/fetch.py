@@ -76,7 +76,10 @@ def _expanser_env(url: str) -> tuple[str, list[str]]:
 
     def _rempl(m: re.Match) -> str:
         nom = m.group(1)
-        val = os.environ.get(nom, "")
+        # .strip() : un secret collé depuis l'UI GitHub peut traîner un retour à la
+        # ligne ; on ne peut pas deviner un préfixe parasite (« valeur = … »), mais on
+        # retire au moins les blancs de bord.
+        val = os.environ.get(nom, "").strip()
         if not val:
             raise ValueError(
                 f"variable d'environnement ${{{nom}}} absente ou vide — "
@@ -89,9 +92,19 @@ def _expanser_env(url: str) -> tuple[str, list[str]]:
 
 
 def _masquer(texte: str, secrets: list[str]) -> str:
-    """Remplace toute valeur de secret par ••• (les erreurs httpx citent l'url)."""
+    """Neutralise tout secret dans un message d'erreur (httpx cite l'url complète).
+
+    Deux défenses : (1) on caviarde n'importe quel `securityToken=…` de l'url — robuste
+    quelle que soit l'URL-encodage appliqué par httpx (le %20 avait déjoué le simple
+    remplacement de valeur) ; (2) on remplace aussi la valeur brute du secret et sa
+    forme percent-encodée, pour les jetons portés autrement que par ce paramètre.
+    """
+    from urllib.parse import quote
+
+    texte = re.sub(r"(?i)(securityToken=)[^&\s'\"]+", r"\1•••", texte)
     for val in secrets:
-        texte = texte.replace(val, "•••")
+        for forme in (val, quote(val), quote(val, safe="")):
+            texte = texte.replace(forme, "•••")
     return texte
 
 
