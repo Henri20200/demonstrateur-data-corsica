@@ -34,8 +34,8 @@ valeur du secret (seulement le gabarit `${NOM}`). Variable absente ou vide =
 
 from __future__ import annotations
 
+import argparse
 import gzip
-import hashlib
 import json
 import os
 import re
@@ -48,6 +48,7 @@ import httpx
 import yaml
 
 from .config import DATA_RAW, MANIFEST_FILE, SOURCES_FILE
+from .provenance import empreinte
 
 _HTML_TYPES = {"text/html", "application/xhtml+xml"}
 _VAR_ENV_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
@@ -108,20 +109,20 @@ def _masquer(texte: str, secrets: list[str]) -> str:
     return texte
 
 
-def _download(url: str, dest: Path) -> tuple[str, str]:
-    """Télécharge url vers dest en streaming.
+def _download(url: str, dest: Path) -> str:
+    """Télécharge url vers dest en streaming. Retourne le content-type du serveur.
 
-    Retourne (empreinte SHA-256, content-type renvoyé par le serveur).
+    L'empreinte n'est plus calculée ici : elle l'est par provenance.empreinte APRÈS
+    validation, car pour certaines sources (ENTSO-E) elle porte sur une forme canonique
+    du fichier et non sur les octets bruts reçus.
     """
-    h = hashlib.sha256()
     with httpx.stream("GET", url, follow_redirects=True, timeout=180.0) as r:
         r.raise_for_status()
         content_type = r.headers.get("content-type", "")
         with open(dest, "wb") as f:
             for chunk in r.iter_bytes():
                 f.write(chunk)
-                h.update(chunk)
-    return h.hexdigest(), content_type
+    return content_type
 
 
 def _sync_declaratif(entry: dict, meta: dict) -> list[str]:
@@ -153,6 +154,39 @@ def _format(meta: dict) -> str:
         if nom.endswith("." + ext):
             return ext
     return ""
+
+
+def _entree_certifiee(already: dict, meta: dict, dest: Path, sha: str,
+                      content_type: str = "", date_collecte: str | None = None,
+                      recertifie: bool = False) -> dict:
+    """Construit/rafraîchit l'entrée de manifeste d'une source certifiée.
+
+    Une re-certification conserve la date de collecte existante (la donnée n'est pas
+    re-téléchargée, seule l'empreinte est ré-exprimée) et pose `recertifie_le` = aujourd'hui
+    (QUAND l'empreinte a été ré-adoptée, distinct de QUAND la donnée a été recueillie) ; un
+    téléchargement pose une date de collecte neuve et efface toute `recertifie_le`. Enregistre
+    `empreinte_ignore_xml` quand l'empreinte est canonique : le manifeste documente ainsi
+    lui-même que son SHA-256 ne porte pas sur les octets bruts.
+    """
+    entree = {
+        "url": meta["url"],
+        "filename": meta["filename"],
+        "producteur": meta.get("producteur", ""),
+        "licence": meta.get("licence", ""),
+        "format": _format(meta),
+        "content_type": content_type or already.get("content_type", ""),
+        "sha256": sha,
+    }
+    ignore = meta.get("empreinte_ignore_xml")
+    if ignore:
+        entree["empreinte_ignore_xml"] = list(ignore)
+    entree["date_collecte"] = (
+        date_collecte or already.get("date_collecte") or date.today().isoformat()
+    )
+    if recertifie:
+        entree["recertifie_le"] = date.today().isoformat()
+    entree["taille_octets"] = dest.stat().st_size
+    return entree
 
 
 def _racine_xml(dest: Path) -> str:
@@ -219,12 +253,35 @@ def _valider(dest: Path, meta: dict, content_type: str) -> None:
     # format inconnu : on s'en tient au rideau HTML ci-dessus.
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parseur = argparse.ArgumentParser(
+        prog="fetch-data",
+        description="Télécharge les sources de sources.yaml et certifie leur empreinte.",
+    )
+    parseur.add_argument(
+        "--recertifier",
+        nargs="*",
+        metavar="SOURCE_ID",
+        default=None,
+        help="Ne télécharge RIEN : re-VALIDE puis recalcule l'empreinte depuis le fichier "
+        "LOCAL et l'adopte dans le manifeste (avec la date de re-certification). Sans argument "
+        "= toutes les sources présentes ; sinon, seulement les SOURCE_ID listées. À utiliser "
+        "après une révision volontaire de la donnée ou une migration d'empreinte.",
+    )
+    args = parseur.parse_args(argv)
+    recertifier = args.recertifier is not None
+    cibles = set(args.recertifier) if args.recertifier else None  # None = toutes les présentes
+
     cfg = yaml.safe_load(SOURCES_FILE.read_text(encoding="utf-8"))
     sources: dict = cfg.get("sources") or {}
     if not sources:
         print("sources.yaml ne déclare aucune source.")
         return 1
+    if cibles:
+        inconnues = cibles - set(sources)
+        if inconnues:
+            print(f"Source(s) inconnue(s) à re-certifier : {', '.join(sorted(inconnues))}")
+            return 1
 
     manifest = _load_manifest()
     failures = []
@@ -235,24 +292,68 @@ def main() -> int:
         glissant = bool(meta.get("glissant"))
         certifie = dest.exists() and bool(already.get("sha256"))
 
-        if certifie and not glissant:
-            # Cache valide pour une source figée : pas de re-téléchargement, mais
-            # les métadonnées déclaratives suivent toujours sources.yaml.
-            modifies = _sync_declaratif(already, meta)
-            suffixe = f" — métadonnées resynchronisées ({', '.join(modifies)})" if modifies else ""
-            print(f"[=] {source_id} : déjà présent ({dest.name}), empreinte conservée{suffixe}.")
+        # --- Re-certification (hors-ligne) : le fichier LOCAL fait foi ---------------
+        if recertifier:
+            if cibles is not None and source_id not in cibles:
+                continue  # ciblage : source non demandée, laissée telle quelle
+            if not dest.exists():
+                print(f"[!] {source_id} : absent de data/raw — rien à re-certifier.")
+                failures.append(source_id)
+                continue
+            try:
+                # Re-VALIDER avant de certifier : un fichier local corrompu (mauvais en-tête,
+                # page d'erreur, XML cassé) ne doit jamais recevoir une empreinte légitime.
+                _valider(dest, meta, already.get("content_type", ""))
+                sha = empreinte(dest, meta)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[!] {source_id} : NON re-certifié — {exc}")
+                failures.append(source_id)
+                continue
+            ancienne = already.get("sha256")
+            manifest[source_id] = _entree_certifiee(already, meta, dest, sha, recertifie=True)
+            etat = "inchangée" if sha == ancienne else "MISE À JOUR"
+            print(f"[±] {source_id} : re-certifié (empreinte {etat}) "
+                  f"le {manifest[source_id]['recertifie_le']}.")
             continue
 
+        # --- Source figée certifiée : on VÉRIFIE (AUD-01), plus de confiance aveugle --
+        if certifie and not glissant:
+            # Une empreinte n'est probante que RE-VÉRIFIÉE : la seule présence du fichier
+            # ne suffit plus. On recalcule (forme canonique si déclarée) et on compare —
+            # une donnée qui aurait dérivé sous le manifeste est ainsi attrapée, pas subie.
+            try:
+                obtenue = empreinte(dest, meta)
+            except Exception as exc:  # noqa: BLE001
+                print(f"[!] {source_id} : ÉCHEC vérification — fichier illisible : {exc}")
+                failures.append(source_id)
+                continue
+            if obtenue != already["sha256"]:
+                print(
+                    f"[!] {source_id} : ÉCHEC — l'empreinte du fichier local ne correspond "
+                    f"plus au manifeste (attendu {already['sha256'][:12]}…, obtenu "
+                    f"{obtenue[:12]}…). Restaurer la donnée certifiée (supprimer "
+                    f"data/raw/{dest.name} puis relancer) ou, si le changement est voulu, "
+                    "fetch-data --recertifier."
+                )
+                failures.append(source_id)
+                continue
+            modifies = _sync_declaratif(already, meta)
+            suffixe = f" — métadonnées resynchronisées ({', '.join(modifies)})" if modifies else ""
+            print(f"[=] {source_id} : présent et vérifié ({dest.name}){suffixe}.")
+            continue
+
+        # --- Téléchargement (source neuve, ou rafraîchissement d'un jeu glissant) ----
         verbe = "rafraîchissement (jeu glissant)" if certifie else "téléchargement"
         print(f"[>] {source_id} : {verbe}…")
-        # Téléchargement en .part puis remplacement atomique : un échec ne doit
-        # jamais détruire une donnée déjà certifiée (cas du rafraîchissement).
+        # Téléchargement en .part puis remplacement atomique : un échec ne doit jamais
+        # détruire une donnée déjà certifiée (cas du rafraîchissement).
         part = dest.with_name(dest.name + ".part")
         secrets: list[str] = []
         try:
             url_reelle, secrets = _expanser_env(meta["url"])
-            sha, content_type = _download(url_reelle, part)
+            content_type = _download(url_reelle, part)
             _valider(part, meta, content_type)
+            sha = empreinte(part, meta)  # canonique si empreinte_ignore_xml, sinon octets bruts
         except Exception as exc:  # noqa: BLE001 — on continue avec les autres sources
             part.unlink(missing_ok=True)
             if not certifie:
@@ -263,32 +364,28 @@ def main() -> int:
             continue
         part.replace(dest)
 
-        manifest[source_id] = {
-            # Toujours le gabarit de sources.yaml, jamais l'url expansée :
-            # aucun secret ne doit atterrir dans le manifeste versionné.
-            "url": meta["url"],
-            "filename": meta["filename"],
-            "producteur": meta.get("producteur", ""),
-            "licence": meta.get("licence", ""),
-            "format": _format(meta),
-            "content_type": content_type,
-            "sha256": sha,
-            "date_collecte": date.today().isoformat(),
-            "taille_octets": dest.stat().st_size,
-        }
+        # _entree_certifiee n'utilise que meta["url"] (le gabarit ${...}), jamais l'url
+        # expansée : aucun secret n'atterrit dans le manifeste versionné.
+        manifest[source_id] = _entree_certifiee(
+            already, meta, dest, sha,
+            content_type=content_type, date_collecte=date.today().isoformat(),
+        )
         _save_manifest(manifest)
         print(f"[ok] {source_id} : {dest.name} ({dest.stat().st_size:,} octets, {content_type})")
 
-    # Réécrit le manifeste même sans re-téléchargement : les resynchronisations
-    # de métadonnées (licences…) doivent être visibles à chaque run.
+    # Réécrit le manifeste même sans téléchargement : resynchronisations de métadonnées
+    # (licences…) et re-certifications doivent être visibles à chaque run.
     _save_manifest(manifest)
 
     if failures:
         print(f"\n{len(failures)} source(s) en échec : {', '.join(failures)}")
-        print("Vérifier les URL / formats dans sources.yaml (ils peuvent avoir changé).")
+        if not recertifier:
+            print("Vérifier les URL / formats dans sources.yaml (ils peuvent avoir changé), "
+                  "ou une empreinte divergente signalée ci-dessus.")
         return 1
 
-    print("\nCollecte terminée. Traçabilité : data/raw/_manifest.json")
+    action = "Re-certification" if recertifier else "Collecte"
+    print(f"\n{action} terminée. Traçabilité : data/raw/_manifest.json")
     return 0
 
 

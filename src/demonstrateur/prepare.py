@@ -16,14 +16,19 @@ Garde-fous (cf. docs/RECONNAISSANCE.md) :
 
 from __future__ import annotations
 
+import json
+import shutil
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import duckdb
 import pandas as pd
 
-from .config import DATA_PROCESSED, DATA_RAW
+from .config import BUILD_FILE, DATA_PROCESSED, DATA_RAW, MANIFEST_FILE, ROOT
+from .provenance import EmpreinteDivergente, empreinte, verifier
 
 MIX = (DATA_RAW / "edf_mix_temps_reel.csv").as_posix()
 COURBE = (DATA_RAW / "edf_courbe_charge_horaire.csv").as_posix()
@@ -53,10 +58,9 @@ GRANDES_FILIERES = [
 ]
 
 
-def dvf_corse_to_parquet() -> None:
+def dvf_corse_to_parquet(dest: str) -> None:
     """Consolide les fichiers DVF 2A + 2B en un Parquet unique, ventes uniquement."""
     src = (DATA_RAW / "dvf_2*_2024.csv.gz").as_posix()
-    dest = (DATA_PROCESSED / "dvf_corse_2024.parquet").as_posix()
 
     con = duckdb.connect()
     con.execute(
@@ -69,7 +73,7 @@ def dvf_corse_to_parquet() -> None:
         """
     )
     n = con.execute(f"SELECT count(*) FROM '{dest}'").fetchone()[0]
-    print(f"[ok] {dest} — {n:,} mutations (ventes)")
+    print(f"[ok] {Path(dest).name} — {n:,} mutations (ventes)")
 
 
 def _auditer_null(con, table_expr: str, colonnes: list[str], source: str) -> None:
@@ -88,9 +92,8 @@ def _auditer_null(con, table_expr: str, colonnes: list[str], source: str) -> Non
         )
 
 
-def mix_temps_reel_to_parquet() -> None:
+def mix_temps_reel_to_parquet(dest: str) -> None:
     """Parquet du mix temps réel Corse (15 min), ligne au bouclage cassé retirée."""
-    dest = (DATA_PROCESSED / "edf_mix_corse.parquet").as_posix()
     con = duckdb.connect()
     src = f"read_csv_auto('{MIX}', delim=';', header=true)"
     # `total` corrompu (ligne à −91 MW) -> bouclage cassé ; drop robuste au fuseau.
@@ -110,16 +113,15 @@ def mix_temps_reel_to_parquet() -> None:
         """
     )
     n = con.execute(f"SELECT count(*) FROM '{dest}'").fetchone()[0]
-    print(f"[ok] {dest} — {n:,} pas de 15 min (Corse temps réel)")
+    print(f"[ok] {Path(dest).name} — {n:,} pas de 15 min (Corse temps réel)")
 
 
-def courbe_corse_to_parquet() -> None:
+def courbe_corse_to_parquet(dest: str) -> None:
     """Parquet de la courbe horaire, filtrée Corse, avec ENR distribuée symétrique.
 
     Colonnes Outre-mer vides (bagasse/geothermie/stockage) et coût (hors périmètre)
     écartées. `micro_hydraulique_mw` gardée brute + coalescée dans l'ENR (cf. audit).
     """
-    dest = (DATA_PROCESSED / "edf_courbe_corse.parquet").as_posix()
     con = duckdb.connect()
     src = f"read_csv_auto('{COURBE}', delim=';', header=true)"
     # `production_totale_mw > 0` retire 3 lignes à 0 MW (heure fantôme des passages à
@@ -161,10 +163,10 @@ def courbe_corse_to_parquet() -> None:
     if viol:
         raise ValueError(f"courbe Corse : {viol} heures ENR<solaire (agrégat) — cohérence rompue.")
     n = con.execute(f"SELECT count(*) FROM '{dest}'").fetchone()[0]
-    print(f"[ok] {dest} — {n:,} heures (Corse 2019-2024) — garde ENR>=solaire OK")
+    print(f"[ok] {Path(dest).name} — {n:,} heures (Corse 2019-2024) — garde ENR>=solaire OK")
 
 
-def ecretement_corse_to_parquet() -> None:
+def ecretement_corse_to_parquet(dest: str) -> None:
     """Parquet de l'écrêtement PV (limitations sûreté système), filtré Corse.
 
     CSV bancal : BOM en tête et lignes à 3 champs avant 2019 (le taux accepté
@@ -173,7 +175,6 @@ def ecretement_corse_to_parquet() -> None:
     de vrais zéros — mois sans limitation) ; `taux_pct` NULL avant 2019 = donnée
     manquante DOCUMENTÉE, jamais coalescée (cf. règle NULL de RECONNAISSANCE.md).
     """
-    dest = (DATA_PROCESSED / "edf_ecretement_corse.parquet").as_posix()
     con = duckdb.connect()
     src = (
         f"read_csv('{ECRET}', header=false, skip=1, delim=',', auto_detect=false, "
@@ -205,7 +206,7 @@ def ecretement_corse_to_parquet() -> None:
             f"écrêtement Corse : {n} mois pour {annees} année(s) — série calendaire "
             "incomplète (année partielle ?) : adapter la heatmap avant de publier."
         )
-    print(f"[ok] {dest} — {n} mois ({annees} années pleines, Corse) — écrêtement PV")
+    print(f"[ok] {Path(dest).name} — {n} mois ({annees} années pleines, Corse) — écrêtement PV")
 
 
 def _lignes_entsoe_horaires(path) -> list[dict]:
@@ -269,14 +270,13 @@ def _lignes_entsoe_horaires(path) -> list[dict]:
     ]
 
 
-def entsoe_sardaigne_to_parquet() -> None:
+def entsoe_sardaigne_to_parquet(dest: str) -> None:
     """Parquet de la génération sarde par filière (ENTSO-E), miroir de la courbe corse.
 
     Assemble les 6 fichiers annuels, mappe les codes PSR sur les filières EDF, convertit
     en heure locale (Europe/Rome = Europe/Paris), et écrit un pas horaire avec parts.
     Génération métrée : PAS d'imports (la Sardaigne exporte via SAPEI/SACOI, hors A75).
     """
-    dest = (DATA_PROCESSED / "entsoe_sardaigne.parquet").as_posix()
     lignes = []
     for an in ENTSOE_ANNEES:
         src = DATA_RAW / f"entsoe_sardaigne_{an}.xml"
@@ -323,18 +323,147 @@ def entsoe_sardaigne_to_parquet() -> None:
     n, a, b = con.execute(
         f"SELECT count(*), min(annee), max(annee) FROM '{dest}'"
     ).fetchone()
-    print(f"[ok] {dest} — {n:,} heures (Sardaigne {a}-{b}) — génération par filière")
+    print(f"[ok] {Path(dest).name} — {n:,} heures (Sardaigne {a}-{b}) — génération par filière")
+
+
+# Plan de construction : chaque sortie Parquet, sa fonction de build et les sources brutes
+# qui la nourrissent. Sert à la fois à VÉRIFIER les bons bruts (prepare ne bâtit QUE depuis
+# des octets certifiés — AUD-01) et à écrire une lignée qui relie chaque sortie à ses entrées
+# et à sa propre empreinte. La Sardaigne (ENTSO-E) n'est ajoutée que si ses 6 fichiers annuels
+# sont présents (jeton requis pour les avoir).
+_SORTIES_FIXES = [
+    ("dvf_corse_2024.parquet", dvf_corse_to_parquet, ["dvf_2a_2024", "dvf_2b_2024"]),
+    ("edf_mix_corse.parquet", mix_temps_reel_to_parquet, ["edf_mix_temps_reel"]),
+    ("edf_courbe_corse.parquet", courbe_corse_to_parquet, ["edf_courbe_charge_horaire"]),
+    ("edf_ecretement_corse.parquet", ecretement_corse_to_parquet, ["edf_ecretement_corse"]),
+]
+
+
+def _plan_construction(sardaigne_ok: bool) -> list:
+    plan = list(_SORTIES_FIXES)
+    if sardaigne_ok:
+        plan.append((
+            "entsoe_sardaigne.parquet", entsoe_sardaigne_to_parquet,
+            [f"entsoe_sardaigne_{an}" for an in ENTSOE_ANNEES],
+        ))
+    return plan
+
+
+def _verifier_bruts(source_ids: list[str]) -> dict:
+    """Vérifie chaque brut contre son empreinte de manifeste avant toute construction.
+
+    Renvoie {source_id: {sha256, date_collecte, filename}} (les entrées certifiées, qui
+    datent ensuite les figures). Lève EmpreinteDivergente si un brut a dérivé sous le
+    manifeste : la préparation ne part jamais d'une donnée non certifiée.
+    """
+    manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
+    entrees = {}
+    for sid in source_ids:
+        entry = manifest.get(sid)
+        if entry is None:
+            raise ValueError(f"{sid} absent du manifeste — lancer fetch-data d'abord.")
+        chemin = DATA_RAW / entry["filename"]
+        if not chemin.exists():
+            raise FileNotFoundError(f"{chemin} manquant — lancer fetch-data d'abord.")
+        sha = verifier(chemin, entry)  # lève si le brut a dérivé sous le manifeste
+        entrees[sid] = {
+            "sha256": sha,
+            "date_collecte": entry["date_collecte"],
+            "filename": entry["filename"],
+        }
+    return entrees
+
+
+def construire(plan: list, entrees: dict) -> dict:
+    """Construit chaque sortie en zone de staging puis bascule d'un bloc (atomicité).
+
+    Un échec en cours de route laisse les sorties précédentes ET l'ancienne lignée
+    INTACTES — rien n'est publié à moitié : chaque Parquet est écrit dans un dossier
+    `.staging`, haché, et seulement si TOUTES les sorties réussissent, déplacé vers
+    data/processed. Renvoie {nom_parquet: {sha256, sources: [source_id, …]}}.
+    """
+    staging = DATA_PROCESSED / ".staging"
+    if staging.exists():
+        shutil.rmtree(staging)
+    staging.mkdir(parents=True)
+    sorties = {}
+    try:
+        for nom, build, sids in plan:
+            tmp = staging / nom
+            build(tmp.as_posix())
+            sorties[nom] = {"sha256": empreinte(tmp, {}), "sources": sids}
+        # Toutes construites : bascule (la seule fenêtre d'incohérence, minime, est ici ;
+        # une sortie déjà basculée mais lignée pas encore écrite serait DÉTECTÉE par
+        # verifier_sorties, jamais publiée en silence).
+        for nom in sorties:
+            (staging / nom).replace(DATA_PROCESSED / nom)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+    return sorties
+
+
+def verifier_sorties() -> dict:
+    """Vérifie que chaque Parquet sur disque correspond à l'empreinte de la lignée de build.
+
+    Garde-fou de publication (AUD-01) : une sortie altérée après la préparation est
+    refusée (EmpreinteDivergente). À appeler avant de publier (ex. en tête des figures).
+    Renvoie la lignée.
+    """
+    build = json.loads(BUILD_FILE.read_text(encoding="utf-8"))
+    for nom, info in build.get("sorties", {}).items():
+        chemin = DATA_PROCESSED / nom
+        if not chemin.exists():
+            raise FileNotFoundError(f"sortie {nom} manquante — relancer prepare.")
+        obtenue = empreinte(chemin, {})
+        if obtenue != info.get("sha256"):
+            raise EmpreinteDivergente(
+                f"{nom} : sortie altérée depuis la préparation (empreinte {obtenue[:12]}… "
+                f"ne correspond pas à la lignée {(info.get('sha256') or '—')[:12]}…) — "
+                "publication refusée."
+            )
+    return build
+
+
+def _commit_courant() -> dict:
+    """HEAD git + état de l'arbre, pour relier le build au code qui l'a produit (best-effort)."""
+    try:
+        rev = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                             capture_output=True, text=True, check=True)
+        etat = subprocess.run(["git", "status", "--porcelain"], cwd=ROOT,
+                             capture_output=True, text=True, check=True)
+        return {"commit": rev.stdout.strip(), "arbre_modifie": bool(etat.stdout.strip())}
+    except Exception:  # noqa: BLE001 — git absent ou hors dépôt : la lignée reste utile
+        return {"commit": "inconnu", "arbre_modifie": None}
+
+
+def _ecrire_lignee(entrees: dict, sorties: dict) -> None:
+    """Écrit data/processed/_build.json : par sortie ses sources + son empreinte, plus le
+    commit et l'horodatage exact. Écriture atomique (tmp puis remplacement)."""
+    contenu = {
+        "genere_le": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        **_commit_courant(),
+        "sources": entrees,
+        "sorties": sorties,
+    }
+    tmp = BUILD_FILE.with_name(BUILD_FILE.name + ".tmp")
+    tmp.write_text(json.dumps(contenu, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(BUILD_FILE)
+    print(f"[ok] {BUILD_FILE.name} — lignée : {len(sorties)} sorties, {len(entrees)} sources")
 
 
 def main() -> int:
-    dvf_corse_to_parquet()
-    mix_temps_reel_to_parquet()
-    courbe_corse_to_parquet()
-    ecretement_corse_to_parquet()
-    if all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES):
-        entsoe_sardaigne_to_parquet()
-    else:
+    # Garde-fou AUD-01 : on VÉRIFIE tous les bruts AVANT de construire, on construit en
+    # staging et on bascule d'un bloc, puis on écrit la lignée sortie -> entrées.
+    sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES)
+    plan = _plan_construction(sardaigne_ok)
+    source_ids = [sid for _, _, sids in plan for sid in sids]
+
+    entrees = _verifier_bruts(source_ids)
+    sorties = construire(plan, entrees)
+    if not sardaigne_ok:
         print("[=] entsoe_sardaigne : fichiers annuels absents (jeton ENTSO-E ?) — étape sautée.")
+    _ecrire_lignee(entrees, sorties)
+
     print("\nPréparation terminée : data/processed/")
     return 0
 

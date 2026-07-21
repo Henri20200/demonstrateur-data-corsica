@@ -41,7 +41,8 @@ ruff format src
 Pipeline linéaire en trois temps, un module par étape sous `src/demonstrateur/` :
 
 **`fetch.py`** (`fetch-data`) → lit `sources.yaml`, télécharge chaque source en streaming,
-calcule son empreinte SHA-256 et écrit **`data/raw/_manifest.json`**. Une `url` peut
+calcule son empreinte SHA-256 (canonique quand une source réestampille une enveloppe
+volatile à chaque requête, cf. `empreinte_ignore_xml`) et écrit **`data/raw/_manifest.json`**. Une `url` peut
 référencer une variable d'environnement `${NOM}` (jeton d'API, ex. `${ENTSOE_TOKEN}`) :
 expansion au téléchargement uniquement, jamais de secret dans le manifeste ni les logs.
 Formats validés : `csv`, `csv.gz`, `json`/`geojson` (`cle_attendue`), `xml`
@@ -50,23 +51,32 @@ qu'il ne faut jamais empreinter comme donnée). Ce manifeste est
 LE cœur de la traçabilité : il enregistre URL, producteur, licence, date de collecte et
 taille. C'est le seul fichier de `data/` versionné (tout le reste est régénérable, donc
 gitignoré). Politique de fraîcheur : une source `glissant: true` (mix temps réel) est
-re-téléchargée à **chaque** run ; une source figée déjà présente avec une empreinte n'est
-pas retéléchargée mais ses métadonnées (licence, producteur, URL) sont resynchronisées
-depuis `sources.yaml`, et le manifeste est réécrit à chaque run. Un rafraîchissement qui
+re-téléchargée à **chaque** run ; une source figée déjà présente n'est pas retéléchargée
+mais son empreinte est **re-vérifiée à chaque run** (le fichier local doit correspondre au
+manifeste, sinon échec bruyant : restaurer la donnée, ou `fetch-data --recertifier` pour
+adopter délibérément de nouveaux octets) ; ses métadonnées (licence, producteur, URL) sont
+resynchronisées depuis `sources.yaml`, et le manifeste est réécrit à chaque run. Un rafraîchissement qui
 échoue conserve la donnée précédente (téléchargement en `.part`, remplacement atomique) ;
 les échecs n'interrompent pas les autres sources (retour code 1 en fin de run).
 
 **`prepare.py`** → DuckDB lit les `.csv.gz` directement (sans tout charger en mémoire) et
 produit des Parquet dans `data/processed/`. Ajouter une transformation = une fonction ici,
-appelée depuis `main()`.
+appelée depuis `main()`. Avant toute lecture, chaque brut est **vérifié contre son empreinte**
+de manifeste (un Parquet ne dérive jamais d'une donnée non certifiée) ; la construction se fait
+en **staging puis bascule d'un bloc** — pas de sortie publiée à moitié. `prepare` écrit
+**`data/processed/_build.json`** : la lignée qui relie chaque sortie à ses sources, à sa propre
+empreinte, au commit et à l'horodatage — elle date les figures et permet à `verifier_sorties()`
+de refuser une sortie altérée avant publication.
 
 **`viz.py`** → **toute figure destinée au livrable DOIT sortir par `export_html(fig, name, source, collecte)`**.
 Cette fonction incruste le pied de page « Source … — données collectées le … » : le sourçage
 n'est pas optionnel, il est câblé dans l'export. Récupère la date via
-`date_collecte(source_id)`, qui la lit dans `_manifest.json`.
+`date_collecte(source_id)`, qui la lit dans la **lignée de build** (`data/processed/_build.json`,
+écrite par `prepare`), avec repli sur `_manifest.json` : la date affichée est celle de la donnée
+réellement présente dans le Parquet, pas du dernier `fetch`.
 
 **`config.py`** → tous les chemins (`DATA_RAW`, `DATA_PROCESSED`, `OUTPUTS`, `MANIFEST_FILE`,
-`SOURCES_FILE`) sont dérivés de `ROOT`. **Aucun chemin en dur ailleurs** — importer depuis
+`BUILD_FILE`, `SOURCES_FILE`) sont dérivés de `ROOT`. **Aucun chemin en dur ailleurs** — importer depuis
 `config`. L'import crée les dossiers de données au besoin.
 
 **`notebooks/`** = brouillons d'exploration uniquement. Ce qui part au livrable est reporté
@@ -82,5 +92,12 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
 - **Ne jamais committer `data/raw/` ou `data/processed/`** (sauf `_manifest.json`). Tout se
   régénère depuis `sources.yaml`.
 - **Chaque visuel cite sa source et sa date** — via `viz.export_html`, pas à la main.
+- **La traçabilité est vérifiée, pas seulement déclarée** : `fetch` re-contrôle chaque source
+  figée à chaque run, `prepare` refuse un brut non certifié et écrit la lignée (`_build.json`),
+  les figures datent d'après cette lignée. L'empreinte d'une source qui réestampille son
+  enveloppe (ex. ENTSO-E) est **canonique** : `empreinte_ignore_xml` liste les **chemins XML
+  précis** à neutraliser (`GL_MarketDocument/mRID`, `.../createdDateTime` — l'enveloppe de
+  document, jamais les `mRID` imbriqués des TimeSeries, qui sont de la donnée), reproductible
+  d'un téléchargement à l'autre. Calcul unique dans `provenance.py`.
 - Licences des données : Licence Ouverte 2.0 (Etalab) sauf mention contraire ; réutilisation
   libre avec mention du producteur.
