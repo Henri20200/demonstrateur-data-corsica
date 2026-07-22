@@ -52,31 +52,32 @@ def template() -> go.layout.Template:
     généreusement dimensionnées ; seuls la grille et les filets restent discrets. Le
     tooltip est blanc sur encre — contraste garanti quelle que soit la couleur tracée.
     """
-    # Échelle typographique : plancher 14px pour tout texte (usage dataviz — RSS,
-    # Datawrapper, gov.uk) ; ticks/légende/étiquettes à 16, titres d'axes à 18. Encre
-    # pleine partout (contraste ~18:1, WCAG AAA) — seuls grille et filets sont discrets.
+    # Échelle typographique (relevée le 22/07/2026, demande de lisibilité) : plancher
+    # 16px pour tout texte — pied de source compris ; ticks/légende/étiquettes à 17,
+    # titres d'axes à 19. Encre pleine partout (contraste ~18:1, WCAG AAA) — seuls
+    # grille et filets sont discrets.
     axis = dict(
         gridcolor=PALETTE["rule_soft"], griddash="solid", zeroline=False,
         linecolor=PALETTE["rule"], ticks="outside", tickcolor=PALETTE["rule"],
-        tickfont=dict(family=SANS, size=16, color=PALETTE["ink"]),
-        title=dict(font=dict(family=SANS, size=18, color=PALETTE["ink"]), standoff=18),
+        tickfont=dict(family=SANS, size=17, color=PALETTE["ink"]),
+        title=dict(font=dict(family=SANS, size=19, color=PALETTE["ink"]), standoff=18),
     )
     return go.layout.Template(layout=dict(
         paper_bgcolor=PALETTE["surface"], plot_bgcolor=PALETTE["surface"],
-        font=dict(family=SANS, size=16, color=PALETTE["ink"]),
+        font=dict(family=SANS, size=17, color=PALETTE["ink"]),
         title=dict(
-            font=dict(family=SANS, size=27, color=PALETTE["ink"]),
+            font=dict(family=SANS, size=28, color=PALETTE["ink"]),
             x=0.01, xanchor="left",
-            subtitle=dict(font=dict(family=SANS, size=17, color=PALETTE["ink_soft"])),
+            subtitle=dict(font=dict(family=SANS, size=18, color=PALETTE["ink_soft"])),
         ),
         colorway=[PALETTE["solaire"], PALETTE["renouv"], PALETTE["hydro"],
                   PALETTE["imports"], PALETTE["thermique"]],
         xaxis=axis, yaxis=axis,
-        legend=dict(font=dict(family=SANS, size=16, color=PALETTE["ink"]),
+        legend=dict(font=dict(family=SANS, size=17, color=PALETTE["ink"]),
                     bgcolor="rgba(0,0,0,0)"),
-        margin=dict(t=144, b=120, l=116, r=56),
+        margin=dict(t=144, b=170, l=116, r=56),
         hoverlabel=dict(bgcolor=PALETTE["ink"], bordercolor=PALETTE["ink"],
-                        font=dict(family=SANS, size=15, color="#FFFFFF")),
+                        font=dict(family=SANS, size=16, color="#FFFFFF")),
     ))
 
 
@@ -98,7 +99,7 @@ def date_collecte(source_id: str) -> str:
 
 
 def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = "",
-                note: str = "") -> str:
+                note: str = "", pied_decalage_px: int = -85) -> str:
     """Écrit outputs/<name>.html (fichier léger, plotly.min.js mutualisé dans outputs/).
 
     Applique le template, incruste la mention de source obligatoire.
@@ -109,21 +110,28 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     sous_titre: ligne de contexte (périmètre, définition) sous le titre
     note      : note méthodologique courte, en pied sous la mention de source
                 (ex. statut estimé des données)
+    pied_decalage_px : décalage du HAUT du pied sous l'axe, en pixels — stable quelle
+                que soit la hauteur de la figure (une fraction de zone de tracé ne
+                l'est pas). Le défaut (-85) passe sous ticks + titre d'axe ; à creuser
+                quand une légende occupe la bande basse (cf. T6)
     """
     fig.update_layout(template=template())
     if sous_titre:
         # Commentaire = sous-titre NATIF (un seul bloc avec le titre) : contrairement à
         # une annotation flottante, il ne peut plus télescoper la légende.
         fig.update_layout(title=dict(subtitle=dict(text=sous_titre)))
-    pied = f"Source : {source} — données collectées le {collecte}"
+    # Mention longue : la date passe à la ligne, sinon elle est rognée à droite
+    # dans une iframe étroite (les annotations Plotly ne replient pas le texte).
+    sep = "<br>" if len(source) > 45 else " "
+    pied = f"Source : {source}{sep}— données collectées le {collecte}"
     if note:
         pied += f"<br>{note}"
     fig.add_annotation(
         text=pied,
-        xref="paper", yref="paper", x=0, y=-0.22,
+        xref="paper", yref="paper", x=0, y=0, yanchor="top", yshift=pied_decalage_px,
         showarrow=False, align="left", xanchor="left",
-        # 14px + ink_soft : plancher dataviz + contraste WCAG AA (le gris muted échouait).
-        font=dict(family=SANS, size=14, color=PALETTE["ink_soft"]),
+        # 16px + ink_soft : plancher relevé (22/07) + contraste WCAG AA (muted échouait).
+        font=dict(family=SANS, size=16, color=PALETTE["ink_soft"]),
     )
     dest = OUTPUTS / f"{name}.html"
     # "directory" : pas de CDN (le visuel se charge sans réseau tiers) ni de JS
