@@ -167,3 +167,21 @@ def test_sorties_reelles_conformes_a_la_lignee():
     if not BUILD_FILE.exists():
         pytest.skip("pas de lignée de build (prepare non lancé)")
     verifier_sorties()  # lève EmpreinteDivergente si une sortie ne correspond plus
+
+
+def test_figures_refuse_sortie_alteree(monkeypatch):
+    """Câblage de la garde dans figures.main() : une lignée divergente arrête TOUT avant
+    le moindre export — l'appel local direct à figures est gardé, pas seulement la CI.
+    Auto-suffisant : la garde est simulée divergente, aucun Parquet réel n'est requis."""
+    from demonstrateur import figures
+
+    exports = []
+    monkeypatch.setattr(figures, "export_html", lambda *a, **k: exports.append(a))
+
+    def _garde_divergente():
+        raise EmpreinteDivergente("sortie altérée (simulée)")
+
+    monkeypatch.setattr(figures, "verifier_sorties", _garde_divergente)
+    with pytest.raises(EmpreinteDivergente):
+        figures.main()
+    assert exports == [], "figures a exporté malgré une lignée divergente"
