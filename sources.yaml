@@ -21,10 +21,18 @@
 # Champs de VALIDATION (fetch.py refuse d'enregistrer une donnée qui ne
 # passe pas ces contrôles — une page d'erreur HTML ne doit JAMAIS être
 # certifiée comme donnée dans le manifeste) :
-#   format             : csv | csv.gz | geojson | json
+#   format             : csv | csv.gz | geojson | json | xml
 #   delimiter          : séparateur CSV (défaut ",")
 #   colonnes_attendues : colonnes qui DOIVENT figurer dans l'en-tête
 #   cle_attendue       : clé racine obligatoire pour un JSON/GeoJSON
+#   racine_attendue    : élément racine obligatoire pour un XML (garde anti page d'erreur)
+#   empreinte_ignore_xml : CHEMINS XML précis (depuis la racine) dont le contenu est neutralisé
+#                        avant le SHA-256, ex. GL_MarketDocument/mRID + .../createdDateTime,
+#                        réestampillés à chaque requête ENTSO-E. Cibler le chemin exact — et non un
+#                        nom de balise n'importe où — préserve les mRID imbriqués des TimeSeries
+#                        (donnée stable). Sans ça, l'empreinte porterait sur l'enveloppe de transport
+#                        et ne serait pas reproductible ; avec, elle certifie la donnée. La
+#                        vérification à chaque run et prepare l'appliquent aussi (cf. provenance.py).
 # ============================================================
 
 sources:
@@ -132,7 +140,9 @@ sources:
   # (heures manquantes = report de la dernière valeur, PAS des zéros — reconstruit dans
   # prepare). racine_attendue verrouille le garde-fou : une requête en erreur renvoie
   # HTTP 200 + Acknowledgement_MarketDocument, à ne jamais empreinter comme donnée.
-  # Fuseau Europe/Rome (= Europe/Paris). Licence : réutilisation ENTSO-E (CC-BY 4.0,
+  # empreinte_ignore_xml : GL_MarketDocument/mRID + createdDateTime changent à CHAQUE requête
+  # (enveloppe de document, pas donnée) -> neutralisés avant le SHA-256 ; les mRID imbriqués des
+  # TimeSeries (données) sont préservés. Fuseau Europe/Rome (= Europe/Paris). Licence : réutilisation ENTSO-E (CC-BY 4.0,
   # attribution). Génération métrée : PAS d'imports (Sardaigne exportatrice via SAPEI/SACOI).
   entsoe_sardaigne_2019:
     url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=201901010000&periodEnd=202001010000"
@@ -141,6 +151,7 @@ sources:
     producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
     format: xml
     racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
   entsoe_sardaigne_2020:
     url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202001010000&periodEnd=202101010000"
     filename: "entsoe_sardaigne_2020.xml"
@@ -148,6 +159,7 @@ sources:
     producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
     format: xml
     racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
   entsoe_sardaigne_2021:
     url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202101010000&periodEnd=202201010000"
     filename: "entsoe_sardaigne_2021.xml"
@@ -155,6 +167,7 @@ sources:
     producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
     format: xml
     racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
   entsoe_sardaigne_2022:
     url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202201010000&periodEnd=202301010000"
     filename: "entsoe_sardaigne_2022.xml"
@@ -162,6 +175,7 @@ sources:
     producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
     format: xml
     racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
   entsoe_sardaigne_2023:
     url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202301010000&periodEnd=202401010000"
     filename: "entsoe_sardaigne_2023.xml"
@@ -169,6 +183,7 @@ sources:
     producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
     format: xml
     racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
   entsoe_sardaigne_2024:
     url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A75&processType=A16&in_Domain=10Y1001A1001A74G&periodStart=202401010000&periodEnd=202501010000"
     filename: "entsoe_sardaigne_2024.xml"
@@ -176,3 +191,4 @@ sources:
     producteur: "ENTSO-E Transparency Platform (données Terna) — zone IT-Sardinia"
     format: xml
     racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]

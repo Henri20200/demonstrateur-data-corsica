@@ -14,7 +14,7 @@ import json
 
 import plotly.graph_objects as go
 
-from .config import MANIFEST_FILE, OUTPUTS
+from .config import BUILD_FILE, MANIFEST_FILE, OUTPUTS
 
 # --- Palette (validée en distinction + couleurs choisies pour les filières) ---
 PALETTE = {
@@ -81,7 +81,18 @@ def template() -> go.layout.Template:
 
 
 def date_collecte(source_id: str) -> str:
-    """Renvoie la date de collecte enregistrée par fetch pour une source."""
+    """Date de collecte de la donnée RÉELLEMENT présente dans le Parquet.
+
+    Lue dans la lignée de build (data/processed/_build.json, écrite par prepare) : elle
+    reflète les octets certifiés que prepare a consommés, pas le dernier passage de fetch
+    (qui peut avoir rafraîchi le manifeste sans que prepare soit rejoué — sinon la figure
+    afficherait une date plus récente que la donnée qu'elle montre). Repli sur le manifeste
+    si la lignée est absente (figure hors pipeline, ex. exploration)."""
+    if BUILD_FILE.exists():
+        build = json.loads(BUILD_FILE.read_text(encoding="utf-8"))
+        entree = build.get("sources", {}).get(source_id)
+        if entree and entree.get("date_collecte"):
+            return entree["date_collecte"]
     manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
     return manifest[source_id]["date_collecte"]
 
