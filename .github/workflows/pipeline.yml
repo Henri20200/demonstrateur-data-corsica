@@ -46,6 +46,13 @@ jobs:
           key: data-raw-${{ github.run_id }}
           restore-keys: data-raw-
 
+      # Le cache ne transporte que la DONNÉE : _manifest.json, lui, est versionné et
+      # fait autorité. Sans cette restauration, un manifeste périmé issu du cache
+      # écrase celui du checkout — fetch vérifie alors contre la mauvaise référence
+      # et re-committe l'ancien manifeste (incident du 22/07/2026, cf. b1f5326).
+      - name: Le manifeste versionné fait autorité sur celui du cache
+        run: git checkout -- data/raw/_manifest.json
+
       - name: Collecte (fetch-data)
         id: fetch
         # Une source en échec ne bloque pas la publication des autres (philosophie de
