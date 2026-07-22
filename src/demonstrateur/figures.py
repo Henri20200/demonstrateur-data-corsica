@@ -18,6 +18,7 @@ import duckdb
 import plotly.graph_objects as go
 
 from .config import DATA_PROCESSED
+from .prepare import verifier_sorties
 from .viz import NEUTRE_ZERO, PALETTE, RAMPE_SOLAIRE, SANS, date_collecte, export_html
 
 MIX = (DATA_PROCESSED / "edf_mix_corse.parquet").as_posix()
@@ -396,6 +397,12 @@ def fig_t6_corse_sardaigne() -> go.Figure:
 
 
 def main() -> int:
+    # Garde de publication (AUD-01) : aucune figure ne se dessine depuis une sortie
+    # altérée — chaque Parquet est re-vérifié contre la lignée de build AVANT tout
+    # export. Échec bruyant, comme prepare devant un brut non certifié : la CI le
+    # re-contrôle via pytest, mais l'appel local direct à figures est gardé aussi.
+    verifier_sorties()
+
     d_mix = date_collecte("edf_mix_temps_reel")
     d_hist = date_collecte("edf_courbe_charge_horaire")
     code = 0
