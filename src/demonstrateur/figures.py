@@ -57,7 +57,7 @@ def fig_t1_soleil() -> tuple[go.Figure, str, str, float]:
         number=dict(suffix=" %", font=dict(family=SANS, size=64, color=PALETTE["solaire"])),
         gauge=dict(
             axis=dict(range=[0, 100], tickwidth=1, tickcolor=PALETTE["rule"],
-                      tickfont=dict(family=SANS, size=15, color=PALETTE["ink_soft"])),
+                      tickfont=dict(family=SANS, size=16, color=PALETTE["ink_soft"])),
             bar=dict(color=PALETTE["solaire"], thickness=0.32),
             bgcolor=PALETTE["rule_soft"], borderwidth=0,
         ),
@@ -87,7 +87,7 @@ def fig_t2_demande_mensuelle() -> go.Figure:
     fig = go.Figure(go.Bar(
         x=MOIS, y=charge, marker_color=couleurs, width=0.62,
         text=[f"{int(v)}" if m in (6, 7) else "" for v, m in zip(charge, df["m"])],
-        textposition="outside", textfont=dict(family=SANS, size=16, color=PALETTE["ink"]),
+        textposition="outside", textfont=dict(family=SANS, size=17, color=PALETTE["ink"]),
         hovertemplate="%{x} : %{y:.0f} MW<extra></extra>",
     ))
     juin, juil = float(charge[df["m"] == 6].iloc[0]), float(charge[df["m"] == 7].iloc[0])
@@ -96,9 +96,11 @@ def fig_t2_demande_mensuelle() -> go.Figure:
         showarrow=True, arrowhead=2, arrowsize=1, arrowwidth=2, arrowcolor=PALETTE["accent"],
     )
     fig.add_annotation(
-        x=6.0, y=juil, yshift=28, text=f"<b>+{round(100*(juil-juin)/juin):d} %</b>",
+        # yshift 52 : au-dessus de l'étiquette de valeur du bar de juillet (courte
+        # distance = les deux se recouvrent).
+        x=6.0, y=juil, yshift=52, text=f"<b>+{round(100*(juil-juin)/juin):d} %</b>",
         showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
-        font=dict(family=SANS, size=18, color=PALETTE["accent"]),
+        font=dict(family=SANS, size=19, color=PALETTE["accent"]),
     )
     fig.update_layout(
         title=dict(text="L'été, la demande d'électricité grimpe (+22 % en juillet)"),
@@ -128,7 +130,7 @@ def fig_t2b_surcroit_horaire() -> go.Figure:
     fig.add_annotation(
         x=19, y=float(delta.max()), yshift=22, text="<b>le soir (16-22 h)</b>",
         showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
-        font=dict(family=SANS, size=17, color=PALETTE["accent"]),
+        font=dict(family=SANS, size=18, color=PALETTE["accent"]),
     )
     fig.update_layout(
         title=dict(text="Ce surcroît se joue surtout le soir"),
@@ -178,14 +180,14 @@ def fig_t3_profil() -> go.Figure:
         x=h, y=df["thermique"], name="Thermique", mode="lines+text", legendrank=1,
         line=dict(color=PALETTE["thermique"], width=2.8),
         text=txt_th, textposition="top center",
-        textfont=dict(family=SANS, size=16, color=PALETTE["thermique"]),
+        textfont=dict(family=SANS, size=17, color=PALETTE["thermique"]),
         hovertemplate="Thermique : %{y:.0f} %<extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         x=h, y=df["solaire"], name="Soleil", mode="lines+text", legendrank=2,
         line=dict(color=PALETTE["solaire"], width=2.8),
         text=txt_sol, textposition="bottom center",
-        textfont=dict(family=SANS, size=16, color=PALETTE["solaire"]),
+        textfont=dict(family=SANS, size=17, color=PALETTE["solaire"]),
         hovertemplate="Soleil : %{y:.0f} %<extra></extra>",
     ))
     # Repère au zénith solaire : le thermique reste au-dessus du soleil à son maximum.
@@ -194,8 +196,11 @@ def fig_t3_profil() -> go.Figure:
         title=dict(text="Même à son zénith, le soleil ne détrône pas le fossile"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h"),
         yaxis=dict(title="Part du mix (%)", ticksuffix=" %"),
+        # Marge haute élargie : la légende (au-dessus du tracé) a SA bande, sous le
+        # sous-titre — sans quoi les deux se recouvrent en iframe étroite.
         legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
-        height=600,
+        margin=dict(t=200, b=170, l=116, r=56),
+        height=640,
     )
     return fig
 
@@ -238,17 +243,20 @@ def fig_t4_heure_verte() -> go.Figure:
     fig.add_annotation(x=14, y=110, yshift=16,
                        text=f"<b>14 h · {vert14:.0f} % renouvelable décentralisé</b>",
                        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
-                       font=dict(family=SANS, size=17, color=PALETTE["accent"]))
+                       font=dict(family=SANS, size=18, color=PALETTE["accent"]))
     fig.add_annotation(x=14, y=110, yanchor="top", yshift=-6,
                        text=f"{tot14:.0f} % avec la grande hydraulique",
                        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=3,
-                       font=dict(family=SANS, size=14, color=PALETTE["ink"]))
+                       font=dict(family=SANS, size=16, color=PALETTE["ink"]))
     fig.update_layout(
         title=dict(text="L'heure la plus verte pour consommer en Corse"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
         yaxis=dict(title="Part du mix (%)", range=[0, 122], ticksuffix=" %"),
+        # Marge haute élargie : à 4 entrées la légende se replie sur 2 rangées en
+        # iframe étroite — il lui faut sa bande entière sous le sous-titre.
         legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
-        height=640,
+        margin=dict(t=210, b=170, l=116, r=56),
+        height=690,
     )
     return fig
 
@@ -285,30 +293,32 @@ def fig_t5_ecretement() -> go.Figure:
         colorscale=echelle,
         colorbar=dict(
             title=dict(text="Heures de<br>limitation<br>dans le mois",
-                       font=dict(family=SANS, size=14, color=PALETTE["ink"])),
-            tickfont=dict(family=SANS, size=14, color=PALETTE["ink"]),
+                       font=dict(family=SANS, size=16, color=PALETTE["ink"])),
+            tickfont=dict(family=SANS, size=16, color=PALETTE["ink"]),
             outlinewidth=0, thickness=14, len=0.92,
         ),
         hovertemplate="%{x} %{y} : %{z:.0f} h de limitation<extra></extra>",
     ))
     # Étiquettes directes sélectives : uniquement les mois >= 100 h (cellules
     # sombres, texte blanc lisible) — jamais une valeur sur chaque cellule.
+    # Sans unité : « h » ferait déborder l'étiquette de sa cellule en iframe
+    # étroite, et l'unité est déjà portée par le titre de la colorbar.
     for _, r in df[df["duree_h"] >= 100].iterrows():
         fig.add_annotation(
             x=MOIS[int(r["mois_cal"]) - 1], y=str(int(r["annee"])),
-            text=f"{r['duree_h']:.0f} h", showarrow=False,
-            font=dict(family=SANS, size=14, color="#FFFFFF"),
+            text=f"{r['duree_h']:.0f}", showarrow=False,
+            font=dict(family=SANS, size=16, color="#FFFFFF"),
         )
     fig.update_layout(
         title=dict(text="C'est au printemps, pas en été, que la Corse bride son solaire"),
         # 2016 en haut : la lecture descend le temps, et le bas (récent) fonce.
         yaxis=dict(autorange="reversed", showgrid=False, ticks=""),
         xaxis=dict(showgrid=False, ticks=""),
-        # Pied à trois lignes (source + note en 2 lignes) : marge basse élargie ET
-        # hauteur relevée, sinon la zone de tracé rétrécit, l'axe des années
-        # s'éclaircit et le pied remonte dans les libellés de mois.
-        margin=dict(t=144, b=150, l=116, r=56),
-        height=640,
+        # Pied à quatre lignes (source repliée en 2 + note en 2) : marge basse
+        # élargie ET hauteur relevée, sinon la zone de tracé rétrécit, l'axe des
+        # années s'éclaircit et le pied remonte dans les libellés de mois.
+        margin=dict(t=144, b=200, l=116, r=56),
+        height=690,
     )
     return fig
 
@@ -356,13 +366,14 @@ def fig_t6_corse_sardaigne() -> go.Figure:
     fig = go.Figure()
     for cle, libelle, couleur in filieres:
         vals = [float(corse[cle]), float(sard[cle])]
-        # Étiquette directe dans le segment si assez large (sinon illisible).
-        textes = [f"{v:.0f}%" if v >= 5 else "" for v in vals]
+        # Étiquette directe si le segment est plus large que le texte au plancher
+        # 16 px (seuil ~3 %) ; en dessous, le tooltip prend le relais.
+        textes = [f"{v:.0f}%" if v >= 3 else "" for v in vals]
         fig.add_trace(go.Bar(
             y=iles, x=vals, name=libelle, orientation="h",
             marker=dict(color=couleur, line=dict(width=2, color=PALETTE["surface"])),
             text=textes, textposition="inside", insidetextanchor="middle",
-            textfont=dict(family=SANS, size=15, color="#FFFFFF"),
+            textfont=dict(family=SANS, size=16, color="#FFFFFF"),
             hovertemplate="%{y} — " + libelle + " : %{x:.1f}%<extra></extra>",
         ))
     fig.update_layout(
@@ -373,9 +384,13 @@ def fig_t6_corse_sardaigne() -> go.Figure:
         xaxis=dict(range=[0, 100], showgrid=False, showticklabels=False,
                    ticks="", showline=False, zeroline=False),
         yaxis=dict(showgrid=False, ticks="", autorange="reversed"),  # Corse en haut
-        legend=dict(orientation="h", y=-0.14, x=0, traceorder="normal"),
-        margin=dict(t=144, b=150, l=116, r=56),
-        height=520,
+        # Légende UNE LIGNE SOUS les barres (décision du 22/07), puis le pied
+        # (source + note) une bande plus bas — chacun chez soi, plus de télescopage.
+        # La marge basse absorbe la légende même repliée sur 3 rangées (iframe étroite) ;
+        # le pied est abaissé d'autant via pied_y à l'export.
+        legend=dict(orientation="h", y=-0.10, yanchor="top", x=0, traceorder="normal"),
+        margin=dict(t=144, b=260, l=116, r=56),
+        height=660,
     )
     return fig
 
@@ -404,7 +419,7 @@ def main() -> int:
                 note=NOTE_ESTIME)
     export_html(fig_t2b_surcroit_horaire(), "t2b_surcroit_horaire", SRC_HIST, d_hist,
                 sous_titre="Écart de demande moyenne juillet − juin, heure par heure — Corse, "
-                           "2019-2024. La cause (résidents, tourisme, climatisation) n'est pas "
+                           "2019-2024.<br>La cause (résidents, tourisme, climatisation) n'est pas "
                            "désagrégeable ici : on montre quand, pas pourquoi.",
                 note=NOTE_ESTIME)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
@@ -412,8 +427,8 @@ def main() -> int:
                            "2019-2024. Interconnexions = câbles SACOI (Italie via la Sardaigne).",
                 note=NOTE_ESTIME)
     export_html(fig_t4_heure_verte(), "t4_heure_verte", SRC_HIST, d_hist,
-                sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024. "
-                           "Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro.",
+                sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024."
+                           "<br>Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro.",
                 note=NOTE_ESTIME)
     export_html(fig_t5_ecretement(), "t5_ecretement_solaire", SRC_ECRET,
                 date_collecte("edf_ecretement_corse"),
@@ -434,7 +449,8 @@ def main() -> int:
                     note="La Sardaigne (10× plus grande) fait 32 % de son courant au charbon et "
                          "32 % au gaz de synthèse (IGCC), quasi absents en Corse ;<br>elle a 15 "
                          "fois plus d'éolien. La Corse compense par la grande hydraulique et les "
-                         "câbles. Corse estimée à partir de 2021.")
+                         "câbles. Corse estimée à partir de 2021.",
+                    pied_decalage_px=-170)
         print("\n7 visuels exportés dans outputs/")
     else:
         print("\n6 visuels exportés dans outputs/ (t6 Sardaigne sauté — parquet ENTSO-E absent)")
