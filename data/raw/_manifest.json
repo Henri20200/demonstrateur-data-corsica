@@ -8,6 +8,7 @@
     "content_type": "text/csv",
     "sha256": "93e9d80d1ffc0fcbd826ce7f5d8fee0768f09c754bdfa5a9c263684c76fcbb99",
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 209967
   },
   "dvf_2b_2024": {
@@ -19,6 +20,7 @@
     "content_type": "text/csv",
     "sha256": "589683cce606ddc83a4a92e79ae321dc43e95e846afc576af9d0bbc95d5de2c3",
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 282339
   },
   "communes_corse": {
@@ -30,6 +32,7 @@
     "content_type": "application/json; charset=utf-8",
     "sha256": "6b193be059c4e22b0e53ddda3817be342a978762d4bb5e83e35acfbc4755aa0f",
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 4660934
   },
   "edf_mix_temps_reel": {
@@ -39,9 +42,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "d6616f8cb76cdd5ad5d4f2de02d4c591ac75c07b5f146874441a80d36e71c1c5",
+    "sha256": "5eccd2c8f92fed3b6b90d71fb950a5c3cfae7594545a75252c241f1c0b66a6e2",
     "date_collecte": "2026-07-22",
-    "taille_octets": 230104
+    "taille_octets": 230060
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -52,6 +55,7 @@
     "content_type": "text/csv; charset=utf-8",
     "sha256": "787ee649f4d66acaca41551c470ac1b0751817077c70bd79f2a18676c9117c99",
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 24815708
   },
   "edf_ecretement_corse": {
@@ -63,6 +67,7 @@
     "content_type": "text/csv; charset=utf-8",
     "sha256": "d5ec8d752d245e8bd5d25c54464fcd4c48a1ce3b5029ceadb16f3dbe368a6d57",
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 10504
   },
   "entsoe_sardaigne_2019": {
@@ -72,8 +77,13 @@
     "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
     "format": "xml",
     "content_type": "text/xml",
-    "sha256": "3620bd4f4e2419d162b8e2625df97668d42bcd459f7716896d0a7573ff00fce9",
+    "sha256": "49eb9556574ef9a307368697d924e4b44bba92d149f56f997958696e82cdd9b0",
+    "empreinte_ignore_xml": [
+      "GL_MarketDocument/mRID",
+      "GL_MarketDocument/createdDateTime"
+    ],
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 5215435
   },
   "entsoe_sardaigne_2020": {
@@ -83,8 +93,13 @@
     "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
     "format": "xml",
     "content_type": "text/xml",
-    "sha256": "aa42bbefbddc5df4ea1d1b656d75ae3c1bc112f90477b2a4f851a20337a9c2c9",
+    "sha256": "1c05e36f7ddbb16f7b4d3d1f253fc0c9d406c2e264a457bd4ef6e01bc3b9ccd7",
+    "empreinte_ignore_xml": [
+      "GL_MarketDocument/mRID",
+      "GL_MarketDocument/createdDateTime"
+    ],
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 5302859
   },
   "entsoe_sardaigne_2021": {
@@ -94,8 +109,13 @@
     "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
     "format": "xml",
     "content_type": "text/xml",
-    "sha256": "3092f678f928ca325281a7e851d17d4d0cf635d443841937c66e1796a0172503",
+    "sha256": "0f48332b0ee2b183dbf6eca8768a338f2cbd37316120b7d99f80ae7254311c12",
+    "empreinte_ignore_xml": [
+      "GL_MarketDocument/mRID",
+      "GL_MarketDocument/createdDateTime"
+    ],
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 5498749
   },
   "entsoe_sardaigne_2022": {
@@ -105,8 +125,13 @@
     "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
     "format": "xml",
     "content_type": "text/xml",
-    "sha256": "664faca48bf65c6c01f45b28a4f1c58d8d3425c70c8dd1e1f0854d4e1457599d",
+    "sha256": "4fa33ca02d1b609cf8f1e453e4b51a8abb12db5645bb7bacd04ad9afb1872b87",
+    "empreinte_ignore_xml": [
+      "GL_MarketDocument/mRID",
+      "GL_MarketDocument/createdDateTime"
+    ],
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 5658461
   },
   "entsoe_sardaigne_2023": {
@@ -116,8 +141,13 @@
     "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
     "format": "xml",
     "content_type": "text/xml",
-    "sha256": "8e5c542b28fd201e00b1b10f78bb5078979b321a92a65c393de037c506fc3260",
+    "sha256": "d663c60b74b17f02878a7352a9ffe305368252fe4a5304aef5fd0f088e60a2f7",
+    "empreinte_ignore_xml": [
+      "GL_MarketDocument/mRID",
+      "GL_MarketDocument/createdDateTime"
+    ],
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 5672803
   },
   "entsoe_sardaigne_2024": {
@@ -127,8 +157,13 @@
     "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
     "format": "xml",
     "content_type": "text/xml",
-    "sha256": "6a69847be4ec13641272e2311e544d5db4e0f24460aa5f4dff9f05f1fc337f9e",
+    "sha256": "b430dba397241876ddaa31e1165eda5b294fee901e7bf6e8e9b3fce5f8b8bc76",
+    "empreinte_ignore_xml": [
+      "GL_MarketDocument/mRID",
+      "GL_MarketDocument/createdDateTime"
+    ],
     "date_collecte": "2026-07-20",
+    "recertifie_le": "2026-07-21",
     "taille_octets": 5912656
   }
 }
