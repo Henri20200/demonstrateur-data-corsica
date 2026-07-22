@@ -1,0 +1,56 @@
+# Garde de validation sur push/PR (AUD-06) : lint + tests + hygiène du diff.
+# Séparée du pipeline planifié (pipeline.yml) par moindre privilège : ici lecture
+# seule, AUCUN secret, aucune publication — une PR (même issue d'un fork) ne peut
+# ni écrire dans le dépôt ni voir le jeton ENTSO-E. Ne pas greffer pull_request
+# sur pipeline.yml, qui cumule contents:write + secret + push vers master.
+#
+# data/ n'étant pas versionné, les tests de résultats se sautent d'eux-mêmes ici :
+# la garde couvre fumée, provenance et lint — le pipeline planifié, lui, exécute
+# les verrous de résultats sur données réelles avant chaque publication.
+
+name: validation
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+# Un nouveau push sur la même branche rend le run en cours obsolète : on l'annule.
+concurrency:
+  group: validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  valider:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historique complet : requis pour comparer à la base de la PR (diff --check).
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # Environnement reproductible : exactement uv.lock, rien d'autre (recoupe AUD-10).
+      - name: Installer depuis uv.lock
+        run: uv sync --locked --extra dev --python ${{ matrix.python }}
+
+      - name: Lint (ruff)
+        run: uv run --no-sync ruff check src
+
+      - name: Tests
+        run: uv run --no-sync pytest
+
+      - name: Hygiène du diff (espaces parasites)
+        if: github.event_name == 'pull_request'
+        run: git diff --check origin/${{ github.base_ref }}...HEAD
