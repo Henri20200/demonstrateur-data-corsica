@@ -178,10 +178,10 @@ def test_sardaigne_charbon_igcc():
     for ligne in _lignes_entsoe_horaires(SARD_XML):
         energie[ligne["code"]] += ligne["mw"]
     tot = sum(energie.values())
-    charbon = 100 * energie["B05"] / tot   # houille
-    igcc = 100 * energie["B03"] / tot      # gaz de synthèse (Sarlux)
+    charbon = 100 * energie["B05"] / tot  # houille
+    igcc = 100 * energie["B03"] / tot  # gaz de synthèse (Sarlux)
     assert charbon + igcc >= 55, (
-        f"charbon+IGCC = {charbon+igcc:.0f} % (2023) — la note de T6 sur le charbon ne tient plus"
+        f"charbon+IGCC = {charbon + igcc:.0f} % (2023) — la note de T6 sur le charbon ne tient plus"
     )
 
 
@@ -194,4 +194,155 @@ def test_fraicheur_temps_reel(con):
     assert age_h <= 48, (
         f"dernier relevé vieux de {age_h:.0f} h (> 48 h) — relancer fetch-data puis prepare "
         "avant toute publication « en ce moment »"
+    )
+
+
+# --- Verrous de l'étude (docs/etude.md, section 3) : chaque chiffre cité en prose ---
+
+
+@besoin_courbe
+def test_etude_14h_heure_la_plus_corse(con):
+    """Étude/T4 : part produite sur l'île max à 14 h (84 %), top 3 = 14/15/13 h,
+    imports au-dessus du tiers à chaque heure de nuit (1-8 h)."""
+    df = con.execute(
+        f"""SELECT heure_locale,
+              100*sum(importations_mw)/sum(production_totale_mw) AS imports
+            FROM '{COURBE.as_posix()}' GROUP BY 1"""
+    ).df()
+    df["locale"] = 100 - df["imports"]
+    top3 = df.nlargest(3, "locale")["heure_locale"].astype(int).tolist()
+    assert top3[0] == 14 and set(top3) == {13, 14, 15}, (
+        f"top 3 des heures les plus « corses » = {top3} — l'étude écrit 14 h, 15 h, 13 h"
+    )
+    v14 = float(df.loc[df["heure_locale"] == 14, "locale"].iloc[0])
+    assert v14 == pytest.approx(84.5, abs=0.5), (
+        f"part locale à 14 h = {v14:.1f} % — l'étude écrit « 84 % produits sur l'île »"
+    )
+    nuit = df[df["heure_locale"].between(1, 8)]["imports"]
+    assert (nuit > 100 / 3).all(), (
+        "imports sous le tiers sur une heure de nuit — l'étude écrit « dépasse le tiers la nuit »"
+    )
+
+
+@besoin_courbe
+def test_etude_thermique_socle_et_aube(con):
+    """Étude/T4 (encadré) : thermique au plus bas vers 5 h en volume, socle diurne ~104 MW ;
+    en part, 36 % à 14 h contre 44 % à l'aube."""
+    df = con.execute(
+        f"""SELECT heure_locale, avg(thermique_mw) AS mw,
+              100*sum(thermique_mw)/sum(production_totale_mw) AS pct
+            FROM '{COURBE.as_posix()}' GROUP BY 1"""
+    ).df()
+    h_min = int(df.loc[df["mw"].idxmin(), "heure_locale"])
+    assert h_min == 5, f"minimum de volume thermique à {h_min} h — l'étude écrit « vers 5 heures »"
+    socle = df[df["heure_locale"].between(9, 18)]["mw"].mean()
+    assert socle == pytest.approx(104, abs=4), (
+        f"socle thermique diurne = {socle:.0f} MW — l'étude écrit « environ 104 MW »"
+    )
+    p14 = float(df.loc[df["heure_locale"] == 14, "pct"].iloc[0])
+    p5 = float(df.loc[df["heure_locale"] == 5, "pct"].iloc[0])
+    assert round(p14) == 36 and round(p5) == 44, (
+        f"parts thermiques 14 h / aube = {p14:.1f} / {p5:.1f} — l'étude écrit 36 % et 44 %"
+    )
+
+
+@besoin_courbe
+def test_etude_soleil_remplace_les_cables(con):
+    """Étude/T4 (encadré) : de 9 h à 14 h, les imports reculent de ~80 à ~44 MW
+    pendant que le thermique ne bouge pas."""
+    df = (
+        con.execute(
+            f"""SELECT heure_locale, avg(importations_mw) AS imp, avg(thermique_mw) AS th
+            FROM '{COURBE.as_posix()}' WHERE heure_locale IN (9, 14) GROUP BY 1"""
+        )
+        .df()
+        .set_index("heure_locale")
+    )
+    assert float(df.loc[9, "imp"]) == pytest.approx(80, abs=2), "imports de 9 h ≠ ~80 MW"
+    assert float(df.loc[14, "imp"]) == pytest.approx(44, abs=2), "imports de 14 h ≠ ~44 MW"
+    assert abs(float(df.loc[14, "th"]) - float(df.loc[9, "th"])) < 8, (
+        "le thermique bouge entre 9 h et 14 h — l'étude écrit qu'il « ne bouge pas »"
+    )
+
+
+@besoin_courbe
+def test_etude_profil_ete_parts(con):
+    """Étude/T3 : été, midi = 35/43/16 (solaire/thermique/câbles), soir = 6/58/25,
+    et plus de 80 % du kWh du soir en moteurs + câbles."""
+    df = (
+        con.execute(
+            f"""SELECT CASE WHEN heure_locale BETWEEN 13 AND 15 THEN 'midi' ELSE 'soir' END AS c,
+              100*sum(photovoltaique_mw)/sum(production_totale_mw) AS sol,
+              100*sum(thermique_mw)/sum(production_totale_mw)      AS th,
+              100*sum(importations_mw)/sum(production_totale_mw)   AS imp
+            FROM '{COURBE.as_posix()}'
+            WHERE mois_local IN (6, 7, 8)
+              AND (heure_locale BETWEEN 13 AND 15 OR heure_locale BETWEEN 20 AND 23)
+            GROUP BY 1"""
+        )
+        .df()
+        .set_index("c")
+    )
+    m, s = df.loc["midi"], df.loc["soir"]
+    assert (round(m["sol"]), round(m["th"]), round(m["imp"])) == (35, 43, 16), (
+        f"midi d'été = {m['sol']:.1f}/{m['th']:.1f}/{m['imp']:.1f} — l'étude écrit 35/43/16"
+    )
+    assert (round(s["sol"]), round(s["th"]), round(s["imp"])) == (6, 58, 25), (
+        f"soir d'été = {s['sol']:.1f}/{s['th']:.1f}/{s['imp']:.1f} — l'étude écrit 6/58/25"
+    )
+    assert s["th"] + s["imp"] > 80, (
+        "moteurs + câbles ≤ 80 % le soir d'été — le « huit dixièmes » de l'étude à revoir"
+    )
+
+
+@besoin_courbe
+def test_etude_niveaux_mensuels(con):
+    """Étude/T2 : 231 MW en juin, 281 en juillet, 307 de moyenne d'hiver (chiffres en dur)."""
+    juin, juillet, hiver = con.execute(
+        f"""SELECT round(avg(production_totale_mw) FILTER (WHERE mois_local = 6)),
+                   round(avg(production_totale_mw) FILTER (WHERE mois_local = 7)),
+                   round(avg(production_totale_mw) FILTER (WHERE mois_local IN (12, 1, 2)))
+            FROM '{COURBE.as_posix()}'"""
+    ).fetchone()
+    assert (juin, juillet, hiver) == (231, 281, 307), (
+        f"niveaux juin/juillet/hiver = {juin}/{juillet}/{hiver} — l'étude écrit 231/281/307"
+    )
+
+
+@besoin_ecret
+def test_etude_ecretement_progression(con):
+    """Étude/T5 : 54 heures de bridage sur 2016, 356 sur 2023."""
+    d16, d23 = con.execute(
+        f"""SELECT sum(duree_h) FILTER (WHERE annee = 2016),
+                   sum(duree_h) FILTER (WHERE annee = 2023) FROM '{ECRET.as_posix()}'"""
+    ).fetchone()
+    assert d16 == pytest.approx(54, abs=0.5) and d23 == pytest.approx(356, abs=0.5), (
+        f"bridage annuel = {d16:.0f} h (2016) → {d23:.0f} h (2023) — l'étude écrit 54 → 356"
+    )
+
+
+@besoin_courbe
+@besoin_sard
+def test_etude_mix_generation_locale(con):
+    """Étude/T6 : Corse (génération seule, convention de la figure) = 55/28/15/1 ;
+    Sardaigne : hydro 4 %, solaire 9 %."""
+    corse = con.execute(
+        f"""WITH b AS (
+              SELECT sum(thermique_mw) th,
+                     sum(hydraulique_mw + coalesce(micro_hydraulique_mw, 0)) hy,
+                     sum(photovoltaique_mw) so, sum(eolien_mw) eo, sum(bioenergies_mw) bi
+              FROM '{COURBE.as_posix()}')
+            SELECT 100*th/(th+hy+so+eo+bi), 100*hy/(th+hy+so+eo+bi),
+                   100*so/(th+hy+so+eo+bi), 100*eo/(th+hy+so+eo+bi) FROM b"""
+    ).fetchone()
+    assert tuple(round(v) for v in corse) == (55, 28, 15, 1), (
+        f"mix corse génération locale = {tuple(round(v, 1) for v in corse)} "
+        "— l'étude écrit 55/28/15/1"
+    )
+    hy_s, so_s = con.execute(
+        f"""SELECT 100*sum(hydraulique_mw)/sum(production_totale_mw),
+                   100*sum(solaire_mw)/sum(production_totale_mw) FROM '{SARD.as_posix()}'"""
+    ).fetchone()
+    assert round(hy_s) == 4 and round(so_s) == 9, (
+        f"Sardaigne hydro/solaire = {hy_s:.1f} % / {so_s:.1f} % — l'étude écrit 4 % et 9 %"
     )

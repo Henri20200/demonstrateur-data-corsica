@@ -1,0 +1,448 @@
+<!--
+  ÉTUDE — source éditoriale (compilée vers une page HTML déployée avec outputs/).
+  BROUILLON COMPLET (20/07/2026) : les 6 sections et les 7 chapitres sont rédigés, au plan
+  validé le même jour. Restent la relecture, le sous-titre à trancher et la compilation HTML.
+  Conventions de compilation :
+    - {{visuel:nom}}  -> iframe de outputs/nom.html (plotly.min.js mutualisé)
+    - blockquote débutant par **Pour aller plus loin** -> encadré repliable (couche initié)
+  Règles d'écriture (mémoire projet) : style toujours accessible, y compris couche initié ;
+  neutralité sans tiédeur (faits à l'indicatif, zéro prescription politique) ; chiffres en
+  prose = uniquement des faits clos verrouillés par tests (verrous « test_etude_* » ajoutés
+  le 20/07/2026 dans tests/test_resultats.py — suite complète verte).
+-->
+
+# De quoi est faite l'électricité corse ?
+
+*(sous-titre pressenti : « …et quelle part vient vraiment de l'île ? » — à trancher)*
+
+## 1. L'essentiel en 30 secondes
+
+- Plus du quart de l'électricité corse vient de câbles sous-marins. Le reste est
+  produit sur l'île — en grande partie par des centrales thermiques qui brûlent du
+  combustible.
+- À midi, le soleil fournit jusqu'à un tiers du courant. Mais à aucune heure moyenne
+  d'été il ne dépasse le thermique.
+- L'heure la plus verte pour consommer, c'est **14 heures**. C'est aussi l'heure la
+  plus corse : la part produite sur l'île y atteint son maximum.
+- En juillet, la demande grimpe d'un cinquième par rapport à juin — surtout le soir.
+  Pourtant, la pointe de l'année reste l'hiver.
+- Au printemps, l'île bride parfois son propre solaire, faute de pouvoir l'absorber :
+  le trop-plein d'énergie verte existe déjà.
+- La Sardaigne voisine est, elle aussi, une île thermique — mais elle brûle du
+  charbon là où la Corse tient au fioul et à l'eau de ses montagnes.
+
+Tout ce qui suit repose sur des données publiques d'EDF et d'ENTSO-E, rafraîchies
+chaque semaine. Chaque graphique porte sa source et sa date ; chaque chiffre est
+revérifié à chaque mise à jour.
+
+## 2. Pourquoi cette étude
+
+En 2026, l'autonomie de la Corse se débat jusqu'au Parlement. Ce document, lui, ne
+parle que d'autonomie électrique : quelle part de son courant l'île produit-elle
+vraiment, et quand ? Il répond par des chiffres, datés et vérifiables — et ne prend
+parti sur rien d'autre.
+
+**La question, en une phrase.** De quoi est faite l'électricité corse — maintenant,
+au fil de la journée, au fil des saisons — et à quel moment est-elle la plus
+renouvelable, et la plus insulaire ? C'est tout le sujet.
+
+**Pourquoi elle mérite qu'on s'y arrête.** La Corse est une île peu reliée au
+continent. Là où un grand réseau mutualise ses moyens sur des milliers de
+kilomètres, l'île doit équilibrer presque seule, à chaque instant, ce qu'elle
+produit et ce qu'elle consomme — l'électricité ne se stocke pas. Son courant reste
+en grande partie produit par des centrales thermiques qui brûlent du combustible,
+tandis que ses ressources renouvelables — le soleil, l'eau des montagnes, le vent —
+sont réelles mais contraintes. Comprendre ce mélange, c'est se donner les moyens
+d'en parler juste.
+
+**Un fil conducteur : d'où vient vraiment le courant.** Plus du quart de
+l'électricité corse arrive par des câbles sous-marins, depuis l'Italie via la
+Sardaigne. Et le thermique local lui-même tourne à un combustible importé. Au fond,
+la seule électricité pleinement insulaire est celle que produisent les renouvelables
+et les barrages de l'île. Cette part — quand elle monte, quand elle retombe — est le
+fil rouge de l'étude.
+
+**Un enjeu qui a un visage.** Ce thermique n'est pas une abstraction comptable : ce
+sont des centrales bien réelles, aux portes d'Ajaccio et de Bastia. Et la toile de
+fond est connue de tous : un climat qui change, qui pèse sur l'eau des montagnes —
+donc sur l'hydroélectricité de l'île. L'électricité corse se lit aussi à travers ces
+deux prismes concrets : ce qu'on respire, et une ressource en eau qui se raréfie.
+
+**Ce que cette étude n'est pas.** Elle n'est pas exhaustive : elle éclaire quelques
+questions précises, pas tout le système électrique corse. Elle ne prescrit rien :
+elle montre des faits, pas des solutions. Et elle ne parle que d'électricité — ni
+des transports, ni du chauffage, ni de l'énergie au sens large.
+
+**Comment la lire.** Le fil principal se lit sans aucun prérequis : une question
+simple, un graphique, ce qu'on y voit, ce que ça change pour vous. Qui veut aller
+plus loin trouvera, dans les encadrés « pour aller plus loin », les définitions
+exactes, les nuances et les limites. Deux lectures, un seul document — chacun
+s'arrête où il veut.
+
+## 3. Ce que disent les données
+
+### Maintenant
+
+#### Ce que produit l'île, là, tout de suite
+
+*Ouvrez la jauge : elle dit de quoi votre électricité est faite en ce moment.*
+
+{{visuel:t1_soleil_live}}
+
+Cette jauge est le seul visuel « en direct » de l'étude : elle affiche la part du
+soleil dans l'électricité corse au dernier relevé, actualisé toutes les quinze
+minutes par EDF. Un après-midi d'été ensoleillé, elle dépasse souvent le tiers ;
+une fois la nuit tombée, elle revient à zéro — c'est le même système que racontent
+les chapitres suivants, vu depuis l'instant présent.
+
+Le réflexe à prendre : un coup d'œil avant de lancer ce qui peut attendre. Si la
+jauge est haute, c'est le moment.
+
+> **Pour aller plus loin — ce que compte exactement la jauge.** Le chiffre reprend
+> la convention d'EDF pour le renouvelable « distribué » en direct : soleil, vent,
+> bioénergies, petite hydraulique et la restitution des batteries — hors grands
+> barrages et hors câbles. C'est la définition du producteur, conservée telle
+> quelle pour l'instantané. Les comparaisons entre périodes, ailleurs dans
+> l'étude, utilisent une définition légèrement plus stricte (sans les batteries),
+> identique des deux côtés de chaque comparaison ; l'écart maximal observé entre
+> les deux est resté sous les deux points (fenêtre de deux semaines examinée en
+> juillet 2026).
+>
+> **La fraîcheur est surveillée, pas supposée.** Au-delà de 24 heures sans relevé,
+> la figure affiche un avertissement ; au-delà de 48 heures, elle renonce
+> d'elle-même au « en ce moment » et se dégrade en « au dernier relevé du… ». Une
+> donnée en direct qui ne dit pas son âge ne mérite pas votre confiance.
+
+### Au fil de la journée
+
+#### Même à son zénith, le soleil ne détrône pas le fossile
+
+*Suivons une journée d'été moyenne, heure par heure.*
+
+{{visuel:t3_profil_horaire}}
+
+L'été, à la mi-journée, le solaire culmine à 35 % du mix — et le thermique, même à
+son creux, reste au-dessus : 43 %. À aucune heure moyenne d'été le soleil ne passe
+devant. Le soir, le contraste est brutal : le solaire retombe à 6 %, le thermique
+monte à 58 % et les câbles à 25 % — plus de huit dixièmes du
+kilowattheure du soir sortent des moteurs et des câbles. (Toutes ces valeurs :
+moyennes de juin à août, 2019-2024.)
+
+Ce que ça change pour vous : les soirées d'été sont le moment le moins insulaire
+et le moins renouvelable de la journée. Ce qui peut glisser vers l'après-midi y
+gagne.
+
+> **Pour aller plus loin — pourquoi ce plafond n'est pas un manque de panneaux.**
+> Sur un réseau insulaire, les productions intermittentes (soleil et vent sans
+> stockage) sont plafonnées réglementairement en puissance instantanée : 30 % à
+> l'origine (arrêté du 23 avril 2008, modifié en 2010), seuil relevé depuis à 35 %
+> puis 45 % en Corse. Au-delà, le gestionnaire déconnecte des producteurs — règle
+> du « dernier arrivé, premier déconnecté » : c'est l'écrêtement, que raconte le
+> chapitre du printemps. La sortie par le haut passe par le stockage (les
+> installations couplées à des batteries échappent au plafond). Notre pic d'été à
+> ~35 % évolue au voisinage de ces seuils ; les périmètres de calcul diffèrent :
+> on y voit une cohérence, pas une preuve.
+>
+> **Attention au changement de focale.** Ce chapitre décrit l'été. Le suivant se
+> calcule sur toute l'année : les pourcentages ne se comparent pas terme à terme
+> d'un chapitre à l'autre.
+
+#### 14 heures : l'heure la plus verte — et la plus corse
+
+*Si vous pouviez choisir l'heure du chauffe-eau, d'une lessive ou d'une recharge,
+laquelle faudrait-il viser ?*
+
+{{visuel:t4_heure_verte}}
+
+À 14 heures — c'est une moyenne sur six ans — l'électricité corse est à son plus
+vert : 34 % viennent du soleil, du vent, des bioénergies et des petites centrales au
+fil de l'eau ; 48 % en ajoutant les grands barrages. Le classement des heures est
+stable : 14 heures, puis 15 heures, puis 13 heures. Il ne dépend ni de la façon de
+compter le renouvelable, ni de la période : 14 heures ressort aussi bien sur
+2019-2020 que sur 2021-2024.
+
+Et à 14 heures, votre kilowattheure est aussi le plus corse de la journée : 84 %
+sont produits sur l'île, la part des câbles sous-marins tombe à 15 % — son minimum,
+alors qu'elle dépasse le tiers la nuit. La part des centrales
+thermiques y frôle son plus bas (36 %, contre 44 % à l'aube).
+Décaler ce qui peut l'être vers le début d'après-midi, c'est consommer plus corse
+et plus renouvelable.
+
+> **Pour aller plus loin — pourquoi deux chiffres, 34 % et 48 %.** Le « renouvelable
+> décentralisé » (34 %) regroupe le soleil, le vent, les bioénergies et la
+> micro-hydraulique : des productions dispersées, que personne ne pilote — elles
+> donnent ce que la météo donne. Les grands barrages (14 % du mix à cette heure)
+> sont renouvelables aussi, mais pilotables : on les turbine quand le réseau en a
+> besoin. Les compter à part évite de gonfler le chiffre — ce document ne dit
+> jamais « renouvelable » tout court.
+>
+> **Comment c'est calculé.** Moyenne heure par heure des années 2019 à 2024, soit
+> 52 605 heures de données EDF (validées sur 2019-2020, estimées à partir de 2021).
+> La part d'une filière à 14 heures, c'est tout ce qu'elle a produit à cette
+> heure-là en six ans, divisé par toute l'électricité appelée à cette heure-là.
+>
+> **La nuance qui compte.** Ce qui s'améliore à 14 heures, c'est la composition de
+> votre kilowattheure — pas la cheminée de la centrale. La production thermique
+> fournit un socle presque constant en journée (environ 104 MW) et c'est vers
+> 5 heures du matin qu'elle est au plus bas. Ce que le soleil de la
+> mi-journée remplace d'abord, ce sont les importations par les câbles : entre 9 h
+> et 14 h, elles reculent de 80 à 44 MW pendant que le thermique ne bouge pas.
+> Consommer à 14 heures, c'est surtout consommer moins de câble
+> et plus d'île.
+
+### Au fil des saisons
+
+#### L'été, la demande grimpe de 22 %
+
+*Que voit-on arriver en juillet ?*
+
+{{visuel:t2_demande_mensuelle}}
+
+De juin à juillet, la demande moyenne d'électricité bondit de 231 à 281 mégawatts :
++22 % en un mois, la plus forte marche de l'année. L'été entier
+se tient au-dessus du printemps. Mais la surprise est ailleurs : la saison la plus
+haute reste l'hiver — 307 MW de moyenne. L'île a deux pics : le
+chauffage d'hiver, et l'été.
+
+Pour vous : quand on dit que l'île « sature » en été, voilà le chiffre exact du
+surcroît — un cinquième de plus en un mois.
+
+> **Pour aller plus loin — moyennes et pointes.** Ces 231, 281 et 307 MW sont des
+> moyennes (toutes les heures du mois ou de la saison, années 2019-2024). Les
+> pointes instantanées montent bien plus haut et ne se comparent pas à ces
+> moyennes : quand un chiffre de puissance circule, vérifiez toujours de quelle
+> famille il est — moyenne ou pointe, mois ou saison, quelle période.
+
+#### Ce surcroît se joue surtout le soir
+
+*Le surplus de juillet arrive à quelle heure ?*
+
+{{visuel:t2b_surcroit_horaire}}
+
+En comparant chaque heure de juillet à la même heure de juin, le surcroît est là
+du matin au soir — positif aux 24 heures — mais il n'est pas uniforme : il culmine
+en soirée (entre 16 h et 22 h) et reste fort en pleine nuit.
+
+Pour vous : en juillet, la soirée cumule tout — le creux solaire et le surcroît de
+demande. C'est là que le conseil du chapitre « 14 heures » vaut double.
+
+> **Pour aller plus loin — pourquoi nous ne nommons pas la cause.** Touristes ?
+> Climatisation nocturne ? Les deux arrivent ensemble en juillet, et ces données
+> ne permettent pas de les départager — il faudrait croiser météo et fréquentation,
+> hors du périmètre de cette étude. Nous montrons le « quand » ; le « pourquoi »
+> reste ouvert, et chacun peut se faire son idée.
+
+### La ressource bridée, et la voisine
+
+#### C'est au printemps, pas en été, que la Corse bride son solaire
+
+*Peut-on avoir trop de soleil ?*
+
+{{visuel:t5_ecretement_solaire}}
+
+Oui — et pas quand on croit. 81 % des heures de bridage du solaire se concentrent
+de mars à juin, avec un pic en mai ; juillet et août comptent pour moins de 1 %.
+Le mécanisme : au printemps, le soleil est déjà généreux mais la demande est
+molle — le trop-plein menace l'équilibre du réseau, alors des producteurs sont
+temporairement déconnectés. Le record : mai 2020, 141 heures de limitation pour le
+producteur le plus exposé, un mois de confinement où la demande s'était effondrée.
+Et la tendance monte — 54 heures sur l'année 2016, 356 en 2023 —
+à mesure que le parc solaire grandit sous le plafond d'injection.
+
+Pour vous : l'île connaît déjà des heures « trop vertes », du soleil refusé faute
+de pouvoir l'absorber à cet instant. La question n'est plus seulement d'installer
+des panneaux : c'est de stocker, et de consommer au bon moment.
+
+> **Pour aller plus loin — ce que mesure « durée de bridage ».** La donnée EDF
+> compte la durée maximale de limitation subie par UN producteur (le « dernier
+> arrivé en file », déconnecté en premier) — pas l'énergie perdue par le système.
+> Même au pire mois (mai 2020), 90,5 % de l'énergie intermittente proposée a été
+> acceptée. Titrer « l'énergie verte perdue de la Corse » serait abusif : nous ne
+> le faisons pas.
+>
+> **La Corse concentre l'essentiel du bridage des zones non interconnectées
+> d'EDF** : 2 035 heures cumulées sur 2016-2023, contre 198 à La Réunion, 14 en
+> Guadeloupe, 0 en Guyane et en Martinique — le revers de la croissance de son
+> parc solaire sous le plafond d'injection (chapitre précédent).
+
+#### Deux îles thermiques — mais la Sardaigne brûle du charbon
+
+*Et la voisine, à douze kilomètres ?*
+
+{{visuel:t6_corse_sardaigne}}
+
+À périmètre comparable — la seule production locale de chacune —, les deux îles
+restent dominées par le thermique : 55 % en Corse, 65 % en Sardaigne.
+Mais le détail sépare deux mondes. Le
+thermique sarde, c'est un tiers de charbon et un tiers de gaz de synthèse
+industriel ; le corse, du fioul. Et chaque île a sa ressource : la Corse tire
+28 % de ses montagnes (hydraulique) là où la Sardaigne n'en tire que 4 % —
+mais la Sardaigne récolte 15 % de vent, quinze fois la part
+corse.
+
+Pour vous : deux îles voisines, deux systèmes — l'insularité n'est pas un destin
+unique.
+
+> **Pour aller plus loin — pourquoi « génération locale seule ».** La comparaison
+> exclut les importations corses (27,8 % de la demande sur 2019-2024) : la
+> Sardaigne, elle, exporte structurellement vers l'Italie par ses câbles. Inclure
+> les imports d'un côté et pas de l'autre fausserait tout — on compare donc ce que
+> chaque île produit, ramené à 100 %. Le thermique corse, ce sont les centrales au
+> fioul du Vazzio (Ajaccio) et de Lucciana (Bastia) — leur remplacement est en
+> cours, voir « Et maintenant ? ».
+>
+> **Les données sardes.** Plateforme de transparence d'ENTSO-E (le réseau des
+> gestionnaires de réseaux européens), zone « IT-Sardinia », production réelle par
+> filière 2019-2024, reconstruite au pas horaire puis agrégée comme les données
+> corses (même fuseau). Les filières européennes sont rapprochées des catégories
+> EDF ; le détail — dont le gaz de synthèse de la raffinerie sarde — est documenté
+> dans la note de méthode, et les chiffres du titre sont verrouillés par des tests
+> automatiques.
+
+## 4. Et maintenant ?
+
+Ces données décrivent le système d'aujourd'hui. Or il change — et les chantiers en
+cours dessinent déjà la Corse électrique des prochaines années.
+
+**Le grand basculement : le fioul remplacé.** À Ajaccio, la centrale du Vazzio —
+l'une des dernières d'Europe à fonctionner au fioul lourd — doit être remplacée
+d'ici fin 2027 par une centrale voisine, au Ricanto, brûlant de l'huile de colza.
+EDF y investit 800 millions d'euros et annonce une part renouvelable qui passerait
+« d'un tiers à deux tiers », avec des émissions de CO₂ réduites des deux tiers. À
+Bastia, la centrale de Lucciana, plus récente, pourrait à son tour se convertir à la
+biomasse. *(Source : EDF, novembre 2024.)*
+
+**Mais « renouvelable » ne veut pas dire « autonome ».** Le colza du Ricanto —
+environ 200 000 tonnes par an — sera importé : « la Corse seule ne dispose pas des
+ressources nécessaires », reconnaît EDF. Et dans le même temps, le câble qui relie
+l'île à la Sardaigne va être renforcé (300 à 400 millions d'euros). Le mix se
+verdit ; la dépendance aux approvisionnements extérieurs, elle, demeure. Le fil
+rouge de cette étude ne se dénoue pas avec la couleur du combustible.
+
+**Un enjeu de proximité : l'air.** Remplacer une vieille centrale au fioul lourd aux
+portes d'une ville n'est pas qu'une affaire de climat : c'est aussi une affaire d'air
+respiré. Ces données ne mesurent pas la qualité de l'air — c'est un autre métier, et
+d'autres sources — et elles ne disent rien du trafic maritime, qui pèse lui aussi sur
+l'air des ports corses. Ce qu'elles situent, c'est la combustion : quand les
+centrales tournent, et combien.
+
+**La toile de fond : un climat qui se tend.** Le réchauffement pèse sur la ressource
+en eau de l'île. Selon l'hydrobiologiste Antoine Orsini (université de Corse), le
+débit des cours d'eau a reculé de 25 à 30 % depuis le milieu des années 1980. Or
+l'hydraulique fournit près du quart de l'électricité produite sur l'île : moins
+d'eau, c'est mécaniquement plus de thermique. Le climat n'est pas qu'un décor
+lointain — il touche directement le mix.
+
+**Des pistes, au conditionnel.** Plusieurs leviers sont étudiés ou engagés pour
+desserrer la contrainte : le stockage (batteries, et une station de pompage entre
+deux barrages, qui turbine l'eau aux heures de forte demande et la remonte aux heures
+creuses), la poursuite du solaire, le renforcement des interconnexions. Ce document
+ne les évalue pas ; il constate qu'ils existent, et que la question posée par nos
+données — produire plus local, consommer au bon moment — leur donne un sens concret.
+
+**Ce que ces données ne disent pas.** Elles ne chiffrent pas le coût de l'électricité
+corse — plus chère à produire que sur le continent, mais c'est une autre source.
+Elles ne mesurent pas la qualité de l'air. Elles ne prédisent pas l'avenir. Elles
+décrivent un présent, précisément et honnêtement. Le reste — les choix — ne se lit
+pas dans un graphique.
+
+## 5. La méthode en clair
+
+Tout ce que ce document affirme peut se vérifier. Voici comment c'est fabriqué,
+sans jargon.
+
+**Trois étapes, toujours les mêmes.**
+
+1. **Collecter.** Un programme télécharge chaque source directement chez son
+   producteur. À l'arrivée, il calcule l'empreinte numérique du fichier (une
+   signature dont le moindre octet modifié change la valeur) et consigne tout dans
+   un manifeste : adresse, producteur, licence, date de collecte, taille,
+   empreinte. Une réponse suspecte — une page d'erreur déguisée en fichier de
+   données, cela arrive — est rejetée avant d'être enregistrée.
+2. **Préparer.** Les fichiers bruts deviennent des tables propres : heures
+   converties en heure locale, filtres et contrôles appliqués. Ces contrôles sont
+   volontairement bloquants : une valeur absente est examinée (zéro réel, ou trou
+   de collecte ?) au lieu d'être remplacée en silence ; une catégorie inconnue
+   arrête tout au lieu de passer inaperçue ; un millésime incomplet fait échouer
+   la préparation au lieu de fausser les moyennes.
+3. **Dessiner.** Chaque figure sort par une seule porte, qui incruste d'office la
+   source et la date de collecte au pied de l'image. Le sourçage n'est pas une
+   bonne pratique qu'on essaie de tenir : il est câblé — une figure sans source ne
+   peut pas exister ici.
+
+**Le rafraîchissement est automatique.** La chaîne complète se relance chaque
+semaine, sans intervention : données en temps réel re-téléchargées, visuels
+regénérés, manifeste réécrit. Si une source échoue, sa version précédente est
+conservée telle quelle — jamais de fichier à moitié remplacé.
+
+**Chaque chiffre publié est verrouillé.** Tous les chiffres de ce document et des
+visuels sont couverts par des tests automatiques : si une mise à jour des données
+déplace un résultat — l'heure la plus verte cesse d'être 14 h, le bond de juillet
+quitte les 22 % — la publication échoue, et l'écart doit être examiné avant toute
+remise en ligne. Un chiffre affiché ici est revérifié à chaque rafraîchissement,
+pas relevé une fois pour toutes.
+
+**Les sources.**
+
+| Donnée | Producteur | Période | Licence |
+| --- | --- | --- | --- |
+| Mix électrique corse en temps réel (pas de 15 min) | EDF (open data) | fenêtre glissante d'environ 14 jours | Licence Ouverte 2.0 (Etalab) |
+| Production corse heure par heure, par filière | EDF (open data) | 2019-2024 | Licence Ouverte (Etalab) |
+| Limitations imposées au photovoltaïque (écrêtement) | EDF (open data) | 2016-2023 | Licence Ouverte 2.0 (Etalab) |
+| Production sarde par filière | ENTSO-E (plateforme de transparence des réseaux européens) | 2019-2024 | CC-BY 4.0 |
+
+La date de collecte, elle, vit au pied de chaque visuel — elle avance d'elle-même
+avec le rafraîchissement hebdomadaire.
+
+## 6. Définitions & limites
+
+Ce que ce document ne dit pas est aussi cadré que ce qu'il dit. Les limites
+ci-dessous ne sont pas des excuses : ce sont les bornes de validité exactes de
+chaque affirmation.
+
+**« Renouvelable » : toujours qualifié.** Le renouvelable décentralisé (34 % à
+14 heures) regroupe solaire, éolien, bioénergies et petite hydraulique. Les grands
+barrages, renouvelables mais pilotables, sont comptés à part (48 % en les
+ajoutant). Ce document ne dit jamais « renouvelable » tout court : selon la
+définition, le chiffre change presque du simple au double.
+
+**Données validées, données estimées.** EDF classe son historique : 2019-2020
+« validé », 2021-2024 « estimé » — les deux tiers des heures. Contrôle fait : les
+conclusions directionnelles tiennent dans les deux sous-ensembles (le bond de
+juillet et le 14 heures ressortent des deux côtés). Chaque visuel historique porte
+la mention.
+
+**52 605 heures.** Les moyennes 2019-2024 reposent sur 52 605 heures : les 52 608
+du fichier brut, moins trois lignes fantômes à zéro créées par les changements
+d'heure (2019, 2020, 2024).
+
+**La petite hydraulique manque en 2024.** La colonne micro-hydraulique disparaît
+des données EDF sur toute l'année 2024 (environ 8 783 heures). Elle est traitée
+comme nulle — après vérification que le total de production l'exclut aussi : le
+calcul des parts n'en est pas faussé.
+
+**Le bridage mesure une durée, pas une énergie.** La donnée d'écrêtement compte la
+durée maximale de limitation subie par un producteur — pas l'énergie perdue par le
+réseau (chapitre du printemps, encadré).
+
+**La comparaison sarde est à génération locale seule.** Les importations corses en
+sont exclues et le reste est ramené à 100 % (chapitre des deux îles, encadré). Les
+données sardes viennent de la zone « IT-Sardinia » d'ENTSO-E ; la Corse n'est pas
+une zone ENTSO-E — elle est incluse dans la France —, ses données viennent d'EDF.
+
+**« La Corse importe » : en moyenne.** Sur six ans, l'île a aussi exporté par ses
+câbles — 607 heures, à peine plus de 1 % du temps. Les affirmations d'importation
+de ce document sont des moyennes, pas des permanences.
+
+**Électricité ≠ énergie.** Ce document ne parle que d'électricité. L'énergie au
+sens large — carburants des transports, fioul et gaz du chauffage — est hors
+champ : « autonomie électrique » ne veut pas dire autonomie énergétique de l'île.
+
+**Deux fenêtres temporelles, jamais mélangées.** L'historique s'arrête au
+31 décembre 2024 ; le temps réel commence à l'été 2026. Les dix-huit mois entre
+les deux ne sont pas couverts : aucun visuel ne les met sur un même axe.
+L'écrêtement, lui, s'arrête à 2023, dernier millésime publié par EDF.
+
+**Réutilisation.** Données sous licences ouvertes — Licence Ouverte (Etalab) pour
+EDF, CC-BY 4.0 pour ENTSO-E : reproduction libre avec attribution du producteur.
+Ce document applique la même règle : chaque visuel cite sa source et sa date.
