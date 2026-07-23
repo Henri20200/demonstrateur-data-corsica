@@ -24,6 +24,10 @@ data/processed/*
 # versionnés dans docs/SOURCES_LOCALES.md — pas les originaux.
 audit/
 
+# Exercices pédagogiques dérivés du dépôt : hors livrable, et leurs chiffres sont
+# ceux d'un audit daté — aucun test ne les verrouille, ils dériveraient en silence.
+exercices/
+
 # Divers
 .DS_Store
 *.log
