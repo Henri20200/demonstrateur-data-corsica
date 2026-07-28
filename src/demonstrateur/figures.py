@@ -488,8 +488,12 @@ def fig_t7_hydro_secheresse() -> go.Figure:
         xaxis=dict(title="Année", dtick=1),
         yaxis=dict(title="Part du mix (%)", range=[0, 60], ticksuffix=" %"),
         legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
-        margin=dict(t=180, b=150, l=116, r=56),
-        height=580,
+        # Le pied de T7 est long (note en deux temps → 8 lignes une fois replié) : la
+        # bande basse doit l'accueillir en entier, sinon le viewport de la figure rogne
+        # la fin — invisible tant qu'on développe sur écran large. Aligné sur T5/T6, qui
+        # portent des notes de même longueur (b >= 250).
+        margin=dict(t=180, b=300, l=116, r=56),
+        height=760,
     )
     return fig
 
