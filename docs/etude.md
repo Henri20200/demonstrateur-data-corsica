@@ -2,6 +2,11 @@
   ÉTUDE — source éditoriale (compilée vers une page HTML déployée avec outputs/).
   BROUILLON COMPLET (20/07/2026) : les 6 sections et les 7 chapitres sont rédigés, au plan
   validé le même jour. Restent la relecture, le sous-titre à trancher et la compilation HTML.
+  Passe du 23/07/2026 sur les sections 1, 2, 6 et le chapitre « 14 heures » : style
+  dé-mécanisé (cf. docs/etude.retouche.md), phrase-guide de lecture avant la figure, et
+  correction d'exactitude — produit SUR l'île n'est pas produit AVEC les ressources de
+  l'île, les 84 % incluent un thermique à combustible importé. Les cinq autres chapitres
+  n'ont PAS encore reçu la passe de style.
   Conventions de compilation :
     - {{visuel:nom}}  -> iframe de outputs/nom.html (plotly.min.js mutualisé)
     - blockquote débutant par **Pour aller plus loin** -> encadré repliable (couche initié)
@@ -22,8 +27,8 @@
   combustible.
 - À midi, le soleil fournit jusqu'à un tiers du courant. Mais à aucune heure moyenne
   d'été il ne dépasse le thermique.
-- L'heure la plus verte pour consommer, c'est **14 heures**. C'est aussi l'heure la
-  plus corse : la part produite sur l'île y atteint son maximum.
+- L'heure la plus verte pour consommer, c'est **14 heures**. C'est aussi l'heure où
+  l'île dépend le moins de ses câbles.
 - En juillet, la demande grimpe d'un cinquième par rapport à juin — surtout le soir.
   Pourtant, la pointe de l'année reste l'hiver.
 - Au printemps, l'île bride parfois son propre solaire, faute de pouvoir l'absorber :
@@ -37,47 +42,41 @@ revérifié à chaque mise à jour.
 
 ## 2. Pourquoi cette étude
 
-En 2026, l'autonomie de la Corse se débat jusqu'au Parlement. Ce document, lui, ne
-parle que d'autonomie électrique : quelle part de son courant l'île produit-elle
-vraiment, et quand ? Il répond par des chiffres, datés et vérifiables — et ne prend
+En 2026, l'autonomie de la Corse se débat jusqu'au Parlement. Ce document ne parle
+que d'autonomie électrique. De quoi le courant corse est-il fait, maintenant, au fil
+de la journée et au fil des saisons, et à quel moment est-il le plus renouvelable et
+le plus insulaire ? Il répond par des chiffres datés et vérifiables, et ne prend
 parti sur rien d'autre.
 
-**La question, en une phrase.** De quoi est faite l'électricité corse — maintenant,
-au fil de la journée, au fil des saisons — et à quel moment est-elle la plus
-renouvelable, et la plus insulaire ? C'est tout le sujet.
+La question mérite qu'on s'y arrête, parce que la Corse est une île peu reliée au
+continent. Un grand réseau mutualise ses moyens sur des milliers de kilomètres ;
+l'île, elle, doit équilibrer presque seule, à chaque instant, ce qu'elle produit et
+ce qu'elle consomme. L'électricité ne se stocke pas. Son courant vient encore
+largement de centrales thermiques qui brûlent du combustible, tandis que le soleil,
+l'eau des montagnes et le vent, bien réels, restent contraints par la taille du
+réseau.
 
-**Pourquoi elle mérite qu'on s'y arrête.** La Corse est une île peu reliée au
-continent. Là où un grand réseau mutualise ses moyens sur des milliers de
-kilomètres, l'île doit équilibrer presque seule, à chaque instant, ce qu'elle
-produit et ce qu'elle consomme — l'électricité ne se stocke pas. Son courant reste
-en grande partie produit par des centrales thermiques qui brûlent du combustible,
-tandis que ses ressources renouvelables — le soleil, l'eau des montagnes, le vent —
-sont réelles mais contraintes. Comprendre ce mélange, c'est se donner les moyens
-d'en parler juste.
+Une chose nous a frappés en assemblant ces données : la part vraiment insulaire est
+plus mince qu'on ne l'imagine. Plus du quart de l'électricité arrive par des câbles
+sous-marins, depuis l'Italie via la Sardaigne. Et le thermique local tourne lui-même
+à un combustible importé. Ne reste pleinement produit sur l'île que ce que donnent
+les renouvelables et les barrages. C'est cette part que nous suivons de chapitre en
+chapitre : quand elle monte, quand elle retombe.
 
-**Un fil conducteur : d'où vient vraiment le courant.** Plus du quart de
-l'électricité corse arrive par des câbles sous-marins, depuis l'Italie via la
-Sardaigne. Et le thermique local lui-même tourne à un combustible importé. Au fond,
-la seule électricité pleinement insulaire est celle que produisent les renouvelables
-et les barrages de l'île. Cette part — quand elle monte, quand elle retombe — est le
-fil rouge de l'étude.
+Ce thermique n'a rien d'une abstraction comptable. Ce sont des centrales bien
+réelles, aux portes d'Ajaccio et de Bastia, qui brûlent du fioul. Deux réalités très
+concrètes s'y accrochent : l'air que respirent ces villes, et l'eau des montagnes
+dont dépendent les barrages, que le climat raréfie.
 
-**Un enjeu qui a un visage.** Ce thermique n'est pas une abstraction comptable : ce
-sont des centrales bien réelles, aux portes d'Ajaccio et de Bastia. Et la toile de
-fond est connue de tous : un climat qui change, qui pèse sur l'eau des montagnes —
-donc sur l'hydroélectricité de l'île. L'électricité corse se lit aussi à travers ces
-deux prismes concrets : ce qu'on respire, et une ressource en eau qui se raréfie.
+Reste à dire ce que cette étude ne fait pas. Elle n'est pas exhaustive : elle
+éclaire quelques questions précises, pas tout le système électrique corse. Elle ne
+prescrit rien. Et elle ne parle que d'électricité, pas de transports ni de
+chauffage.
 
-**Ce que cette étude n'est pas.** Elle n'est pas exhaustive : elle éclaire quelques
-questions précises, pas tout le système électrique corse. Elle ne prescrit rien :
-elle montre des faits, pas des solutions. Et elle ne parle que d'électricité — ni
-des transports, ni du chauffage, ni de l'énergie au sens large.
-
-**Comment la lire.** Le fil principal se lit sans aucun prérequis : une question
-simple, un graphique, ce qu'on y voit, ce que ça change pour vous. Qui veut aller
-plus loin trouvera, dans les encadrés « pour aller plus loin », les définitions
-exactes, les nuances et les limites. Deux lectures, un seul document — chacun
-s'arrête où il veut.
+Le fil principal se lit sans prérequis : une question, un graphique, ce qu'on y
+voit, ce que ça change pour vous. Les définitions exactes, les nuances et les
+limites attendent dans les encadrés « pour aller plus loin ». Deux lectures dans un
+seul document, chacun s'arrête où il veut.
 
 ## 3. Ce que disent les données
 
@@ -152,43 +151,60 @@ gagne.
 *Si vous pouviez choisir l'heure du chauffe-eau, d'une lessive ou d'une recharge,
 laquelle faudrait-il viser ?*
 
+Les quatre bandes empilées font 100 % du courant, heure par heure. Les deux du bas,
+renouvelables et barrages, sont la seule électricité pleinement insulaire ; viennent
+ensuite les centrales thermiques, qui brûlent un combustible importé, puis tout en
+haut les câbles sous-marins.
+
 {{visuel:t4_heure_verte}}
 
-À 14 heures — c'est une moyenne sur six ans — l'électricité corse est à son plus
-vert : 34 % viennent du soleil, du vent, des bioénergies et des petites centrales au
-fil de l'eau ; 48 % en ajoutant les grands barrages. Le classement des heures est
-stable : 14 heures, puis 15 heures, puis 13 heures. Il ne dépend ni de la façon de
-compter le renouvelable, ni de la période : 14 heures ressort aussi bien sur
-2019-2020 que sur 2021-2024.
+Quatorze heures. Sur six ans de moyennes, c'est le moment où l'électricité corse est
+la plus verte : 34 % viennent du soleil, du vent, des bioénergies et des petites
+centrales au fil de l'eau, 48 % si l'on ajoute les grands barrages. Le classement ne
+bouge pas : 14 heures, puis 15, puis 13. Il résiste au changement de définition du
+renouvelable comme au changement de période, puisque 14 heures ressort aussi bien
+sur 2019-2020 que sur 2021-2024.
 
-Et à 14 heures, votre kilowattheure est aussi le plus corse de la journée : 84 %
-sont produits sur l'île, la part des câbles sous-marins tombe à 15 % — son minimum,
-alors qu'elle dépasse le tiers la nuit. La part des centrales
-thermiques y frôle son plus bas (36 %, contre 44 % à l'aube).
-Décaler ce qui peut l'être vers le début d'après-midi, c'est consommer plus corse
-et plus renouvelable.
+Reste à mesurer ce que « la plus verte » veut dire. Entre son maximum de 5 heures du
+matin et 14 heures, le thermique ne recule que de 44 à 36 %, soit près d'un cinquième
+de moins. Il reste la première source de la journée : à aucune heure de l'année
+moyenne, le renouvelable décentralisé ne passe devant lui. Ce n'est qu'en comptant les
+grands barrages que le total renouvelable le dépasse, entre 11 heures et 16 heures.
 
-> **Pour aller plus loin — pourquoi deux chiffres, 34 % et 48 %.** Le « renouvelable
+C'est aussi l'heure où votre kilowattheure vient le plus de l'île, à condition de
+s'entendre sur le mot. Regardez la bande du haut, celle des câbles sous-marins :
+elle tombe à 15 % à 14 heures, son minimum de la journée, alors qu'elle dépasse le
+tiers en pleine nuit. Les 84 % restants sortent bien de machines installées en
+Corse. Mais 36 de ces 84 points sont thermiques, et le fioul qu'ils brûlent arrive
+lui aussi par bateau. Si l'on ne compte que ce qui est produit avec des ressources
+de l'île, il reste les 48 % de renouvelables et de barrages.
+
+Décaler vers le début d'après-midi ce qui peut l'être, c'est donc consommer plus
+renouvelable et plus local.
+
+> **Pour aller plus loin — deux chiffres plutôt qu'un.** Le « renouvelable
 > décentralisé » (34 %) regroupe le soleil, le vent, les bioénergies et la
-> micro-hydraulique : des productions dispersées, que personne ne pilote — elles
-> donnent ce que la météo donne. Les grands barrages (14 % du mix à cette heure)
-> sont renouvelables aussi, mais pilotables : on les turbine quand le réseau en a
-> besoin. Les compter à part évite de gonfler le chiffre — ce document ne dit
-> jamais « renouvelable » tout court.
+> micro-hydraulique : des productions dispersées que personne ne pilote, qui donnent
+> ce que la météo donne. Les grands barrages, eux, sont renouvelables mais
+> pilotables : on les turbine quand le réseau en a besoin, et ils pèsent 14 % du mix
+> à cette heure. Les compter à part évite de gonfler le chiffre. Vous ne lirez
+> jamais ici « renouvelable » tout court.
 >
-> **Comment c'est calculé.** Moyenne heure par heure des années 2019 à 2024, soit
-> 52 605 heures de données EDF (validées sur 2019-2020, estimées à partir de 2021).
-> La part d'une filière à 14 heures, c'est tout ce qu'elle a produit à cette
-> heure-là en six ans, divisé par toute l'électricité appelée à cette heure-là.
+> Le calcul est simple : la part d'une filière à 14 heures, c'est tout ce qu'elle a
+> produit à cette heure-là en six ans, divisé par toute l'électricité appelée à cette
+> heure-là. Soit 52 605 heures de données EDF, validées sur 2019-2020 et estimées à
+> partir de 2021.
 >
-> **La nuance qui compte.** Ce qui s'améliore à 14 heures, c'est la composition de
-> votre kilowattheure — pas la cheminée de la centrale. La production thermique
-> fournit un socle presque constant en journée (environ 104 MW) et c'est vers
-> 5 heures du matin qu'elle est au plus bas. Ce que le soleil de la
-> mi-journée remplace d'abord, ce sont les importations par les câbles : entre 9 h
-> et 14 h, elles reculent de 80 à 44 MW pendant que le thermique ne bouge pas.
-> Consommer à 14 heures, c'est surtout consommer moins de câble
-> et plus d'île.
+> Une hypothèse nous est restée sur les bras. Nous pensions qu'à 14 heures les
+> moteurs des centrales tournaient au ralenti, et nous nous apprêtions à l'écrire. Le
+> calcul dit l'inverse : en volume, le thermique est au plus bas vers 5 heures du
+> matin, et il tient en journée un socle presque constant, autour de 104 MW. En part
+> du mix, il frôle son plus bas à 14 heures : 36 %, contre 44 % à l'aube. Ce que
+> le soleil de la mi-journée remplace d'abord, ce sont les importations. Entre
+> 9 heures et 14 heures, elles reculent de 80 à 44 MW pendant que le thermique ne
+> bouge pas. Ce qui s'améliore à 14 heures, c'est donc la composition de votre
+> kilowattheure, pas l'activité de la centrale. Consommer à cette heure-là, c'est
+> surtout consommer moins de câble.
 
 ### Au fil des saisons
 
@@ -405,6 +421,14 @@ chaque affirmation.
 barrages, renouvelables mais pilotables, sont comptés à part (48 % en les
 ajoutant). Ce document ne dit jamais « renouvelable » tout court : selon la
 définition, le chiffre change presque du simple au double.
+
+**Produit sur l'île n'est pas produit avec l'île.** Quand ce document dit qu'une
+part est « produite sur l'île », il parle de l'endroit où tournent les machines,
+pas de l'origine de l'énergie : les centrales thermiques corses brûlent un
+combustible importé. Trois périmètres coexistent donc, et ce document les nomme à
+chaque fois : ce qui arrive par les câbles, ce qui est produit sur l'île, ce qui
+est produit avec les ressources de l'île. À 14 heures, cela donne 15 %, 84 % et
+48 %.
 
 **Données validées, données estimées.** EDF classe son historique : 2019-2020
 « validé », 2021-2024 « estimé » — les deux tiers des heures. Contrôle fait : les
