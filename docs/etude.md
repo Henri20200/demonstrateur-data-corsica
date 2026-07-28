@@ -18,7 +18,7 @@
 
 # De quoi est faite l'électricité corse ?
 
-*(sous-titre pressenti : « …et quelle part vient vraiment de l'île ? » — à trancher)*
+*Le soleil, le fioul, les barrages, les câbles : ce qui compose le courant, et quand.*
 
 ## 1. L'essentiel en 30 secondes
 
@@ -79,6 +79,10 @@ limites attendent dans les encadrés « pour aller plus loin ». Deux lectures d
 seul document, chacun s'arrête où il veut.
 
 ## 3. Ce que disent les données
+
+<!-- PROVISOIRE (28/07) — carton d'ouverture du fil rouge (dépendance aux câbles).
+     Position et opportunité à confirmer ; retirer la balise ou la déplacer si non retenu. -->
+{{visuel:cadrage_dependance}}
 
 ### Maintenant
 
@@ -348,6 +352,10 @@ débit des cours d'eau a reculé de 25 à 30 % depuis le milieu des années 1980
 l'hydraulique fournit près du quart de l'électricité produite sur l'île : moins
 d'eau, c'est mécaniquement plus de thermique. Le climat n'est pas qu'un décor
 lointain — il touche directement le mix.
+
+<!-- PROVISOIRE (28/07) — T7 illustre l'anticorrélation eau/thermique année par année.
+     Position et opportunité à confirmer ; retirer la balise ou la déplacer si non retenu. -->
+{{visuel:t7_hydro_secheresse}}
 
 **Des pistes, au conditionnel.** Plusieurs leviers sont étudiés ou engagés pour
 desserrer la contrainte : le stockage (batteries, et une station de pompage entre

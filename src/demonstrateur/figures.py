@@ -458,7 +458,8 @@ def fig_t7_hydro_secheresse() -> go.Figure:
     r = float(df["hydro"].corr(df["thermique"]))
     if r > -0.8:
         raise ValueError(f"T7 : corrélation hydro/thermique = {r:+.2f} (attendu forte négative) — titre à revoir.")
-    an_sec = int(df.loc[df["hydro"].idxmin(), "annee"])  # année la plus pauvre en hydraulique
+    an_sec = int(df.loc[df["hydro"].idxmin(), "annee"])   # année la plus pauvre en hydraulique
+    an_ther = int(df.loc[df["thermique"].idxmax(), "annee"])  # ... et la plus riche en moteurs
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -476,10 +477,16 @@ def fig_t7_hydro_secheresse() -> go.Figure:
         hovertemplate="Grande hydraulique %{x} : %{y:.0f} %<extra></extra>",
     ))
     # Repère sur l'année la plus pauvre en hydraulique : le creux d'eau répond au pic de
-    # moteurs. Étiquette au-dessus de la pile (yref haut), pas sur les tracés.
+    # moteurs. Étiquette au-dessus de la pile (yref haut), pas sur les tracés. Elle se
+    # termine sur « le thermique au plus haut », juste au-dessus de l'étiquette 48 % du
+    # tracé thermique : ce nombre a ainsi son bon antécédent, et personne ne le rapporte
+    # à l'hydraulique. Le libellé double n'a de sens que si les deux extrêmes tombent la
+    # MÊME année (l'anticorrélation incarnée) ; sinon on retombe sur le seul creux d'eau.
+    txt = (f"<b>{an_sec} · l'eau au plus bas, le thermique au plus haut</b>"
+           if an_sec == an_ther else f"<b>{an_sec} · hydraulique au plus bas</b>")
     fig.add_vline(x=an_sec, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
     fig.add_annotation(
-        x=an_sec, y=57, text=f"<b>{an_sec} · hydraulique au plus bas</b>",
+        x=an_sec, y=57, text=txt,
         showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
         font=dict(family=SANS, size=16, color=PALETTE["accent"]),
     )
