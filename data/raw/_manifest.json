@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "94b8d6153c65ee763f00f10fc230c00bfa5c6fcb019ecd17c868b38030ea972f",
-    "date_collecte": "2026-07-23",
-    "taille_octets": 391111
+    "sha256": "cef11e036ca74b62b28de641f951e8be5f0ab53ed8cf982875690c22b9cbd37e",
+    "date_collecte": "2026-07-28",
+    "taille_octets": 395641
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -77,7 +77,7 @@
       "GL_MarketDocument/mRID",
       "GL_MarketDocument/createdDateTime"
     ],
-    "date_collecte": "2026-07-22",
+    "date_collecte": "2026-07-28",
     "taille_octets": 5215435
   },
   "entsoe_sardaigne_2020": {
@@ -117,12 +117,12 @@
     "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
     "format": "xml",
     "content_type": "text/xml",
-    "sha256": "751d7fc4c730fc8b85ce7ab47bcfe3e8d58263a5581babb5a18cf656cd06d787",
+    "sha256": "4fa33ca02d1b609cf8f1e453e4b51a8abb12db5645bb7bacd04ad9afb1872b87",
     "empreinte_ignore_xml": [
       "GL_MarketDocument/mRID",
       "GL_MarketDocument/createdDateTime"
     ],
-    "date_collecte": "2026-07-22",
+    "date_collecte": "2026-07-28",
     "taille_octets": 5658461
   },
   "entsoe_sardaigne_2023": {
@@ -137,7 +137,7 @@
       "GL_MarketDocument/mRID",
       "GL_MarketDocument/createdDateTime"
     ],
-    "date_collecte": "2026-07-22",
+    "date_collecte": "2026-07-28",
     "taille_octets": 5672803
   },
   "entsoe_sardaigne_2024": {
@@ -152,7 +152,7 @@
       "GL_MarketDocument/mRID",
       "GL_MarketDocument/createdDateTime"
     ],
-    "date_collecte": "2026-07-22",
+    "date_collecte": "2026-07-28",
     "taille_octets": 5912656
   }
 }
