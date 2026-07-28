@@ -6,6 +6,7 @@ import yaml
 
 from demonstrateur.config import ROOT, SOURCES_FILE
 from demonstrateur.fetch import _expanser_env, _masquer, _valider
+from demonstrateur.viz import LARGEUR_PIED, replier_pied
 
 
 def test_sources_yaml_est_valide():
@@ -90,3 +91,28 @@ def test_masquage_secret_url_encode():
 def test_arborescence():
     for rel in ("data/raw", "data/processed", "outputs", "src/demonstrateur"):
         assert (ROOT / rel).exists(), f"dossier manquant : {rel}"
+
+
+def test_repli_du_pied_borne_les_lignes():
+    """Une annotation Plotly ne replie pas : au-delà de la largeur, la fin de la phrase
+    est rognée en silence. Le repli est donc câblé dans l'export — et vérifié ici, parce
+    que le défaut est invisible tant qu'on développe sur écran large."""
+    long = (
+        "81 % des heures de bridage ont lieu de mars à juin. Même au pire mois "
+        "(mai 2020 : 141 h), 90,5 % de la production ENR intermittente a été acceptée."
+    )
+    lignes = replier_pied(long).split("<br>")
+    assert len(lignes) > 1, "un texte de 146 caractères doit être replié"
+    assert all(len(x) <= LARGEUR_PIED for x in lignes), (
+        f"ligne trop longue après repli : {[len(x) for x in lignes]}"
+    )
+    assert " ".join(lignes) == long, "le repli ne doit rien perdre ni rien ajouter"
+
+
+def test_repli_du_pied_respecte_les_coupures_voulues():
+    """Un appelant qui coupe à un endroit précis (avant la date, entre deux phrases)
+    garde la main : le repli s'ajoute aux <br> existants, il ne les efface pas."""
+    texte = "Source : EDF — Open Data Groupe EDF (Corse & Outre-mer)<br>— collectées le 2026-07-22"
+    assert replier_pied(texte).split("<br>") == texte.split("<br>"), (
+        "deux lignes déjà courtes doivent traverser le repli intactes"
+    )

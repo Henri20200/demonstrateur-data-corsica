@@ -11,6 +11,7 @@ fond neutre clair, sans-serif) est porté par le template appliqué à chaque fi
 from __future__ import annotations
 
 import json
+import textwrap
 
 import plotly.graph_objects as go
 
@@ -81,6 +82,27 @@ def template() -> go.layout.Template:
     ))
 
 
+LARGEUR_PIED = 64
+"""Caractères par ligne du pied de figure, mesuré à 620 px de large, corps 16."""
+
+
+def replier_pied(texte: str, largeur: int = LARGEUR_PIED) -> str:
+    """Replie un texte de pied en lignes courtes, sur les espaces.
+
+    Les annotations Plotly ne replient PAS le texte : au-delà de la largeur de la
+    figure, la fin de la phrase est rognée — silencieusement, et invisible tant qu'on
+    développe sur écran large. C'est arrivé aux notes de T5 et à la source de T6.
+    Le repli est donc câblé dans l'export, comme la mention de source elle-même : un
+    appelant ne peut plus produire un pied tronqué par distraction.
+
+    Les `<br>` déjà présents sont respectés — qui coupe à un endroit voulu garde la main.
+    """
+    lignes = []
+    for bloc in texte.split("<br>"):
+        lignes.extend(textwrap.wrap(bloc, largeur) or [""])
+    return "<br>".join(lignes)
+
+
 def date_collecte(source_id: str) -> str:
     """Date de collecte de la donnée RÉELLEMENT présente dans le Parquet.
 
@@ -120,12 +142,14 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
         # Commentaire = sous-titre NATIF (un seul bloc avec le titre) : contrairement à
         # une annotation flottante, il ne peut plus télescoper la légende.
         fig.update_layout(title=dict(subtitle=dict(text=sous_titre)))
-    # Mention longue : la date passe à la ligne, sinon elle est rognée à droite
-    # dans une iframe étroite (les annotations Plotly ne replient pas le texte).
+    # Coupure VOULUE avant la date quand la source est longue : elle tombe à un endroit
+    # qui a du sens, plutôt qu'au hasard du repli. Le repli automatique ci-dessous prend
+    # le relais pour tout ce qui dépasse encore, source ou note.
     sep = "<br>" if len(source) > 45 else " "
     pied = f"Source : {source}{sep}— données collectées le {collecte}"
     if note:
         pied += f"<br>{note}"
+    pied = replier_pied(pied)
     fig.add_annotation(
         text=pied,
         xref="paper", yref="paper", x=0, y=0, yanchor="top", yshift=pied_decalage_px,

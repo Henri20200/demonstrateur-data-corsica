@@ -207,6 +207,21 @@ def fig_t3_profil() -> go.Figure:
 
 
 # --- Titre 4 : « l'heure la plus verte = 14h » -------------------------------
+def _pale(hexa: str, k: float) -> str:
+    """Éclaircit une couleur vers la surface de figure, à teinte constante.
+
+    Sert la hiérarchie d'encre : une filière de contexte recule sans changer de
+    couleur — on la reconnaît encore (légende, survol, axe), elle ne dispute plus
+    le regard au propos du visuel. k = 0 laisse la couleur intacte, k = 1 l'efface.
+    """
+    canaux = []
+    for i in (1, 3, 5):
+        c = int(hexa[i : i + 2], 16)
+        fond = int(PALETTE["surface"][i : i + 2], 16)
+        canaux.append(round(c + (fond - c) * k))
+    return "#{:02X}{:02X}{:02X}".format(*canaux)
+
+
 def fig_t4_heure_verte() -> go.Figure:
     con = _con()
     df = con.execute(f"""
@@ -218,46 +233,66 @@ def fig_t4_heure_verte() -> go.Figure:
         FROM '{COURBE}' GROUP BY 1 ORDER BY 1
     """).df()
     h = df["h"]
-    # ordre d'empilement bas -> haut ; l'hydro (claire) est bordée de foncés.
+    # Ordre d'empilement bas -> haut. Hiérarchie d'encre (23/07/2026) : le propos du
+    # visuel est la part VERTE à 14 h, donc les deux filières qui la composent gardent
+    # leur pleine couleur et les deux autres reculent en teinte claire. Rien n'est
+    # masqué — mêmes valeurs, même axe, même légende, même survol : seule l'encre
+    # change, pour qu'une seule chose soit à comprendre d'un coup d'œil.
     couches = [
-        ("Renouvelable décentralisé", df["decentralise"], PALETTE["renouv"]),
-        ("Grande hydraulique", df["grande_hydro"], PALETTE["hydro"]),
-        ("Thermique", df["thermique"], PALETTE["thermique"]),
-        ("Interconnexions", df["imports"], PALETTE["imports"]),
+        ("Renouvelable décentralisé", df["decentralise"], PALETTE["renouv"], PALETTE["renouv"]),
+        ("Grande hydraulique", df["grande_hydro"], PALETTE["hydro"], PALETTE["hydro"]),
+        ("Thermique", df["thermique"], PALETTE["thermique"], _pale(PALETTE["thermique"], 0.62)),
+        ("Interconnexions", df["imports"], PALETTE["imports"], _pale(PALETTE["imports"], 0.78)),
     ]
     fig = go.Figure()
-    for nom, y, col in couches:
+    for nom, y, trait, remplissage in couches:
         fig.add_trace(go.Scatter(
-            x=h, y=y, name=nom, mode="lines", line=dict(color=col, width=0.8),
-            stackgroup="mix", fillcolor=col,
+            x=h, y=y, name=nom, mode="lines", line=dict(color=trait, width=0.8),
+            stackgroup="mix", fillcolor=remplissage,
             hovertemplate=nom + " : %{y:.0f} %<extra></extra>",
         ))
-    # repère 14h : cadre net (sans ombre ni trame), étendu au-dessus de la pile pour ressortir
+    # Repère 14 h : cadre net sur la colonne (sans ombre ni trame), calé exactement sur
+    # la pile. Le chiffre du propos est écrit AU-DESSUS, dans la bande 100-150 que l'axe
+    # lui réserve : rien n'est posé sur les tracés, et l'axe s'arrête à 100.
     vert14 = float(df["decentralise"][df["h"] == 14].iloc[0])
     tot14 = vert14 + float(df["grande_hydro"][df["h"] == 14].iloc[0])
-    fig.add_shape(type="rect", x0=13.45, x1=14.55, y0=0, y1=110,
+    fig.add_shape(type="rect", x0=13.45, x1=14.55, y0=0, y1=100,
                   line=dict(color=PALETTE["accent"], width=2.8),
                   fillcolor="rgba(0,0,0,0)", layer="above")
     # Libellé (décision du 19/07/2026, post-audit) : le chiffre principal reste l'ENR
     # décentralisée, TOUJOURS qualifiée — jamais « renouvelable » seul ; le total avec
-    # la grande hydraulique (déjà dans la pile) est donné juste dessous.
-    fig.add_annotation(x=14, y=110, yshift=16,
-                       text=f"<b>14 h · {vert14:.0f} % renouvelable décentralisé</b>",
-                       showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
-                       font=dict(family=SANS, size=18, color=PALETTE["accent"]))
-    fig.add_annotation(x=14, y=110, yanchor="top", yshift=-6,
+    # la grande hydraulique (déjà dans la pile) est donné juste dessous. L'écart de
+    # corps (46 / 17 / 15) fait la hiérarchie de lecture ; la qualification reste
+    # lisible, elle ne devient pas une mention en bas de casse.
+    fig.add_annotation(x=14, y=100, yanchor="bottom", yshift=52, showarrow=False,
+                       text=f"<b>{vert14:.0f} %</b>",
+                       font=dict(family=SANS, size=46, color=PALETTE["ink"]))
+    fig.add_annotation(x=14, y=100, yanchor="bottom", yshift=30, showarrow=False,
+                       text="renouvelable décentralisé à 14 h",
+                       font=dict(family=SANS, size=17, color=PALETTE["renouv"]))
+    fig.add_annotation(x=14, y=100, yanchor="bottom", yshift=8, showarrow=False,
                        text=f"{tot14:.0f} % avec la grande hydraulique",
-                       showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=3,
-                       font=dict(family=SANS, size=16, color=PALETTE["ink"]))
+                       font=dict(family=SANS, size=15, color=PALETTE["ink_soft"]))
     fig.update_layout(
         title=dict(text="L'heure la plus verte pour consommer en Corse"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
-        yaxis=dict(title="Part du mix (%)", range=[0, 122], ticksuffix=" %"),
-        # Marge haute élargie : à 4 entrées la légende se replie sur 2 rangées en
-        # iframe étroite — il lui faut sa bande entière sous le sous-titre.
-        legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
-        margin=dict(t=210, b=170, l=116, r=56),
-        height=690,
+        # L'axe monte à 150 pour dégager la bande d'en-tête, mais ne porte de graduation
+        # que jusqu'à 100 : la pile fait 100 % du courant, pas davantage.
+        yaxis=dict(title="Part du mix (%)", range=[0, 150], ticksuffix=" %",
+                   tickvals=[0, 25, 50, 75, 100]),
+        # Légende SOUS le graphique (23/07/2026), comme T6 et pour la même raison : à
+        # 4 entrées longues elle se replie sur 4 rangées dès 620 px de large. Au-dessus,
+        # elle grandissait vers le haut et recouvrait titre et sous-titre — défaut présent
+        # depuis l'origine, vu en rendant la figure à la largeur d'une iframe étroite.
+        # En dessous, elle grandit vers le bas dans une marge qui l'absorbe ; le pied de
+        # source est repoussé d'autant (pied_decalage_px à l'export). VERTICALE, et c'est
+        # le point : à l'horizontale sa hauteur dépend de la largeur de l'iframe (1 rangée
+        # à 900 px, 4 à 620), alors que le décalage du pied, lui, est fixe — donc soit un
+        # trou béant sur écran large, soit un chevauchement sur écran étroit. En colonne,
+        # sa hauteur est constante et le pied se cale une fois pour toutes.
+        legend=dict(orientation="v", y=-0.22, yanchor="top", x=0),
+        margin=dict(t=150, b=330, l=116, r=56),
+        height=820,
     )
     return fig
 
@@ -315,11 +350,13 @@ def fig_t5_ecretement() -> go.Figure:
         # 2016 en haut : la lecture descend le temps, et le bas (récent) fonce.
         yaxis=dict(autorange="reversed", showgrid=False, ticks=""),
         xaxis=dict(showgrid=False, ticks=""),
-        # Pied à quatre lignes (source repliée en 2 + note en 2) : marge basse
-        # élargie ET hauteur relevée, sinon la zone de tracé rétrécit, l'axe des
-        # années s'éclaircit et le pied remonte dans les libellés de mois.
-        margin=dict(t=144, b=200, l=116, r=56),
-        height=690,
+        # Pied à SIX lignes depuis le repli automatique (23/07/2026) : la note tenait
+        # sur 2 lignes déclarées, mais de 89 et 120 caractères — soit ~81 caractères
+        # rognés en silence. Marge basse élargie ET hauteur relevée d'autant, sinon la
+        # zone de tracé rétrécit, l'axe des années s'éclaircit et le pied remonte dans
+        # les libellés de mois.
+        margin=dict(t=144, b=250, l=116, r=56),
+        height=740,
     )
     return fig
 
@@ -390,8 +427,96 @@ def fig_t6_corse_sardaigne() -> go.Figure:
         # La marge basse absorbe la légende même repliée sur 3 rangées (iframe étroite) ;
         # le pied est abaissé d'autant via pied_y à l'export.
         legend=dict(orientation="h", y=-0.10, yanchor="top", x=0, traceorder="normal"),
-        margin=dict(t=144, b=260, l=116, r=56),
-        height=660,
+        # Marge basse encore élargie (23/07/2026) : la note faisait 2 lignes déclarées de
+        # 125 et 119 caractères, dont ~139 étaient rognés en silence. Repliée, elle en
+        # occupe 4, et le pied passe à 7 lignes. Hauteur relevée d'autant pour conserver
+        # la même zone de tracé (256 px).
+        margin=dict(t=144, b=350, l=116, r=56),
+        height=750,
+    )
+    return fig
+
+
+# --- Titre 7 : quand l'hydraulique baisse, le thermique prend le relais --------
+# Bascule INTERANNUELLE (parts du mix, années pleines 2019-2024) : une année à faible
+# hydraulique est une année à fort thermique. On MESURE la bascule hydro <-> thermique ;
+# la cause « sécheresse » est ATTRIBUÉE (A. Orsini, docs/SOURCES_LOCALES.md fiche 2),
+# pas affirmée — aucune mesure de pluie ici, et les barrages de montagne intègrent
+# plusieurs mois de stock. Verrouillé par test_t7_hydro_secheresse.
+def fig_t7_hydro_secheresse() -> go.Figure:
+    con = _con()
+    df = con.execute(
+        f"""SELECT extract(year from date_heure)::INTEGER AS annee,
+              100.0*sum(hydraulique_mw)/sum(production_totale_mw) AS hydro,
+              100.0*sum(thermique_mw)/sum(production_totale_mw)   AS thermique
+            FROM '{COURBE}' WHERE extract(year from date_heure) BETWEEN 2019 AND 2024
+            GROUP BY 1 ORDER BY 1"""
+    ).df()
+    # Invariant qui fonde le titre : d'une année à l'autre, part hydraulique et part
+    # thermique varient à l'OPPOSÉ (anticorrélation forte). Vérifié sur la donnée avant
+    # de figer le message ; sinon le récit « moins d'eau = plus de moteurs » tombe.
+    r = float(df["hydro"].corr(df["thermique"]))
+    if r > -0.8:
+        raise ValueError(f"T7 : corrélation hydro/thermique = {r:+.2f} (attendu forte négative) — titre à revoir.")
+    an_sec = int(df.loc[df["hydro"].idxmin(), "annee"])  # année la plus pauvre en hydraulique
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df["annee"], y=df["thermique"], name="Thermique", mode="lines+markers+text",
+        line=dict(color=PALETTE["thermique"], width=2.8), marker=dict(size=8),
+        text=[f"{v:.0f} %" for v in df["thermique"]], textposition="top center",
+        textfont=dict(family=SANS, size=15, color=PALETTE["thermique"]),
+        hovertemplate="Thermique %{x} : %{y:.0f} %<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=df["annee"], y=df["hydro"], name="Grande hydraulique", mode="lines+markers+text",
+        line=dict(color=PALETTE["hydro"], width=2.8), marker=dict(size=8),
+        text=[f"{v:.0f} %" for v in df["hydro"]], textposition="bottom center",
+        textfont=dict(family=SANS, size=15, color=PALETTE["hydro"]),
+        hovertemplate="Grande hydraulique %{x} : %{y:.0f} %<extra></extra>",
+    ))
+    # Repère sur l'année la plus pauvre en hydraulique : le creux d'eau répond au pic de
+    # moteurs. Étiquette au-dessus de la pile (yref haut), pas sur les tracés.
+    fig.add_vline(x=an_sec, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
+    fig.add_annotation(
+        x=an_sec, y=57, text=f"<b>{an_sec} · hydraulique au plus bas</b>",
+        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
+        font=dict(family=SANS, size=16, color=PALETTE["accent"]),
+    )
+    fig.update_layout(
+        title=dict(text="Quand l'hydraulique baisse, le thermique prend le relais"),
+        xaxis=dict(title="Année", dtick=1),
+        yaxis=dict(title="Part du mix (%)", range=[0, 60], ticksuffix=" %"),
+        legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
+        margin=dict(t=180, b=150, l=116, r=56),
+        height=580,
+    )
+    return fig
+
+
+# --- Cadrage : le chiffre du fil rouge (dépendance aux câbles) ----------------
+# Carton-chiffre d'ouverture : une seule donnée, énorme. Le nombre est CALCULÉ (pas
+# de 27,8 en dur) et daté par export_html, comme le reste ; verrouillé par
+# test_etude_dependance_imports. Sert le fil rouge « autonomie électrique » avant le
+# premier graphique — la seule électricité pleinement insulaire est le RESTE.
+def fig_cadrage_dependance() -> go.Figure:
+    con = _con()
+    part = con.execute(
+        f"""SELECT 100.0*sum(importations_mw)/sum(production_totale_mw)
+            FROM '{COURBE}' WHERE extract(year from date_heure) BETWEEN 2019 AND 2024"""
+    ).fetchone()[0]
+    fig = go.Figure(go.Indicator(
+        mode="number", value=part,
+        # valueformat + separators : une décimale et virgule française -> « 27,8 % »
+        # (le défaut Plotly donnerait « 27.82 % »), aligné sur la prose de l'étude.
+        number=dict(suffix=" %", valueformat=".1f",
+                    font=dict(family=SANS, size=92, color=PALETTE["accent"])),
+        domain=dict(x=[0, 1], y=[0, 1]),
+    ))
+    fig.update_layout(
+        title=dict(text="Plus du quart de l'électricité corse vient d'ailleurs"),
+        separators=", ",  # décimale = virgule, milliers = espace
+        margin=dict(t=150, b=175, l=56, r=56), height=430,
     )
     return fig
 
@@ -421,6 +546,11 @@ def main() -> int:
         print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_AVERTIR_H} h) — "
               "avertissement affiché sur le visuel.")
     export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix, sous_titre=sous_titre_t1)
+    export_html(fig_cadrage_dependance(), "cadrage_dependance", SRC_HIST, d_hist,
+                sous_titre="Ce qui arrive par les câbles sous-marins, depuis l'Italie via la"
+                           "<br>Sardaigne — moyenne 2019-2024. Le reste, produit sur l'île,"
+                           "<br>est en partie thermique à combustible importé (voir « 14 heures »).",
+                note=NOTE_ESTIME)
     export_html(fig_t2_demande_mensuelle(), "t2_demande_mensuelle", SRC_HIST, d_hist,
                 sous_titre="Demande moyenne mois par mois — Corse, 2019-2024",
                 note=NOTE_ESTIME)
@@ -433,10 +563,20 @@ def main() -> int:
                 sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
                            "2019-2024. Interconnexions = câbles SACOI (Italie via la Sardaigne).",
                 note=NOTE_ESTIME)
+    # Garde de lecture (23/07/2026) : le grand chiffre vert peut se lire à l'envers par
+    # qui ne regarde que les images. Le sous-titre ferme la mauvaise lecture, comme le
+    # TITRE de T3 le fait pour l'été. Fait verrouillé par test_etude_thermique_premier.
+    # Le sous-titre reste à 2 lignes (contrainte de légende, cf. fig_t4_heure_verte) :
+    # la garde prend la place de la définition, qui descend en pied — le terme, lui,
+    # reste qualifié SUR la figure par l'étiquette du grand chiffre.
     export_html(fig_t4_heure_verte(), "t4_heure_verte", SRC_HIST, d_hist,
                 sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024."
-                           "<br>Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro.",
-                note=NOTE_ESTIME)
+                           "<br>À aucune heure le renouvelable décentralisé ne passe devant le thermique.",
+                # Un seul <br>, entre les deux phrases : le repli en lignes est fait par
+                # export_html (replier_pied), plus à la main figure par figure.
+                note="Renouvelable décentralisé = solaire, éolien, bioénergies, petite "
+                     "hydraulique.<br>" + NOTE_ESTIME,
+                pied_decalage_px=-200)
     export_html(fig_t5_ecretement(), "t5_ecretement_solaire", SRC_ECRET,
                 date_collecte("edf_ecretement_corse"),
                 sous_titre="Heures de limitation ou de déconnexion imposées au photovoltaïque par "
@@ -445,6 +585,13 @@ def main() -> int:
                 note="81 % des heures de bridage ont lieu de mars à juin. Même au pire mois "
                      "(mai 2020 : 141 h),<br>90,5 % de la production ENR intermittente a été "
                      "acceptée — l'écrêtement borne une durée, pas l'énergie perdue du réseau.")
+    export_html(fig_t7_hydro_secheresse(), "t7_hydro_secheresse", SRC_HIST, d_hist,
+                sous_titre="Part de chaque filière dans le mix électrique corse, année par "
+                           "année — Corse 2019-2024.",
+                note="La part hydraulique varie du simple à près du double selon les années ; le "
+                     "thermique prend le relais (elles varient à l'opposé, corrélation −0,95)."
+                     "<br>Le lien avec la sécheresse est une hypothèse extérieure, pas une mesure "
+                     "de ce graphique. " + NOTE_ESTIME)
     if Path(SARD).exists():
         export_html(fig_t6_corse_sardaigne(), "t6_corse_sardaigne",
                     "EDF (Corse) & ENTSO-E / Terna (Sardaigne)",
@@ -458,9 +605,9 @@ def main() -> int:
                          "fois plus d'éolien. La Corse compense par la grande hydraulique et les "
                          "câbles. Corse estimée à partir de 2021.",
                     pied_decalage_px=-170)
-        print("\n7 visuels exportés dans outputs/")
+        print("\n8 visuels + 1 cadrage exportés dans outputs/")
     else:
-        print("\n6 visuels exportés dans outputs/ (t6 Sardaigne sauté — parquet ENTSO-E absent)")
+        print("\n7 visuels + 1 cadrage exportés dans outputs/ (t6 Sardaigne sauté — parquet ENTSO-E absent)")
     return code
 
 

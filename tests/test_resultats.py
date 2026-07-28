@@ -247,6 +247,40 @@ def test_etude_thermique_socle_et_aube(con):
 
 
 @besoin_courbe
+def test_etude_thermique_premier(con):
+    """Étude/T4 : ce que « la plus verte » veut dire, mesuré. Le thermique ne recule que
+    de près d'un cinquième entre son maximum et 14 h, aucune heure ne le voit dépassé par
+    le renouvelable décentralisé, et le total avec les barrages ne passe devant qu'entre
+    11 h et 16 h. Verrouille aussi la garde de lecture du sous-titre de la figure."""
+    df = con.execute(
+        f"""SELECT heure_locale,
+              100*sum(enr_distrib_mw)/sum(production_totale_mw) AS decentralise,
+              100*sum(hydraulique_mw)/sum(production_totale_mw) AS hydro,
+              100*sum(thermique_mw)/sum(production_totale_mw)   AS thermique
+            FROM '{COURBE.as_posix()}' GROUP BY 1"""
+    ).df()
+    depasse = sorted(df.loc[df["decentralise"] > df["thermique"], "heure_locale"].astype(int))
+    assert not depasse, (
+        f"le renouvelable décentralisé passe devant le thermique aux heures {depasse} — "
+        "l'étude et le sous-titre de T4 écrivent qu'il ne le fait à aucune"
+    )
+    large = sorted(
+        df.loc[df["decentralise"] + df["hydro"] > df["thermique"], "heure_locale"].astype(int)
+    )
+    assert large == [11, 12, 13, 14, 15, 16], (
+        f"total renouvelable devant le thermique aux heures {large} — "
+        "l'étude écrit « entre 11 heures et 16 heures »"
+    )
+    haut = float(df["thermique"].max())
+    p14 = float(df.loc[df["heure_locale"] == 14, "thermique"].iloc[0])
+    recul = 100 * (haut - p14) / haut
+    assert recul == pytest.approx(18, abs=2), (
+        f"recul relatif du thermique jusqu'à 14 h = {recul:.0f} % — "
+        "l'étude écrit « près d'un cinquième de moins »"
+    )
+
+
+@besoin_courbe
 def test_etude_soleil_remplace_les_cables(con):
     """Étude/T4 (encadré) : de 9 h à 14 h, les imports reculent de ~80 à ~44 MW
     pendant que le thermique ne bouge pas."""
@@ -318,6 +352,54 @@ def test_etude_ecretement_progression(con):
     ).fetchone()
     assert d16 == pytest.approx(54, abs=0.5) and d23 == pytest.approx(356, abs=0.5), (
         f"bridage annuel = {d16:.0f} h (2016) → {d23:.0f} h (2023) — l'étude écrit 54 → 356"
+    )
+
+
+@besoin_courbe
+def test_etude_dependance_imports(con):
+    """Cadrage / T6 : « plus du quart » de l'électricité corse est importée — 27,8 % de la
+    production totale en moyenne 2019-2024 ; et « en moyenne » car l'île exporte aussi
+    (607 heures, à peine plus de 1 % du temps). Publié en sections 1 et 6 et au pied de T6."""
+    part, exp = con.execute(
+        f"""SELECT 100.0*sum(importations_mw)/sum(production_totale_mw),
+                   count(*) FILTER (WHERE importations_mw < 0)
+            FROM '{COURBE.as_posix()}'
+            WHERE extract(year from date_heure) BETWEEN 2019 AND 2024"""
+    ).fetchone()
+    assert part == pytest.approx(27.8, abs=0.4), (
+        f"part importée = {part:.1f} % — l'étude écrit « 27,8 % »"
+    )
+    assert part > 25, "part importée sous le quart — l'étude écrit « plus du quart »"
+    assert exp == pytest.approx(607, abs=5), (
+        f"{exp} heures d'export — l'étude écrit « 607 heures, à peine plus de 1 % du temps »"
+    )
+
+
+@besoin_courbe
+def test_t7_hydro_secheresse(con):
+    """T7 : d'une année à l'autre, part hydraulique et part thermique varient à l'opposé
+    (corrélation forte négative) ; l'année la plus pauvre en hydraulique (2022) est aussi
+    celle du thermique le plus haut, et l'amplitude interannuelle du thermique passe la
+    dizaine de points. Chiffres publiés au pied de la figure."""
+    df = con.execute(
+        f"""SELECT extract(year from date_heure)::INTEGER AS annee,
+              100.0*sum(hydraulique_mw)/sum(production_totale_mw) AS hydro,
+              100.0*sum(thermique_mw)/sum(production_totale_mw)   AS therm
+            FROM '{COURBE.as_posix()}'
+            WHERE extract(year from date_heure) BETWEEN 2019 AND 2024
+            GROUP BY 1 ORDER BY 1"""
+    ).df()
+    assert len(df) == 6, f"{len(df)} années pleines retenues (attendu 6, 2019-2024)"
+    r = float(df["hydro"].corr(df["therm"]))
+    assert r <= -0.9, f"corrélation hydro/thermique = {r:+.2f} — la figure écrit « −0,95 »"
+    an_hydro_min = int(df.loc[df["hydro"].idxmin(), "annee"])
+    an_therm_max = int(df.loc[df["therm"].idxmax(), "annee"])
+    assert an_hydro_min == an_therm_max == 2022, (
+        f"hydraulique min en {an_hydro_min}, thermique max en {an_therm_max} — la figure pointe 2022"
+    )
+    ampl = float(df["therm"].max() - df["therm"].min())
+    assert ampl >= 10, (
+        f"amplitude interannuelle du thermique = {ampl:.1f} pts (attendu ≥ 10 — l'année sèche pèse)"
     )
 
 
