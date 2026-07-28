@@ -4,8 +4,9 @@ le garde-fou de validation refuse ce qui n'est pas la donnée attendue."""
 import pytest
 import yaml
 
-from demonstrateur.config import ROOT, SOURCES_FILE
+from demonstrateur.config import ETUDE_SOURCE, ROOT, SOURCES_FILE
 from demonstrateur.fetch import _expanser_env, _masquer, _valider
+from demonstrateur.figures import FRAICHEUR_AVERTIR_H, FRAICHEUR_BLOQUER_H
 from demonstrateur.viz import LARGEUR_PIED, replier_pied
 
 
@@ -116,3 +117,18 @@ def test_repli_du_pied_respecte_les_coupures_voulues():
     assert replier_pied(texte).split("<br>") == texte.split("<br>"), (
         "deux lignes déjà courtes doivent traverser le repli intactes"
     )
+
+
+def test_fraicheur_seuils_prose():
+    """L'encadré « fraîcheur » de l'étude cite les deux seuils en clair : code et prose
+    doivent bouger ensemble. Changer un seuil sans mettre à jour le texte (ou l'inverse)
+    ferait mentir la garde « en ce moment » sur sa propre promesse. On borne la recherche
+    à l'encadré — « 24 heures » apparaît aussi, sans lien, dans le chapitre du surcroît."""
+    texte = ETUDE_SOURCE.read_text(encoding="utf-8")
+    debut = texte.index("La fraîcheur est surveillée")
+    encadre = texte[debut:].split("\n\n", 1)[0]
+    for seuil in (FRAICHEUR_AVERTIR_H, FRAICHEUR_BLOQUER_H):
+        assert f"{seuil} heures" in encadre, (
+            f"seuil de fraîcheur {seuil} h absent de l'encadré « fraîcheur » de docs/etude.md — "
+            "code et prose ont divergé"
+        )

@@ -1,5 +1,5 @@
 # Rafraîchissement planifié du pipeline : fetch → prepare → figures → verrous → commit.
-# Garde frais le mix temps réel (T1 « en ce moment » avertit > 24 h et bloque > 48 h) :
+# Garde frais le mix temps réel (T1 « en ce moment » avertit > 12 h et bloque > 24 h) :
 # seuls outputs/ et data/raw/_manifest.json — déjà versionnés — sont commités.
 # Ne tourne que depuis la branche par défaut (règle GitHub pour les crons).
 
@@ -70,7 +70,7 @@ jobs:
 
       - name: Figures
         id: figures
-        # Code 1 = relevé > 48 h : le visuel T1 dégradé (affichage suspendu) doit être
+        # Code 1 = relevé > 24 h : le visuel T1 dégradé (affichage suspendu) doit être
         # publié quand même — c'est lui qui dit la vérité au lecteur.
         continue-on-error: true
         run: python -m demonstrateur.figures

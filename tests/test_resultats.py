@@ -11,6 +11,7 @@ import duckdb
 import pytest
 
 from demonstrateur.config import DATA_PROCESSED, DATA_RAW
+from demonstrateur.figures import FRAICHEUR_BLOQUER_H
 
 COURBE = DATA_PROCESSED / "edf_courbe_corse.parquet"
 MIX = DATA_PROCESSED / "edf_mix_corse.parquet"
@@ -187,13 +188,14 @@ def test_sardaigne_charbon_igcc():
 
 @besoin_mix
 def test_fraicheur_temps_reel(con):
-    """Le dernier relevé du mix doit avoir moins de 48 h (seuil de blocage « en ce moment »)."""
+    """Le dernier relevé du mix doit tenir sous le seuil de blocage « en ce moment »
+    (FRAICHEUR_BLOQUER_H) — sinon la source live est trop vieille pour être publiée."""
     age_h = con.execute(
         f"""SELECT extract(epoch FROM (now() - max("date")))/3600.0 FROM '{MIX.as_posix()}'"""
     ).fetchone()[0]
-    assert age_h <= 48, (
-        f"dernier relevé vieux de {age_h:.0f} h (> 48 h) — relancer fetch-data puis prepare "
-        "avant toute publication « en ce moment »"
+    assert age_h <= FRAICHEUR_BLOQUER_H, (
+        f"dernier relevé vieux de {age_h:.0f} h (> {FRAICHEUR_BLOQUER_H} h) — relancer "
+        "fetch-data puis prepare avant toute publication « en ce moment »"
     )
 
 

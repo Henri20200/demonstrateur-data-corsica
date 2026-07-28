@@ -37,8 +37,8 @@
   charbon là où la Corse tient au fioul et à l'eau de ses montagnes.
 
 Tout ce qui suit repose sur des données publiques d'EDF et d'ENTSO-E, rafraîchies
-chaque semaine. Chaque graphique porte sa source et sa date ; chaque chiffre est
-revérifié à chaque mise à jour.
+plusieurs fois par jour. Chaque graphique porte sa source et sa date ; chaque chiffre
+est revérifié à chaque mise à jour.
 
 ## 2. Pourquoi cette étude
 
@@ -93,8 +93,9 @@ seul document, chacun s'arrête où il veut.
 {{visuel:t1_soleil_live}}
 
 Cette jauge est le seul visuel « en direct » de l'étude : elle affiche la part du
-soleil dans l'électricité corse au dernier relevé, actualisé toutes les quinze
-minutes par EDF. Un après-midi d'été ensoleillé, elle dépasse souvent le tiers ;
+soleil dans l'électricité corse au dernier relevé. EDF publie au pas de quinze
+minutes, et notre chaîne va le rechercher plusieurs fois par jour — la jauge a donc
+rarement plus de quelques heures. Un après-midi d'été ensoleillé, elle dépasse souvent le tiers ;
 une fois la nuit tombée, elle revient à zéro — c'est le même système que racontent
 les chapitres suivants, vu depuis l'instant présent.
 
@@ -111,10 +112,11 @@ jauge est haute, c'est le moment.
 > les deux est resté sous les deux points (fenêtre de deux semaines examinée en
 > juillet 2026).
 >
-> **La fraîcheur est surveillée, pas supposée.** Au-delà de 24 heures sans relevé,
-> la figure affiche un avertissement ; au-delà de 48 heures, elle renonce
-> d'elle-même au « en ce moment » et se dégrade en « au dernier relevé du… ». Une
-> donnée en direct qui ne dit pas son âge ne mérite pas votre confiance.
+> **La fraîcheur est surveillée, pas supposée.** La source est rafraîchie plusieurs
+> fois par jour ; au-delà de 12 heures sans relevé — un cycle manqué —, la figure
+> affiche un avertissement ; au-delà de 24 heures, elle renonce d'elle-même au « en ce
+> moment » et se dégrade en « au dernier relevé du… ». Une donnée en direct qui ne dit
+> pas son âge ne mérite pas votre confiance.
 
 ### Au fil de la journée
 
@@ -394,8 +396,8 @@ sans jargon.
    bonne pratique qu'on essaie de tenir : il est câblé — une figure sans source ne
    peut pas exister ici.
 
-**Le rafraîchissement est automatique.** La chaîne complète se relance chaque
-semaine, sans intervention : données en temps réel re-téléchargées, visuels
+**Le rafraîchissement est automatique.** La chaîne complète se relance plusieurs
+fois par jour, sans intervention : données en temps réel re-téléchargées, visuels
 regénérés, manifeste réécrit. Si une source échoue, sa version précédente est
 conservée telle quelle — jamais de fichier à moitié remplacé.
 
@@ -416,7 +418,7 @@ pas relevé une fois pour toutes.
 | Production sarde par filière | ENTSO-E (plateforme de transparence des réseaux européens) | 2019-2024 | CC-BY 4.0 |
 
 La date de collecte, elle, vit au pied de chaque visuel — elle avance d'elle-même
-avec le rafraîchissement hebdomadaire.
+à chaque rafraîchissement automatique.
 
 ## 6. Définitions & limites
 

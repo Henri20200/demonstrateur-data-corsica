@@ -4,9 +4,12 @@ Chaque figure : une question du BRIEF, un périmètre écrit sur la figure, la c
 Pacioli (via viz.export_html). Usage :
     python -m demonstrateur.figures
 
-Fraîcheur du temps réel (décision du 19/07/2026, post-audit) : au-delà de 24 h,
-T1 porte un avertissement visible ; au-delà de 48 h, le titre « en ce moment »
-est bloqué (titre dégradé en « au dernier relevé ») et le run termine en code 1.
+Fraîcheur du temps réel : la source live est rafraîchie ~toutes les 6 h par un cron
+dédié (décision du 28/07/2026 : « vraiment live » plutôt que snapshot hebdomadaire).
+Les seuils sont calés sur cette cadence — au-delà de 12 h (un cycle manqué) T1 porte un
+avertissement visible ; au-delà de 24 h (plusieurs cycles) le titre « en ce moment » est
+bloqué (dégradé en « au dernier relevé ») et le run termine en code 1. Hérite de la garde
+« dégrader proprement » posée le 19/07/2026 (post-audit) ; seuls les seuils ont changé.
 """
 
 from __future__ import annotations
@@ -35,9 +38,12 @@ SRC_ECRET = "EDF — Open Data Groupe EDF (limitations sûreté système)"
 # via export_html) ; l'explication complète est dans docs/RECONNAISSANCE.md.
 NOTE_ESTIME = "Données EDF estimées à partir de 2021 (2019-2020 validées)."
 
-# Seuils de fraîcheur du temps réel (heures) — cf. docstring du module.
-FRAICHEUR_AVERTIR_H = 24
-FRAICHEUR_BLOQUER_H = 48
+# Seuils de fraîcheur du temps réel (heures) — cf. docstring du module. Calés sur la
+# cadence du cron live (~6 h) : avertir dès un cycle manqué, bloquer « en ce moment »
+# quand plusieurs l'ont été. Le texte de l'encadré « fraîcheur » de docs/etude.md reprend
+# ces deux nombres — verrouillé par test_fraicheur_seuils_prose (les deux doivent bouger ensemble).
+FRAICHEUR_AVERTIR_H = 12
+FRAICHEUR_BLOQUER_H = 24
 
 
 def _con():
