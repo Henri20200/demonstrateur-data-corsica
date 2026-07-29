@@ -4,12 +4,13 @@ Chaque figure : une question du BRIEF, un périmètre écrit sur la figure, la c
 Pacioli (via viz.export_html). Usage :
     python -m demonstrateur.figures
 
-Fraîcheur du temps réel : la source live est rafraîchie ~toutes les 6 h par un cron
-dédié (décision du 28/07/2026 : « vraiment live » plutôt que snapshot hebdomadaire).
-Les seuils sont calés sur cette cadence — au-delà de 12 h (un cycle manqué) T1 porte un
-avertissement visible ; au-delà de 24 h (plusieurs cycles) le titre « en ce moment » est
-bloqué (dégradé en « au dernier relevé ») et le run termine en code 1. Hérite de la garde
-« dégrader proprement » posée le 19/07/2026 (post-audit) ; seuls les seuils ont changé.
+Fraîcheur du temps réel : la source est rafraîchie ~toutes les 6 h par un cron dédié.
+T1 est un instantané HORODATÉ (le dernier relevé au moment du build), jamais « en ce
+moment » — une page statique ne peut pas revendiquer l'instant du lecteur (décision du
+29/07/2026). Les seuils, calés sur la cadence 6 h, graduent l'avertissement de péremption
+dans le sous-titre : au-delà de 12 h (un cycle manqué) il signale ; au-delà de 24 h il
+avertit franchement (donnée non représentative) et le run termine en code 1. Hérite de la
+garde « dégrader proprement » posée le 19/07/2026 (post-audit).
 """
 
 from __future__ import annotations
@@ -39,9 +40,9 @@ SRC_ECRET = "EDF — Open Data Groupe EDF (limitations sûreté système)"
 NOTE_ESTIME = "Données EDF estimées à partir de 2021 (2019-2020 validées)."
 
 # Seuils de fraîcheur du temps réel (heures) — cf. docstring du module. Calés sur la
-# cadence du cron live (~6 h) : avertir dès un cycle manqué, bloquer « en ce moment »
-# quand plusieurs l'ont été. Le texte de l'encadré « fraîcheur » de docs/etude.md reprend
-# ces deux nombres — verrouillé par test_fraicheur_seuils_prose (les deux doivent bouger ensemble).
+# cadence du cron (~6 h) : le sous-titre signale dès un cycle manqué (12 h) et avertit
+# franchement au-delà (24 h → run en échec). Le texte de l'encadré « fraîcheur » de
+# docs/etude.md reprend ces deux nombres — verrouillé par test_fraicheur_seuils_prose.
 FRAICHEUR_AVERTIR_H = 12
 FRAICHEUR_BLOQUER_H = 24
 
@@ -50,7 +51,7 @@ def _con():
     return duckdb.connect()
 
 
-# --- Titre 1 : « en ce moment, X % de soleil » -------------------------------
+# --- Titre 1 : jauge du soleil AU DERNIER RELEVÉ (instantané horodaté) --------
 def fig_t1_soleil() -> tuple[go.Figure, str, str, float]:
     con = _con()
     r = con.execute(
@@ -70,11 +71,14 @@ def fig_t1_soleil() -> tuple[go.Figure, str, str, float]:
         ),
         domain=dict(x=[0, 1], y=[0, 0.82]),
     ))
-    # Au-delà du seuil de blocage, l'affirmation « en ce moment » n'est plus tenable :
-    # titre dégradé (garde-fou 7 de RECONNAISSANCE.md — « dégrader proprement »).
-    titre = ("En ce moment, votre kWh corse est fait de <b>soleil</b>"
-             if age_h <= FRAICHEUR_BLOQUER_H
-             else "Au dernier relevé, votre kWh corse était fait de <b>soleil</b>")
+    # Page statique générée au build : la jauge montre le DERNIER relevé, jamais « en ce
+    # moment » — un instantané figé ne peut pas revendiquer l'instant du lecteur (décision
+    # du 29/07/2026). L'honnêteté est portée par l'HORODATAGE du sous-titre (« Relevé du
+    # … ») ; le titre ne fait plus que nommer la mesure — court, pour ne pas déborder de
+    # l'iframe à faible largeur. Le conseil « quand consommer » vit dans T4 (heure la plus
+    # verte, moyenne stable). L'âge sert encore à graduer l'avertissement de péremption
+    # dans le sous-titre (main), pas le titre.
+    titre = "La part du <b>soleil</b> dans votre courant corse"
     fig.update_layout(title=dict(text=titre), height=520)
     return fig, quand, statut, float(age_h)
 
@@ -550,12 +554,12 @@ def main() -> int:
     code = 0
 
     fig1, quand, statut, age_h = fig_t1_soleil()
-    sous_titre_t1 = f"Dernier relevé du {quand} (statut : {statut.lower()})"
+    sous_titre_t1 = f"Relevé du {quand} (statut : {statut.lower()})"
     if age_h > FRAICHEUR_BLOQUER_H:
-        sous_titre_t1 = ("⚠ Relevé de plus de 48 h : l'affichage « en ce moment » est "
-                         "suspendu. " + sous_titre_t1)
+        sous_titre_t1 = (f"⚠ Relevé de plus de {FRAICHEUR_BLOQUER_H} h : donnée trop "
+                         "ancienne pour être représentative. " + sous_titre_t1)
         print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_BLOQUER_H} h) — "
-              "titre « en ce moment » bloqué, visuel dégradé, run en échec.")
+              "avertissement fort de péremption, visuel dégradé, run en échec.")
         code = 1
     elif age_h > FRAICHEUR_AVERTIR_H:
         sous_titre_t1 = (f"⚠ Relevé de plus de {FRAICHEUR_AVERTIR_H} h — collecte à "

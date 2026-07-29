@@ -88,19 +88,20 @@ seul document, chacun s'arrête où il veut.
 
 #### Ce que produit l'île, là, tout de suite
 
-*Ouvrez la jauge : elle dit de quoi votre électricité est faite en ce moment.*
+*Ouvrez la jauge : de quoi le courant corse était fait au dernier relevé en date.*
 
 {{visuel:t1_soleil_live}}
 
-Cette jauge est le seul visuel « en direct » de l'étude : elle affiche la part du
-soleil dans l'électricité corse au dernier relevé. EDF publie au pas de quinze
-minutes, et notre chaîne va le rechercher plusieurs fois par jour — la jauge a donc
-rarement plus de quelques heures. Un après-midi d'été ensoleillé, elle dépasse souvent le tiers ;
-une fois la nuit tombée, elle revient à zéro — c'est le même système que racontent
-les chapitres suivants, vu depuis l'instant présent.
+Cette jauge est l'instantané le plus frais de l'étude : elle affiche la part du
+soleil dans l'électricité corse au dernier relevé en date, horodaté sous l'image. EDF
+publie au pas de quinze minutes, et notre chaîne va le rechercher plusieurs fois par
+jour — la jauge a donc rarement plus de quelques heures. Un après-midi d'été ensoleillé,
+elle dépasse souvent le tiers ; une fois la nuit tombée, elle revient à zéro — le même
+système que racontent les chapitres suivants, saisi à un instant.
 
-Le réflexe à prendre : un coup d'œil avant de lancer ce qui peut attendre. Si la
-jauge est haute, c'est le moment.
+Un coup d'œil pour rendre le système tangible. Mais pour savoir *quand* décaler ce
+qui peut l'être, ne vous fiez pas à cette seule photo : le rythme fiable — l'heure la
+plus verte — se lit au chapitre « 14 heures », sur six ans de moyennes.
 
 > **Pour aller plus loin — ce que compte exactement la jauge.** Le chiffre reprend
 > la convention d'EDF pour le renouvelable « distribué » en direct : soleil, vent,
@@ -113,10 +114,9 @@ jauge est haute, c'est le moment.
 > juillet 2026).
 >
 > **La fraîcheur est surveillée, pas supposée.** La source est rafraîchie plusieurs
-> fois par jour ; au-delà de 12 heures sans relevé — un cycle manqué —, la figure
-> affiche un avertissement ; au-delà de 24 heures, elle renonce d'elle-même au « en ce
-> moment » et se dégrade en « au dernier relevé du… ». Une donnée en direct qui ne dit
-> pas son âge ne mérite pas votre confiance.
+> fois par jour ; au-delà de 12 heures sans relevé — un cycle manqué —, le sous-titre
+> le signale ; au-delà de 24 heures, il avertit franchement que la donnée n'est plus
+> représentative. Un instantané qui ne dit pas son âge ne mérite pas votre confiance.
 
 ### Au fil de la journée
 
