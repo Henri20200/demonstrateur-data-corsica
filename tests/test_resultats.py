@@ -403,13 +403,62 @@ def test_t7_hydro_secheresse(con):
     assert ampl >= 10, (
         f"amplitude interannuelle du thermique = {ampl:.1f} pts (attendu ≥ 10 — l'année sèche pèse)"
     )
+    # Bornes citées en prose (section 4), lues sur cette figure : l'année sèche et
+    # l'année arrosée s'opposent sur les deux filières à la fois.
+    th_haut, th_bas = round(float(df["therm"].max())), round(float(df["therm"].min()))
+    assert (th_haut, th_bas) == (48, 35), (
+        f"thermique de {th_bas} à {th_haut} % — la section 4 écrit « 48 % » (2022) et « 35 % » (2023)"
+    )
+    an_arrosee = int(df.loc[df["hydro"].idxmax(), "annee"])
+    assert an_arrosee == int(df.loc[df["therm"].idxmin(), "annee"]) == 2023, (
+        f"année la plus arrosée = {an_arrosee}, thermique min = "
+        f"{int(df.loc[df['therm'].idxmin(), 'annee'])} — la section 4 écrit « 35 % en 2023, la "
+        "plus arrosée »"
+    )
+
+
+@besoin_courbe
+def test_etude_hydro_trois_perimetres(con):
+    """Étude/section 4 et T6-T7 : l'hydraulique est citée sur trois bases différentes, et
+    c'est le piège de lecture le plus facile du document. Ce test fige les trois d'un coup,
+    pour qu'aucune ne dérive vers l'autre au fil des mises à jour :
+      - grande hydraulique / génération locale  = 25 % -> « un quart de ce que l'île produit »
+      - hydraulique totale  / génération locale = 28 % -> T6 (micro-hydraulique incluse)
+      - grande hydraulique / mix total          = 18 % -> base de T7, 12 à 22 % selon l'année
+    Écrire « près du quart » à côté d'une figure qui affiche 12-22 % n'est faux qu'à la
+    lecture : les deux nombres sont justes, sur des populations différentes. D'où la règle
+    du document — le périmètre est écrit à côté du chiffre, jamais sous-entendu."""
+    grande_loc, totale_loc, grande_mix = con.execute(
+        f"""WITH b AS (
+              SELECT sum(thermique_mw) th, sum(hydraulique_mw) hy,
+                     sum(coalesce(micro_hydraulique_mw, 0)) mh, sum(photovoltaique_mw) so,
+                     sum(eolien_mw) eo, sum(bioenergies_mw) bi, sum(production_totale_mw) tot
+              FROM '{COURBE.as_posix()}')
+            SELECT 100*hy/(th+hy+mh+so+eo+bi), 100*(hy+mh)/(th+hy+mh+so+eo+bi), 100*hy/tot
+            FROM b"""
+    ).fetchone()
+    assert grande_loc == pytest.approx(25.0, abs=0.7), (
+        f"grande hydraulique / génération locale = {grande_loc:.1f} % — la section 4 écrit "
+        "« un quart de ce que l'île produit elle-même »"
+    )
+    assert round(totale_loc) == 28, (
+        f"hydraulique totale / génération locale = {totale_loc:.1f} % — T6 écrit 28 %"
+    )
+    assert grande_mix == pytest.approx(18.1, abs=1.0), (
+        f"grande hydraulique / mix total = {grande_mix:.1f} % — base de T7 (12 à 22 % par an)"
+    )
+    assert grande_loc > totale_loc - 5 and grande_mix < grande_loc, (
+        "l'ordre des trois périmètres s'est inversé — la prose de la section 4 est à relire"
+    )
 
 
 @besoin_courbe
 @besoin_sard
 def test_etude_mix_generation_locale(con):
     """Étude/T6 : Corse (génération seule, convention de la figure) = 55/28/15/1 ;
-    Sardaigne : hydro 4 %, solaire 9 %."""
+    Sardaigne : hydro 4 %, solaire 9 %, éolien 15 %. Verrouille aussi la comparaison
+    des deux vents citée en prose — le rapport, pas seulement les deux arrondis, car
+    « quinze fois » se lit sur 15 %/1 % alors qu'il vaut 15,6 dans la donnée."""
     corse = con.execute(
         f"""WITH b AS (
               SELECT sum(thermique_mw) th,
@@ -423,10 +472,17 @@ def test_etude_mix_generation_locale(con):
         f"mix corse génération locale = {tuple(round(v, 1) for v in corse)} "
         "— l'étude écrit 55/28/15/1"
     )
-    hy_s, so_s = con.execute(
+    hy_s, so_s, eo_s = con.execute(
         f"""SELECT 100*sum(hydraulique_mw)/sum(production_totale_mw),
-                   100*sum(solaire_mw)/sum(production_totale_mw) FROM '{SARD.as_posix()}'"""
+                   100*sum(solaire_mw)/sum(production_totale_mw),
+                   100*sum(eolien_mw)/sum(production_totale_mw) FROM '{SARD.as_posix()}'"""
     ).fetchone()
     assert round(hy_s) == 4 and round(so_s) == 9, (
         f"Sardaigne hydro/solaire = {hy_s:.1f} % / {so_s:.1f} % — l'étude écrit 4 % et 9 %"
+    )
+    assert round(eo_s) == 15, f"éolien sarde = {eo_s:.1f} % — l'étude écrit « 15 % de vent »"
+    rapport = eo_s / corse[3]
+    assert rapport >= 15, (
+        f"le vent sarde ne pèse que {rapport:.1f} fois le vent corse — "
+        "l'étude écrit « plus de quinze fois la part corse »"
     )
