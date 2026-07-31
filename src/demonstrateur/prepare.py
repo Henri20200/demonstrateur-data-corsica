@@ -33,6 +33,7 @@ from .provenance import EmpreinteDivergente, empreinte, verifier
 MIX = (DATA_RAW / "edf_mix_temps_reel.csv").as_posix()
 COURBE = (DATA_RAW / "edf_courbe_charge_horaire.csv").as_posix()
 ECRET = (DATA_RAW / "edf_ecretement_corse.csv").as_posix()
+AIR = (DATA_RAW / "lcsqa_temps_reel.csv").as_posix()
 ENTSOE_ANNEES = range(2019, 2025)  # fenêtre alignée sur la courbe corse
 
 # Codes PSR ENTSO-E -> filières (mêmes libellés que la Corse, pour comparer).
@@ -326,6 +327,64 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
     print(f"[ok] {Path(dest).name} — {n:,} heures (Sardaigne {a}-{b}) — génération par filière")
 
 
+def air_corse_to_parquet(dest: str) -> None:
+    """Parquet des mesures d'air corses, extraites du flux E2 national.
+
+    Deux filtres, tous deux tranchés sur le brut et non supposés :
+
+    - **périmètre** `Organisme = 'QUALITAIR CORSE'`. Le brut est national (~48 000
+      lignes/jour) et l'île en fait ~960. On retient l'AASQA plutôt qu'un préfixe de
+      code de zone : c'est le critère que le producteur maîtrise.
+    - **validité > 0**. Audit du 30/07/2026 : les 18 lignes corses à `validité = -1`
+      portaient TOUTES une valeur NULL. Il n'y a donc rien à trancher entre zéro-vrai et
+      donnée manquante (cf. RECONNAISSANCE.md) — ces lignes ne contiennent aucune mesure.
+      Les valeurs 1 et 4 en portent toutes une.
+
+    Horodatage en **heure légale française**, établi le 31/07/2026 : le fichier du jour
+    publiait l'heure 19:00 alors qu'il était 20 h 07 locale (18 h 07 UTC) — un horodatage
+    UTC aurait été dans le futur. `heure_locale` se lit donc directement, sans conversion.
+
+    Aucune ligne corse = ÉCHEC : si le producteur renomme son organisme, il faut un arrêt
+    bruyant, jamais un Parquet vide qui se propagerait en figures muettes.
+    """
+    con = duckdb.connect()
+    src = f"read_csv_auto('{AIR}', delim=';', header=true)"
+    corse = f"(SELECT * FROM {src} WHERE \"Organisme\" = 'QUALITAIR CORSE')"
+    total, ecartees = con.execute(
+        f'SELECT count(*), count(*) FILTER (WHERE "validité" <= 0) FROM {corse}'
+    ).fetchone()
+    if not total:
+        raise ValueError(
+            "aucune mesure corse dans le flux E2 — le libellé d'organisme "
+            "'QUALITAIR CORSE' a-t-il changé ? (filtre à revoir avant de publier)"
+        )
+    con.execute(
+        f"""
+        COPY (
+          SELECT "Date de début"                       AS debut,
+                 extract('hour' FROM "Date de début")  AS heure_locale,
+                 "Zas"                                 AS zone,
+                 "code site"                           AS code_site,
+                 "nom site"                            AS station,
+                 "type d'implantation"                 AS implantation,
+                 "type d'influence"                    AS influence,
+                 "Polluant"                            AS polluant,
+                 "valeur"                              AS valeur,
+                 "unité de mesure"                     AS unite,
+                 "validité"                            AS validite
+          FROM {corse}
+          WHERE "validité" > 0
+          ORDER BY debut, station, polluant
+        ) TO '{dest}' (FORMAT PARQUET)
+        """
+    )
+    n, stations, especes = con.execute(
+        f"SELECT count(*), count(DISTINCT station), count(DISTINCT polluant) FROM '{dest}'"
+    ).fetchone()
+    print(f"[ok] {Path(dest).name} — {n:,} mesures ({stations} stations, {especes} polluants) "
+          f"— {ecartees} ligne(s) sans mesure écartée(s) sur {total:,}")
+
+
 # Plan de construction : chaque sortie Parquet, sa fonction de build et les sources brutes
 # qui la nourrissent. Sert à la fois à VÉRIFIER les bons bruts (prepare ne bâtit QUE depuis
 # des octets certifiés — AUD-01) et à écrire une lignée qui relie chaque sortie à ses entrées
@@ -339,13 +398,15 @@ _SORTIES_FIXES = [
 ]
 
 
-def _plan_construction(sardaigne_ok: bool) -> list:
+def _plan_construction(sardaigne_ok: bool, air_ok: bool = False) -> list:
     plan = list(_SORTIES_FIXES)
     if sardaigne_ok:
         plan.append((
             "entsoe_sardaigne.parquet", entsoe_sardaigne_to_parquet,
             [f"entsoe_sardaigne_{an}" for an in ENTSOE_ANNEES],
         ))
+    if air_ok:
+        plan.append(("air_corse.parquet", air_corse_to_parquet, ["lcsqa_temps_reel"]))
     return plan
 
 
@@ -455,13 +516,16 @@ def main() -> int:
     # Garde-fou AUD-01 : on VÉRIFIE tous les bruts AVANT de construire, on construit en
     # staging et on bascule d'un bloc, puis on écrit la lignée sortie -> entrées.
     sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES)
-    plan = _plan_construction(sardaigne_ok)
+    air_ok = Path(AIR).exists()
+    plan = _plan_construction(sardaigne_ok, air_ok)
     source_ids = [sid for _, _, sids in plan for sid in sids]
 
     entrees = _verifier_bruts(source_ids)
     sorties = construire(plan, entrees)
     if not sardaigne_ok:
         print("[=] entsoe_sardaigne : fichiers annuels absents (jeton ENTSO-E ?) — étape sautée.")
+    if not air_ok:
+        print("[=] lcsqa_temps_reel : brut absent — étape air sautée (lancer fetch-data).")
     _ecrire_lignee(entrees, sorties)
 
     print("\nPréparation terminée : data/processed/")

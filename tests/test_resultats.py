@@ -17,6 +17,7 @@ MIX = DATA_PROCESSED / "edf_mix_corse.parquet"
 ECRET = DATA_PROCESSED / "edf_ecretement_corse.parquet"
 SARD = DATA_PROCESSED / "entsoe_sardaigne.parquet"
 SARD_XML = DATA_RAW / "entsoe_sardaigne_2023.xml"
+AIR = DATA_PROCESSED / "air_corse.parquet"
 
 besoin_courbe = pytest.mark.skipif(
     not COURBE.exists(), reason="data/processed absent — lancer fetch-data puis prepare"
@@ -32,6 +33,9 @@ besoin_sard = pytest.mark.skipif(
 )
 besoin_sard_xml = pytest.mark.skipif(
     not SARD_XML.exists(), reason="XML Sardaigne absent — fetch-data (jeton ENTSO-E) requis"
+)
+besoin_air = pytest.mark.skipif(
+    not AIR.exists(), reason="parquet air absent — lancer fetch-data puis prepare"
 )
 
 
@@ -195,3 +199,59 @@ def test_fraicheur_temps_reel(con):
         f"dernier relevé vieux de {age_h:.0f} h (> 48 h) — relancer fetch-data puis prepare "
         "avant toute publication « en ce moment »"
     )
+
+
+@besoin_air
+def test_air_corse_ne_garde_que_des_mesures_valides(con):
+    """Le Parquet air ne contient que des lignes portant une VRAIE mesure.
+
+    Verrou du garde-fou tranché le 30/07/2026 : dans le flux E2, une ligne de validité
+    négative n'a pas de valeur du tout (elle n'est pas un zéro). Si un jour une valeur
+    NULL ou une validité <= 0 franchissait prepare, tout calcul en aval — moyenne
+    horaire, comptage de dépassements — serait faussé en silence.
+    """
+    sales, nulles = con.execute(
+        f"""SELECT count(*) FILTER (WHERE validite <= 0),
+                   count(*) FILTER (WHERE valeur IS NULL)
+            FROM '{AIR.as_posix()}'"""
+    ).fetchone()
+    assert sales == 0, f"{sales} ligne(s) de validité <= 0 ont franchi prepare"
+    assert nulles == 0, f"{nulles} valeur(s) NULL ont franchi prepare"
+
+
+@besoin_air
+def test_air_corse_couvre_le_gradient_ville_campagne(con):
+    """L'ozone doit être mesuré en ville ET à la campagne, sinon le titre-affirmation
+    « l'air de campagne n'est pas meilleur » (BRIEF_AIR) n'est pas adossé à la donnée.
+
+    Venaco est le SEUL site rural de l'île : sa disparition du flux ne doit pas passer
+    inaperçue. On vérifie aussi que les stations trafic restent hors du périmètre ozone
+    — près des moteurs, le monoxyde d'azote le détruit, et les mêler à une comparaison
+    ville/campagne mélangerait des populations non comparables.
+    """
+    src = AIR.as_posix()
+    implantations = {
+        r[0] for r in con.execute(
+            f"SELECT DISTINCT implantation FROM '{src}' WHERE polluant = 'O3'"
+        ).fetchall()
+    }
+    assert "Rurale régionale" in implantations, "plus aucune station rurale d'ozone (Venaco ?)"
+    assert implantations & {"Urbaine", "Périurbaine"}, "plus aucune station urbaine d'ozone"
+    trafic = con.execute(
+        f"SELECT count(*) FROM '{src}' WHERE polluant = 'O3' AND influence = 'Trafic'"
+    ).fetchone()[0]
+    assert trafic == 0, "de l'ozone apparaît sur une station trafic — périmètre à revoir"
+
+
+@besoin_air
+def test_air_corse_horodatage_en_heure_locale(con):
+    """L'heure locale se lit telle quelle : établi le 31/07/2026 (le flux publiait
+    19:00 alors qu'il était 20 h 07 locale, soit 18 h 07 UTC — impossible en UTC).
+
+    Verrou de bornes : une conversion de fuseau introduite par erreur en amont, ou un
+    changement de convention du producteur, décalerait toutes les conclusions horaires.
+    """
+    mini, maxi = con.execute(
+        f"SELECT min(heure_locale), max(heure_locale) FROM '{AIR.as_posix()}'"
+    ).fetchone()
+    assert 0 <= mini <= 23 and 0 <= maxi <= 23, f"heure_locale hors bornes ({mini}-{maxi})"
