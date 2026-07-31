@@ -86,9 +86,14 @@ seul document, chacun s'arrête où il veut.
 
 ## 3. Ce que disent les données
 
-<!-- PROVISOIRE (28/07) — carton d'ouverture du fil rouge (dépendance aux câbles).
-     Position et opportunité à confirmer ; retirer la balise ou la déplacer si non retenu. -->
+Une île n'est pas un système fermé. Avant de regarder de quoi le courant corse est
+fait au fil des heures, il faut dire d'où il arrive.
+
 {{visuel:cadrage_dependance}}
+
+Ce quart-là passe par les câbles sous-marins, depuis l'Italie via la Sardaigne. Le
+reste sort d'installations posées sur l'île. Ce qu'elles brûlent, en revanche, vient
+souvent d'ailleurs aussi — les chapitres qui suivent démêlent les deux.
 
 ### Maintenant
 
@@ -355,9 +360,6 @@ produit elle-même sort de ses barrages. Rapportée à tout le courant appelé, 
 compris — le périmètre du graphique ci-dessous —, cette part tombe entre 12 % et
 22 % selon les années.
 
-<!-- PROVISOIRE (28/07, arrimé à la prose le 30/07) — T7 illustre l'anticorrélation
-     eau/thermique année par année. Le texte le désigne désormais et reprend son
-     périmètre (mix total) : retirer cette balise si le placement est confirmé. -->
 {{visuel:t7_hydro_secheresse}}
 
 Les deux courbes varient à l'opposé, presque point pour point : quand l'eau manque,
