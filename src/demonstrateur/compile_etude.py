@@ -261,12 +261,21 @@ def _page(corps: str, titre: str) -> str:
     )
 
 
-def main() -> int:
-    md = ETUDE_SOURCE.read_text(encoding="utf-8")
-    corps = compiler(md)
+def rendre_page(md: str) -> str:
+    """Page HTML complète pour un markdown d'étude — exactement ce que `main` publie.
+
+    Sortie de `main` (31/07/2026) pour que les tests puissent comparer le fichier publié
+    à ce que produit la source, sans redupliquer l'assemblage : `outputs/etude.html` est
+    un fichier généré, mais il est versionné et déployé tel quel, donc une retouche à la
+    main y survivrait sans que rien ne l'attrape.
+    """
     m = re.search(r"^#\s+(.*)$", md, flags=re.M)
     titre = _echapper(m.group(1)) if m else "Étude"
-    ETUDE_HTML.write_text(_page(corps, titre), encoding="utf-8")
+    return _page(compiler(md), titre)
+
+
+def main() -> int:
+    ETUDE_HTML.write_text(rendre_page(ETUDE_SOURCE.read_text(encoding="utf-8")), encoding="utf-8")
     print(f"[ok] {ETUDE_HTML}")
     return 0
 
