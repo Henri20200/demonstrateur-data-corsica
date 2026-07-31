@@ -30,6 +30,13 @@ avec `${NOM}` (ex. jeton d'API ENTSO-E). L'expansion n'a lieu qu'au moment du
 téléchargement : le manifeste et les messages d'erreur ne contiennent JAMAIS la
 valeur du secret (seulement le gabarit `${NOM}`). Variable absente ou vide =
 échec de la source, sans interrompre les autres.
+
+Sources publiées par jour : certains producteurs (LCSQA) n'exposent aucune url
+stable, seulement un fichier par journée. L'url peut alors porter les jetons
+`{AAAA}`, `{MM}`, `{JJ}`, résolus par `date_url: hier | aujourdhui`. À l'inverse
+d'un secret, la date résolue EST écrite dans le manifeste : savoir quelle journée
+a été certifiée est le cœur de la traçabilité. `hier` est le choix sûr pour un
+fichier qui se remplit au fil des heures — il garantit 24 h complètes.
 """
 
 from __future__ import annotations
@@ -41,7 +48,7 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ET
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import httpx
@@ -52,6 +59,9 @@ from .provenance import empreinte
 
 _HTML_TYPES = {"text/html", "application/xhtml+xml"}
 _VAR_ENV_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
+# Accolades SIMPLES, distinctes du `${NOM}` des secrets : les deux syntaxes ne peuvent
+# pas se confondre, et un `%` d'url encodée (%2F) n'est jamais interprété au passage.
+_JETON_DATE_RE = re.compile(r"\{(AAAA|MM|JJ)\}")
 
 
 def _load_manifest() -> dict:
@@ -90,6 +100,34 @@ def _expanser_env(url: str) -> tuple[str, list[str]]:
         return val
 
     return _VAR_ENV_RE.sub(_rempl, url), secrets
+
+
+def _expanser_date(url: str, quand: str | None) -> str:
+    """Remplace les jetons `{AAAA}`/`{MM}`/`{JJ}` d'une url par la date demandée.
+
+    `quand` vaut « hier » (défaut sûr : la journée est close, donc complète) ou
+    « aujourdhui » (fichier encore en cours de remplissage). Les deux déclarations
+    doivent être cohérentes : un `date_url` sans jeton dans l'url, ou l'inverse, est
+    une erreur de configuration — pas un silence qui téléchargerait la mauvaise chose.
+    """
+    porte_jetons = bool(_JETON_DATE_RE.search(url))
+    if not porte_jetons and not quand:
+        return url
+    if not porte_jetons:
+        raise ValueError(
+            f"date_url={quand!r} déclaré mais l'url ne porte aucun jeton "
+            "{AAAA}/{MM}/{JJ} — déclaration incohérente"
+        )
+    if quand is None:
+        raise ValueError(
+            "l'url porte des jetons {AAAA}/{MM}/{JJ} mais date_url n'est pas déclaré "
+            "(attendu : hier | aujourdhui)"
+        )
+    if quand not in {"hier", "aujourdhui"}:
+        raise ValueError(f"date_url={quand!r} inconnu — attendu : hier | aujourdhui")
+    jour = date.today() - timedelta(days=1) if quand == "hier" else date.today()
+    valeurs = {"AAAA": f"{jour.year:04d}", "MM": f"{jour.month:02d}", "JJ": f"{jour.day:02d}"}
+    return _JETON_DATE_RE.sub(lambda m: valeurs[m.group(1)], url)
 
 
 def _masquer(texte: str, secrets: list[str]) -> str:
@@ -220,7 +258,9 @@ def _valider(dest: Path, meta: dict, content_type: str) -> None:
     if fmt in {"csv", "csv.gz"}:
         entete = _entete_csv(dest, gz=(fmt == "csv.gz"))
         delim = meta.get("delimiter", ",")
-        cols = [c.strip() for c in entete.split(delim)]
+        # .strip('"') : les producteurs qui citent leurs en-têtes ("Polluant";"valeur",
+        # cas du flux E2) ne doivent pas obliger à déclarer les guillemets dans sources.yaml.
+        cols = [c.strip().strip('"') for c in entete.split(delim)]
         if len(cols) < 2:
             raise ValueError(
                 f"en-tête non tabulaire avec le délimiteur {delim!r} : {entete[:80]!r}"
@@ -287,6 +327,15 @@ def main(argv: list[str] | None = None) -> int:
     failures = []
 
     for source_id, meta in sources.items():
+        # Date résolue AVANT tout le reste : contrairement à un secret, elle fait partie
+        # de l'IDENTITÉ de la donnée et doit donc figurer dans le manifeste. Une
+        # déclaration incohérente échoue ici, sans toucher aux autres sources.
+        try:
+            meta = {**meta, "url": _expanser_date(meta["url"], meta.get("date_url"))}
+        except ValueError as exc:
+            print(f"[!] {source_id} : ÉCHEC — {exc}")
+            failures.append(source_id)
+            continue
         dest = DATA_RAW / meta["filename"]
         already = manifest.get(source_id, {})
         glissant = bool(meta.get("glissant"))

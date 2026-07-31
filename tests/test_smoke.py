@@ -5,7 +5,7 @@ import pytest
 import yaml
 
 from demonstrateur.config import ROOT, SOURCES_FILE
-from demonstrateur.fetch import _expanser_env, _masquer, _valider
+from demonstrateur.fetch import _expanser_date, _expanser_env, _masquer, _valider
 
 
 def test_sources_yaml_est_valide():
@@ -14,6 +14,37 @@ def test_sources_yaml_est_valide():
     for source_id, meta in cfg["sources"].items():
         for champ in ("url", "filename", "licence", "producteur"):
             assert champ in meta, f"{source_id} : champ manquant '{champ}'"
+        # Les deux déclarations vont par paire : un jeton de date sans `date_url` (ou
+        # l'inverse) téléchargerait silencieusement la mauvaise journée.
+        _expanser_date(meta["url"], meta.get("date_url"))
+
+
+def test_expanser_date_resout_hier_et_aujourdhui():
+    """Les jetons {AAAA}/{MM}/{JJ} donnent la journée demandée, sur deux chiffres."""
+    from datetime import date, timedelta
+
+    gabarit = "https://ex.fr/{AAAA}/F_{AAAA}-{MM}-{JJ}.csv"
+    hier = date.today() - timedelta(days=1)
+    attendu = f"https://ex.fr/{hier.year:04d}/F_{hier:%Y-%m-%d}.csv"
+    assert _expanser_date(gabarit, "hier") == attendu
+    aujourdhui = date.today()
+    assert _expanser_date(gabarit, "aujourdhui").endswith(f"F_{aujourdhui:%Y-%m-%d}.csv")
+
+
+def test_expanser_date_refuse_les_declarations_incoherentes():
+    """Jeton sans date_url, date_url sans jeton, valeur inconnue : tous des échecs."""
+    with pytest.raises(ValueError):
+        _expanser_date("https://ex.fr/F_{AAAA}.csv", None)
+    with pytest.raises(ValueError):
+        _expanser_date("https://ex.fr/fixe.csv", "hier")
+    with pytest.raises(ValueError):
+        _expanser_date("https://ex.fr/F_{JJ}.csv", "demain")
+
+
+def test_expanser_date_laisse_intacte_une_url_sans_jeton():
+    """Une url ordinaire — y compris avec des %XX encodés — n'est jamais réécrite."""
+    url = "https://ex.fr/api?d=18%2F11%2F2025%2000%3A00&t=a1"
+    assert _expanser_date(url, None) == url
 
 
 def test_valider_rejette_html(tmp_path):

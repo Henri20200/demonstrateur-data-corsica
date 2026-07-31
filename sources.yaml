@@ -16,6 +16,12 @@
 #   producteur         : organisme producteur
 #   glissant           : true = jeu à fenêtre glissante, re-téléchargé à CHAQUE
 #                        run (le cache n'est jamais un succès pour un jeu périssable)
+#   date_url           : hier | aujourdhui — résout les jetons {AAAA}/{MM}/{JJ} de
+#                        l'url pour les producteurs qui publient UN FICHIER PAR JOUR
+#                        sans url stable (LCSQA). Contrairement à un secret, la date
+#                        résolue EST écrite dans le manifeste : savoir quelle journée
+#                        a été certifiée fait partie de la traçabilité. « hier » =
+#                        journée close, donc 24 h complètes.
 #   notes              : contexte, points à vérifier
 #
 # Champs de VALIDATION (fetch.py refuse d'enregistrer une donnée qui ne
@@ -192,3 +198,29 @@ sources:
     format: xml
     racine_attendue: GL_MarketDocument
     empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
+
+  # --- Qualité de l'air : concentrations horaires de polluants réglementés ---
+  # Flux « temps réel » national du LCSQA (format E2, celui du rapportage européen).
+  # Aucune url stable : un fichier PAR JOUR, d'où les jetons {AAAA}/{MM}/{JJ} et
+  # date_url. Archivé depuis 2021 sur le bucket, publié le jour même.
+  # Périmètre corse (relevé le 30/07/2026) : 6 stations mesurent l'ozone — Ajaccio
+  # Canetto, Ajaccio Confina 2, Bastia Giraud, Bastia Montesoro, Bastia La Marana,
+  # Venaco (seule rurale de l'île). Les 2 stations trafic n'en mesurent pas.
+  # Cf. docs/BRIEF_AIR.md pour la question fermée et les garde-fous.
+  lcsqa_temps_reel:
+    url: "https://files.data.gouv.fr/ineris/lcsqa/concentrations-de-polluants-atmospheriques-reglementes/temps-reel/{AAAA}/FR_E2_{AAAA}-{MM}-{JJ}.csv"
+    filename: "lcsqa_temps_reel.csv"
+    licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
+    producteur: "LCSQA / Ineris — mesures des AASQA (Qualitair Corse pour l'île)"
+    glissant: true      # une journée nouvelle chaque jour : le cache serait un faux succès
+    date_url: hier      # journée close = 24 h complètes (le fichier du jour se remplit encore)
+    format: csv
+    delimiter: ";"
+    colonnes_attendues: [Zas, nom site, Polluant, valeur, validité]
+    notes: >
+      Fichier NATIONAL (~12,7 Mo/jour, ~48 000 lignes), la Corse en représente ~1 % :
+      le filtrage se fait en aval, dans prepare — on empreinte l'octet reçu, jamais un
+      dérivé. Valeurs en µg/m³, moyennes horaires BRUTES et NON VALIDÉES : la colonne
+      « validité » peut être négative (vu le 30/07/2026 sur Bastia Giraud) et doit être
+      filtrée avant tout calcul. L'historique validé viendra de Geod'air (API à clé),
+      source figée distincte — cf. docs/BRIEF_AIR.md.
