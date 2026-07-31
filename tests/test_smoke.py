@@ -1,10 +1,13 @@
 """Tests de fumée : le manifeste est bien formé, le package s'importe,
 le garde-fou de validation refuse ce qui n'est pas la donnée attendue."""
 
+import json
+import re
+
 import pytest
 import yaml
 
-from demonstrateur.config import ETUDE_SOURCE, ROOT, SOURCES_FILE
+from demonstrateur.config import ETUDE_SOURCE, OUTPUTS, ROOT, SOURCES_FILE
 from demonstrateur.fetch import _expanser_env, _masquer, _valider
 from demonstrateur.figures import FRAICHEUR_AVERTIR_H, FRAICHEUR_BLOQUER_H
 from demonstrateur.viz import LARGEUR_PIED, replier_pied
@@ -116,6 +119,61 @@ def test_repli_du_pied_respecte_les_coupures_voulues():
     texte = "Source : EDF — Open Data Groupe EDF (Corse & Outre-mer)<br>— collectées le 2026-07-22"
     assert replier_pied(texte).split("<br>") == texte.split("<br>"), (
         "deux lignes déjà courtes doivent traverser le repli intactes"
+    )
+
+
+LARGEUR_TITRE_MAX = 50
+"""Signes tenables sur une ligne de titre (corps 28) à la largeur d'iframe de la page."""
+
+LARGEUR_SOUS_TITRE_MAX = 75
+"""Idem pour une ligne de sous-titre (corps 18)."""
+
+
+def _entetes_des_figures():
+    """(nom, titre, sous-titre) de chaque visuel exporté, lus dans son layout Plotly."""
+    for chemin in sorted(OUTPUTS.glob("*.html")):
+        if chemin.name == "etude.html":
+            continue
+        trouve = re.search(
+            r'Plotly\.newPlot\(\s*"[^"]+",\s*\[.*?\],\s*(\{.*?\}),\s*\{"responsive"',
+            chemin.read_text(encoding="utf-8"), re.S,
+        )
+        if not trouve:
+            continue
+        titre = json.loads(trouve.group(1)).get("title") or {}
+        yield chemin.stem, titre.get("text", ""), (titre.get("subtitle") or {}).get("text", "")
+
+
+def test_entetes_de_figures_tiennent_dans_la_largeur():
+    """Plotly ne replie JAMAIS un titre ni un sous-titre : ce qui dépasse la largeur est
+    rogné en silence — sans erreur, sans trace, invisible à qui développe sur grand écran.
+
+    Le 30/07/2026, le titre de T5 était coupé dans la page ; en mesurant, la moitié du
+    sous-titre de T3 (136 signes sur une ligne) et de T6 ne s'était jamais affichée. Deux
+    remèdes existent : replier le texte en poussant les marges, ou le raccourcir. Le
+    premier déplace le défaut ailleurs — un titre replié décale le bloc et sort du cadre
+    (régression vécue sur T2 le même jour). On borne donc la longueur, et ce test le
+    signale au build : un en-tête trop long est une figure à réécrire, pas une marge à
+    rallonger.
+    """
+    figures = list(_entetes_des_figures())
+    if not figures:
+        pytest.skip("aucun visuel exporté — lancer `python -m demonstrateur.figures`")
+    trop_long = []
+    for nom, titre, sous_titre in figures:
+        for etiquette, texte, maxi in (
+            ("titre", titre, LARGEUR_TITRE_MAX),
+            ("sous-titre", sous_titre, LARGEUR_SOUS_TITRE_MAX),
+        ):
+            for ligne in texte.split("<br>"):
+                visible = re.sub(r"</?[a-z]+>", "", ligne)
+                if len(visible) > maxi:
+                    trop_long.append(
+                        f"  {nom} — {etiquette} de {len(visible)} signes (max {maxi}) : "
+                        f"« {visible[:45]}… »"
+                    )
+    assert not trop_long, (
+        "en-tête(s) rogné(s) en silence par Plotly, à raccourcir :\n" + "\n".join(trop_long)
     )
 
 

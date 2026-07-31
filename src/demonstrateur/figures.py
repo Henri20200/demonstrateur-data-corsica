@@ -114,7 +114,7 @@ def fig_t2_demande_mensuelle() -> go.Figure:
         font=dict(family=SANS, size=19, color=PALETTE["accent"]),
     )
     fig.update_layout(
-        title=dict(text="L'été, la demande d'électricité grimpe (+22 % en juillet)"),
+        title=dict(text="La demande grimpe de 22 % en juillet"),
         yaxis=dict(title="Demande moyenne (MW)"), bargap=0.38, height=560,
     )
     return fig
@@ -204,7 +204,7 @@ def fig_t3_profil() -> go.Figure:
     # Repère au zénith solaire : le thermique reste au-dessus du soleil à son maximum.
     fig.add_vline(x=h_pic, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
     fig.update_layout(
-        title=dict(text="Même à son zénith, le soleil ne détrône pas le fossile"),
+        title=dict(text="À midi, le soleil reste derrière le thermique"),
         xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h"),
         yaxis=dict(title="Part du mix (%)", ticksuffix=" %"),
         # Marge haute élargie : la légende (au-dessus du tracé) a SA bande, sous le
@@ -356,17 +356,22 @@ def fig_t5_ecretement() -> go.Figure:
             font=dict(family=SANS, size=16, color="#FFFFFF"),
         )
     fig.update_layout(
-        title=dict(text="C'est au printemps, pas en été, que la Corse bride son solaire"),
+        # Titre RACCOURCI (30/07/2026) : à 62 signes, il était rogné à droite dans la page
+        # (Plotly ne replie pas un titre). Un titre se taille à la largeur disponible ; on
+        # ne replie pas et on ne pousse pas les marges pour le faire entrer — c'est la même
+        # leçon que T1 le 29/07.
+        title=dict(text="Le solaire est bridé au printemps, pas en été"),
         # 2016 en haut : la lecture descend le temps, et le bas (récent) fonce.
         yaxis=dict(autorange="reversed", showgrid=False, ticks=""),
         xaxis=dict(showgrid=False, ticks=""),
-        # Pied à SIX lignes depuis le repli automatique (23/07/2026) : la note tenait
-        # sur 2 lignes déclarées, mais de 89 et 120 caractères — soit ~81 caractères
-        # rognés en silence. Marge basse élargie ET hauteur relevée d'autant, sinon la
-        # zone de tracé rétrécit, l'axe des années s'éclaircit et le pied remonte dans
-        # les libellés de mois.
-        margin=dict(t=144, b=250, l=116, r=56),
-        height=740,
+        # Pied à NEUF lignes depuis le repli automatique (23/07/2026) puis la clé de
+        # lecture (30/07/2026) : la note tenait sur 2 lignes déclarées, mais de 89 et 120
+        # caractères — soit ~81 caractères rognés en silence. Marge basse élargie ET
+        # hauteur relevée d'autant, sinon la zone de tracé rétrécit, l'axe des années
+        # s'éclaircit et le pied remonte dans les libellés de mois. Le pied occupe
+        # 85 + 9 x 22 = 283 px sous l'axe ; la zone de tracé reste à 346 px comme avant.
+        margin=dict(t=144, b=320, l=116, r=56),
+        height=810,
     )
     return fig
 
@@ -425,7 +430,7 @@ def fig_t6_corse_sardaigne() -> go.Figure:
             hovertemplate="%{y} — " + libelle + " : %{x:.1f}%<extra></extra>",
         ))
     fig.update_layout(
-        title=dict(text="Deux îles thermiques — mais la Sardaigne brûle du charbon"),
+        title=dict(text="La Sardaigne brûle du charbon, la Corse du fioul"),
         barmode="stack",
         # Axe X masqué : les segments portent déjà leur %, l'axe ne ferait que
         # télescoper le pied de page (barres à 100 %, l'échelle est évidente).
@@ -501,7 +506,7 @@ def fig_t7_hydro_secheresse() -> go.Figure:
         font=dict(family=SANS, size=16, color=PALETTE["accent"]),
     )
     fig.update_layout(
-        title=dict(text="Quand l'hydraulique baisse, le thermique prend le relais"),
+        title=dict(text="Moins d'eau, plus de thermique"),
         xaxis=dict(title="Année", dtick=1),
         yaxis=dict(title="Part du mix (%)", range=[0, 60], ticksuffix=" %"),
         legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
@@ -535,7 +540,7 @@ def fig_cadrage_dependance() -> go.Figure:
         domain=dict(x=[0, 1], y=[0, 1]),
     ))
     fig.update_layout(
-        title=dict(text="Plus du quart de l'électricité corse vient d'ailleurs"),
+        title=dict(text="Plus du quart du courant corse vient d'ailleurs"),
         separators=", ",  # décimale = virgule, milliers = espace
         margin=dict(t=150, b=175, l=56, r=56), height=430,
     )
@@ -576,13 +581,15 @@ def main() -> int:
                 sous_titre="Demande moyenne mois par mois — Corse, 2019-2024",
                 note=NOTE_ESTIME)
     export_html(fig_t2b_surcroit_horaire(), "t2b_surcroit_horaire", SRC_HIST, d_hist,
-                sous_titre="Écart de demande moyenne juillet − juin, heure par heure — Corse, "
-                           "2019-2024.<br>La cause (résidents, tourisme, climatisation) n'est pas "
-                           "désagrégeable ici : on montre quand, pas pourquoi.",
+                sous_titre="Écart de demande juillet − juin, heure par heure — Corse, 2019-2024."
+                           "<br>La cause n'est pas décomposable ici : on montre quand, pas pourquoi.",
                 note=NOTE_ESTIME)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
-                sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
-                           "2019-2024. Interconnexions = câbles SACOI (Italie via la Sardaigne).",
+                # « Interconnexions = câbles SACOI (Italie via la Sardaigne) » retiré le
+                # 30/07/2026 : cette fin de sous-titre n'a JAMAIS été affichée (136 signes
+                # sur une ligne, rognés vers 85). L'information vit dans le cadrage et au
+                # chapitre « 14 heures », où elle est lisible.
+                sous_titre="Une journée d'été (juin-août), heure par heure — Corse, 2019-2024.",
                 note=NOTE_ESTIME)
     # Garde de lecture (23/07/2026) : le grand chiffre vert peut se lire à l'envers par
     # qui ne regarde que les images. Le sous-titre ferme la mauvaise lecture, comme le
@@ -600,15 +607,20 @@ def main() -> int:
                 pied_decalage_px=-200)
     export_html(fig_t5_ecretement(), "t5_ecretement_solaire", SRC_ECRET,
                 date_collecte("edf_ecretement_corse"),
-                sous_titre="Heures de limitation ou de déconnexion imposées au photovoltaïque par "
-                           "le plafond d'injection<br>— durée maximale subie par un producteur, "
-                           "mois par mois. Corse, 2016-2023.",
-                note="81 % des heures de bridage ont lieu de mars à juin. Même au pire mois "
-                     "(mai 2020 : 141 h),<br>90,5 % de la production ENR intermittente a été "
-                     "acceptée — l'écrêtement borne une durée, pas l'énergie perdue du réseau.")
+                # Sous-titre allégé (30/07/2026) : la définition exacte (« durée maximale
+                # subie par un producteur ») encombrait l'en-tête, qui débordait sur la
+                # grille. Elle descend au pied, avec la clé de lecture — la figure doit
+                # rester compréhensible seule, en iframe, par un lecteur non initié.
+                sous_titre="Heures de bridage du photovoltaïque, mois par mois — Corse, 2016-2023.",
+                note="Lecture : en mai 2020, le producteur le plus exposé a été bridé 141 h, "
+                     "soit près de 4 h 30 par jour. Une case = un mois ; plus elle est foncée, "
+                     "plus le bridage a duré (gris : aucun). 81 % des heures de bridage ont "
+                     "lieu de mars à juin. La donnée borne la durée maximale subie par un "
+                     "producteur, pas "
+                     "l'énergie perdue par le réseau : au pire mois, 90,5 % de la production "
+                     "intermittente a été acceptée.")
     export_html(fig_t7_hydro_secheresse(), "t7_hydro_secheresse", SRC_HIST, d_hist,
-                sous_titre="Part de chaque filière dans le mix électrique corse, année par "
-                           "année — Corse 2019-2024.",
+                sous_titre="Part dans le mix électrique, année par année — Corse, 2019-2024.",
                 note="La part hydraulique varie du simple à près du double selon les années ; le "
                      "thermique prend le relais (elles varient à l'opposé, corrélation −0,95)."
                      "<br>Le lien avec la sécheresse est une hypothèse extérieure, pas une mesure "
@@ -617,10 +629,9 @@ def main() -> int:
         export_html(fig_t6_corse_sardaigne(), "t6_corse_sardaigne",
                     "EDF (Corse) & ENTSO-E / Terna (Sardaigne)",
                     date_collecte("entsoe_sardaigne_2024"),
-                    sous_titre="Mix de génération électrique, moyenne 2019-2024. Comparaison à "
-                               "périmètre égal :<br>génération locale seule (les 27,8 % d'imports "
-                               "corses sont exclus et le reste renormalisé ; la Sardaigne, "
-                               "exportatrice, n'importe pas).",
+                    sous_titre="Mix de génération électrique, moyenne 2019-2024."
+                               "<br>Génération locale seule : imports corses (27,8 %) exclus, "
+                               "base à 100 %.",
                     note="La Sardaigne (10× plus grande) fait 32 % de son courant au charbon et "
                          "32 % au gaz de synthèse (IGCC), quasi absents en Corse ;<br>elle a 15 "
                          "fois plus d'éolien. La Corse compense par la grande hydraulique et les "

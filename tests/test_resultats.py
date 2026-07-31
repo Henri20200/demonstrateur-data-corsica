@@ -355,6 +355,20 @@ def test_etude_ecretement_progression(con):
     assert d16 == pytest.approx(54, abs=0.5) and d23 == pytest.approx(356, abs=0.5), (
         f"bridage annuel = {d16:.0f} h (2016) → {d23:.0f} h (2023) — l'étude écrit 54 → 356"
     )
+    # Clé de lecture incrustée dans T5 (30/07/2026) : le pire mois sert d'exemple chiffré
+    # au lecteur non initié, ramené à une durée quotidienne. Les deux chiffres bougent
+    # ensemble ou la légende ment.
+    an, mois, pire = con.execute(
+        f"SELECT annee, mois_cal, duree_h FROM '{ECRET.as_posix()}' ORDER BY duree_h DESC LIMIT 1"
+    ).fetchone()
+    assert (int(an), int(mois)) == (2020, 5) and pire == pytest.approx(141, abs=0.5), (
+        f"pire mois = {int(mois):02d}/{int(an)} à {pire:.0f} h — T5 et l'étude écrivent "
+        "« mai 2020, 141 h »"
+    )
+    assert pire / 31 == pytest.approx(4.5, abs=0.2), (
+        f"{pire / 31:.1f} h par jour en mai 2020 — la clé de lecture de T5 écrit "
+        "« près de 4 h 30 par jour »"
+    )
 
 
 @besoin_courbe
