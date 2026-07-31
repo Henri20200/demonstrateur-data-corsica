@@ -128,36 +128,34 @@ plus verte — se lit au chapitre « 14 heures », sur six ans de moyennes.
 
 #### Même à son zénith, le soleil ne détrône pas le fossile
 
-Ci-dessous, une journée d'été moyenne, heure par heure : chaque bande est une
-filière, et leur somme fait tout le courant appelé à cette heure-là.
+Une journée d'été moyenne, heure par heure : chaque bande est une filière, et leur
+somme fait le courant appelé à cette heure-là.
 
 {{visuel:t3_profil_horaire}}
 
-À la mi-journée, le solaire culmine à 35 % du mix, au moment précis où le thermique
-touche son creux. Le thermique reste quand même au-dessus, à 43 %. À aucune heure
-moyenne d'été le soleil ne passe devant lui.
+À la mi-journée, le solaire atteint son maximum, 35 % du courant corse. C'est aussi
+le moment où le thermique descend le plus bas, à 43 % — et il reste devant. Sur une
+journée d'été moyenne, le soleil ne passe en tête à aucune heure.
 
-Le soir renverse le tableau. Le solaire retombe à 6 %, le thermique monte à 58 %,
-les câbles à 25 % : plus de huit dixièmes du kilowattheure du soir sortent des
-moteurs et des câbles. (Moyennes de juin à août, 2019-2024.)
+Le soir, il retombe à 6 %. Le thermique remonte à 58 %, les câbles à 25 % : moteurs
+et câbles fournissent alors plus de huit dixièmes du courant. C'est le moment de la
+journée où l'électricité corse est la moins insulaire et la moins renouvelable.
 
-La soirée d'été est donc le moment le moins insulaire et le moins renouvelable de
-la journée.
+(Moyennes de juin à août, 2019-2024.)
 
-> **Pour aller plus loin — pourquoi ce plafond n'est pas un manque de panneaux.**
-> Sur un réseau insulaire, les productions intermittentes (soleil et vent sans
-> stockage) sont plafonnées réglementairement en puissance instantanée : 30 % à
-> l'origine (arrêté du 23 avril 2008, modifié en 2010), seuil relevé depuis à 35 %
-> puis 45 % en Corse. Au-delà, le gestionnaire déconnecte des producteurs, selon la
-> règle du « dernier arrivé, premier déconnecté » : c'est l'écrêtement, que raconte
-> le chapitre du printemps. La sortie par le haut passe par le stockage, puisque les
-> installations couplées à des batteries échappent au plafond. Notre pic d'été à
-> ~35 % évolue au voisinage de ces seuils ; comme les périmètres de calcul diffèrent,
-> nous y voyons une cohérence, pas une preuve.
+> **Pour aller plus loin — le plafond qui borne le solaire insulaire.** Sur un réseau
+> insulaire, les productions intermittentes (soleil et vent sans stockage) sont
+> plafonnées en puissance instantanée : 30 % à l'origine (arrêté du 23 avril 2008,
+> modifié en 2010), seuil relevé depuis à 35 %, puis 45 % en Corse. Au-delà, le
+> gestionnaire déconnecte des producteurs, selon la règle du « dernier arrivé,
+> premier déconnecté » : c'est l'écrêtement, que raconte le chapitre du printemps.
+> Les installations couplées à des batteries, elles, échappent au plafond. Notre pic
+> d'été à ~35 % évolue au voisinage de ces seuils, mais les périmètres de calcul
+> diffèrent : cette proximité n'a pas valeur de démonstration.
 >
 > **Attention au changement de focale.** Ce chapitre décrit l'été. Le suivant se
-> calcule sur toute l'année : les pourcentages ne se comparent pas terme à terme
-> d'un chapitre à l'autre.
+> calcule sur toute l'année, et les pourcentages ne se comparent pas d'un chapitre à
+> l'autre.
 
 #### 14 heures : l'heure la plus verte — et la plus corse
 
@@ -192,7 +190,7 @@ Corse. Mais 36 de ces 84 points sont thermiques, et le fioul qu'ils brûlent arr
 lui aussi par bateau. Si l'on ne compte que ce qui est produit avec des ressources
 de l'île, il reste les 48 % de renouvelables et de barrages.
 
-Décaler vers le début d'après-midi ce qui peut l'être, c'est donc consommer plus
+Décaler vers le début d'après-midi ce qui peut l'être, c'est consommer plus
 renouvelable et plus local.
 
 > **Pour aller plus loin — deux chiffres plutôt qu'un.** Le « renouvelable
@@ -215,7 +213,7 @@ renouvelable et plus local.
 > du mix, il frôle son plus bas à 14 heures : 36 %, contre 44 % à l'aube. Ce que
 > le soleil de la mi-journée remplace d'abord, ce sont les importations. Entre
 > 9 heures et 14 heures, elles reculent de 80 à 44 MW pendant que le thermique ne
-> bouge pas. Ce qui s'améliore à 14 heures, c'est donc la composition de votre
+> bouge pas. Ce qui s'améliore à 14 heures, c'est la composition de votre
 > kilowattheure, pas l'activité de la centrale. Consommer à cette heure-là, c'est
 > surtout consommer moins de câble.
 
@@ -227,14 +225,13 @@ renouvelable et plus local.
 
 {{visuel:t2_demande_mensuelle}}
 
-De juin à juillet, la demande moyenne d'électricité passe de 231 à 281 mégawatts.
-Un cinquième de plus en un mois, la plus forte marche de l'année : voilà le chiffre
-derrière ce qu'on entend chaque été sur l'île qui « sature ». L'été entier se tient
-au-dessus du printemps.
+De juin à juillet, la demande moyenne d'électricité passe de 231 à 281 mégawatts :
+un cinquième de plus en un mois, la plus forte marche de l'année. C'est ce que
+recouvre l'idée d'une île qui « sature » l'été, et l'été entier se tient au-dessus
+du printemps.
 
-La saison la plus chargée n'est pourtant pas l'été. C'est l'hiver, chauffage
-compris, avec 307 MW de moyenne. L'île a deux pointes, et la plus haute tombe quand
-il fait froid.
+L'hiver reste pourtant la saison la plus chargée, avec 307 MW de moyenne, chauffage
+compris. L'île a deux pointes, et la plus haute est celle du froid.
 
 > **Pour aller plus loin — moyennes et pointes.** Ces 231, 281 et 307 MW sont des
 > moyennes (toutes les heures du mois ou de la saison, années 2019-2024). Les
@@ -246,11 +243,10 @@ il fait froid.
 
 {{visuel:t2b_surcroit_horaire}}
 
-Chaque heure de juillet comparée à la même heure de juin : le surcroît est là aux
-24 heures de la journée, sans exception. Il n'est pas uniforme pour autant. Il
-culmine en soirée, entre 16 h et 22 h, et reste fort en pleine nuit — c'est-à-dire
-en grande partie une fois le soleil couché, au moment où le mix corse est le moins
-vert.
+Chaque heure de juillet comparée à la même heure de juin : le surcroît est présent
+aux 24 heures de la journée. Il varie fortement selon l'heure, culmine entre 16 h et
+22 h et reste élevé en pleine nuit — c'est-à-dire quand le solaire ne produit plus,
+et que le mix corse est au plus loin du renouvelable.
 
 > **Pour aller plus loin — pourquoi nous ne nommons pas la cause.** Touristes ?
 > Climatisation nocturne ? Les deux arrivent ensemble en juillet, et ces données ne
@@ -266,23 +262,21 @@ vert.
 
 {{visuel:t5_ecretement_solaire}}
 
-Oui, et pas à la saison qu'on croit. 81 % des heures de bridage du solaire se
+Oui, et pas à la saison qu'on imagine. 81 % des heures de bridage du solaire se
 concentrent de mars à juin, avec un pic en mai ; juillet et août comptent pour moins
-de 1 %. Au printemps, le soleil est déjà généreux alors que la demande reste molle :
-le trop-plein menace l'équilibre du réseau, et des producteurs sont temporairement
-déconnectés. Le record tient à mai 2020 — 141 heures de limitation pour le
-producteur le plus exposé, dans un mois de confinement où la demande s'était
-effondrée.
+de 1 %. Au printemps, le soleil est déjà généreux et la demande reste molle : le
+trop-plein menace l'équilibre du réseau, et des producteurs sont temporairement
+déconnectés. Le record revient à mai 2020, avec 141 heures de limitation pour le
+producteur le plus exposé — un mois de confinement où la demande s'était effondrée.
 
 La tendance monte avec le parc : 54 heures de bridage sur l'année 2016, 356 en 2023.
 
-Un titre plus frappant nous tendait les bras : « l'énergie verte perdue de la
-Corse ». Il serait faux. Cette donnée compte des heures de limitation subies par un
-producteur, pas des kilowattheures évaporés (l'encadré le détaille). Ce qu'elle
-établit, en revanche, c'est que l'île refuse déjà du soleil qu'elle produit.
-Installer davantage de panneaux ne suffit donc pas : au-delà du plafond, ce qui est
-produit en trop est écrêté, et seules les installations couplées à du stockage y
-échappent.
+Nous aurions pu intituler ce chapitre « l'énergie verte perdue de la Corse ». Ce
+serait inexact : la donnée compte des heures de limitation subies par un producteur,
+et non l'énergie que le réseau aurait laissée filer. Elle établit en revanche que
+l'île refuse déjà du soleil qu'elle produit. Installer davantage de panneaux ne
+suffit pas : au-delà du plafond, le surplus est écrêté, et seules les installations
+couplées à du stockage y échappent.
 
 > **Pour aller plus loin — ce que mesure « durée de bridage ».** La donnée EDF
 > compte la durée maximale de limitation subie par UN producteur (le « dernier
@@ -302,12 +296,11 @@ produit en trop est écrêté, et seules les installations couplées à du stock
 {{visuel:t6_corse_sardaigne}}
 
 À périmètre comparable, c'est-à-dire la seule production locale de chacune, les deux
-îles sont dominées par le thermique : 55 % en Corse, 65 % en Sardaigne. La
-ressemblance s'arrête au total. Le thermique sarde, c'est un tiers de charbon et un
-tiers de gaz de synthèse industriel ; le corse, du fioul. Chaque île tire ensuite
-parti de ce qu'elle a sous la main : la Corse 28 % de ses montagnes, quand la
-Sardaigne n'en tire que 4 % — mais celle-ci récolte 15 % de vent, plus de quinze
-fois la part corse.
+îles sont dominées par le thermique : 55 % en Corse, 65 % en Sardaigne. Le détail,
+lui, diffère beaucoup. Le thermique sarde, c'est un tiers de charbon et un tiers de
+gaz de synthèse industriel ; le corse, du fioul. Chaque île tire ensuite parti de ce
+qu'elle a sous la main : la Corse 28 % de ses montagnes, la Sardaigne 4 % seulement,
+mais 15 % de vent — plus de quinze fois la part corse.
 
 > **Pour aller plus loin — pourquoi « génération locale seule ».** La comparaison
 > exclut les importations corses (27,8 % de la demande sur 2019-2024) : la
@@ -332,7 +325,7 @@ fois la part corse.
 Ces données décrivent le système d'aujourd'hui. Or il change, et les chantiers en
 cours dessinent déjà la Corse électrique des prochaines années.
 
-Le premier est le plus visible. À Ajaccio, la centrale du Vazzio, l'une des
+Le chantier le plus visible est à Ajaccio. La centrale du Vazzio, l'une des
 dernières d'Europe à fonctionner au fioul lourd, doit être remplacée d'ici fin 2027
 par une centrale voisine, au Ricanto, qui brûlera de l'huile de colza. EDF y investit
 800 millions d'euros et annonce une part renouvelable passant « d'un tiers à deux
@@ -348,11 +341,11 @@ sans que la dépendance aux approvisionnements extérieurs recule d'autant. C'es
 partage du chapitre « 14 heures » qui se rejoue : produit sur l'île ne veut pas dire
 produit avec l'île.
 
-Il y a aussi l'air, et celui-là se joue à l'échelle du quartier. Remplacer une
-centrale au fioul lourd aux portes d'une ville engage autant la respiration des
-riverains que le climat. Nos données ne mesurent pas la qualité de l'air, et elles ne
-disent rien du trafic maritime, qui pèse lui aussi sur l'air des ports. Elles situent
-seulement la combustion : quand les moteurs tournent, et combien.
+L'air, lui, se joue à l'échelle du quartier. Remplacer une centrale au fioul lourd
+aux portes d'une ville engage autant la respiration des riverains que le climat. Nos
+données ne mesurent pas la qualité de l'air, et elles ne disent rien du trafic
+maritime, qui pèse lui aussi sur l'air des ports. Elles situent la combustion :
+quand les moteurs tournent, et combien.
 
 Le réchauffement, lui, pèse sur la ressource en eau. Selon l'hydrobiologiste Antoine
 Orsini (université de Corse), le débit des cours d'eau corses a reculé de 25 à 30 %
@@ -369,18 +362,17 @@ compris — le périmètre du graphique ci-dessous —, cette part tombe entre 1
 
 Les deux courbes varient à l'opposé, presque point pour point : quand l'eau manque,
 les moteurs prennent le relais. 2022, l'année la plus pauvre en hydraulique de la
-série, est aussi celle où le thermique a le plus tourné — 48 % du courant appelé,
-contre 35 % en 2023, la plus arrosée. Une précision s'impose : nous mesurons la
-bascule, pas la pluie. Aucune donnée météorologique n'entre dans ce graphique, et un
-barrage stocke plusieurs mois d'eau. La sécheresse est ici une explication rapportée,
-pas une variable que nous aurions mesurée.
+série, est aussi celle où le thermique a le plus tourné, à 48 % du courant appelé,
+contre 35 % en 2023, la plus arrosée. Ce graphique ne mesure pas la pluie : aucune
+donnée météorologique n'y entre, et un barrage stocke plusieurs mois d'eau. La
+sécheresse y reste une explication rapportée de l'extérieur.
 
 Plusieurs leviers sont étudiés ou engagés pour desserrer la contrainte : le stockage
 — batteries, et une station de pompage entre deux barrages, qui turbine l'eau aux
 heures de forte demande et la remonte aux heures creuses —, la poursuite du solaire,
 le renforcement des interconnexions. Ce document ne les évalue pas. Il constate
-qu'ils existent, et que chacun répond à une contrainte que ces pages donnent à voir :
-le plafond du printemps, le creux du soir, l'année sèche.
+qu'ils existent, et que chacun répond à une contrainte visible dans ces pages : le
+plafond du printemps, ou l'année sèche.
 
 **Ce que ces données ne disent pas.** Elles ne chiffrent pas le coût de l'électricité
 corse, plus chère à produire que sur le continent : c'est une autre source, et un
