@@ -75,8 +75,34 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
   les désigne. Bastia La Marana est classée « industrielle » ; ce mot décrit l'implantation
   de la station, pas la provenance de ce qu'elle mesure. Cette étude referme la dette de
   la §4 de l'étude électricité — elle ne la retourne pas en accusation.
-- **Le climat.** L'ozone est le point où l'air et le climat se touchent : il se forme sous
-  la chaleur. Les gaz à effet de serre restent hors champ.
+- **Que la chaleur *cause* l'ozone** (garde ajoutée le 01/08/2026). Le mécanisme, lui, est
+  établi et ne relève pas de la corrélation : l'ozone du bas de l'atmosphère n'est émis par
+  rien, il se fabrique sur place quand les oxydes d'azote et les composés organiques volatils
+  réagissent **sous le rayonnement ultraviolet** — réaction reproduite en laboratoire depuis
+  les années 1950. Mais le moteur est le soleil, pas le thermomètre. La température n'agit
+  qu'indirectement : elle accélère les réactions, augmente les composés volatils émis par la
+  végétation (l'isoprène des chênes et des pins y est très sensible), et décompose un composé
+  qui stocke les oxydes d'azote pour les relâcher à la chaleur. Surtout, **tout arrive
+  ensemble** : les jours chauds sont les jours anticycloniques — ciel dégagé, air stagnant,
+  pas de vent pour disperser. Chaleur, ensoleillement et absence de brassage varient de
+  concert, et rien dans des mesures de concentration ne permet de démêler leurs parts.
+  Ce que l'étude produit est donc une **association**, et elle s'énonce comme telle :
+  « les jours à 30 °C, on relève X µg/m³ de plus que les jours à 20 °C » — jamais « la
+  chaleur fait monter l'ozone de X ». Le thermomètre est le marqueur d'un type de temps, pas
+  un facteur agissant seul. Ce n'est pas une perte pour le titre n° 4 : qui se demande s'il
+  peut courir ce soir n'a pas besoin de savoir *pourquoi* l'air est chargé.
+- **2022 le montre en grandeur nature.** Cette année-là, deux causes candidates ont bougé
+  ensemble. Il a fait chaud et sec — et le thermique est monté à **47,5 % du mix contre
+  34,8 % l'année suivante**, parce que les barrages étaient au plus bas : **12,3 %
+  d'hydraulique, le creux de la série 2019-2024** (chiffres tirés de notre propre
+  `edf_courbe_corse.parquet`, donc vérifiables par test). Plus de chaleur *et* plus de
+  précurseurs la même année : un surcroît d'ozone en 2022 serait indémêlable. L'exemple se
+  cite en prose — il dit mieux que n'importe quelle mise en garde abstraite pourquoi cette
+  étude mesure sans attribuer, et il relie le sujet air à l'étude électricité sans rien lui
+  faire dire de plus que ce qu'elle montre.
+- **Le climat.** L'ozone est le point où l'air et le climat se touchent : sa formation
+  demande du soleil et se trouve favorisée par la chaleur. Les gaz à effet de serre restent
+  hors champ.
 
 ## Garde-fous méthodologiques
 

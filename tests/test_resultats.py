@@ -489,3 +489,44 @@ def test_le_poste_nomme_bastia_n_est_pas_a_bastia(con):
     assert APPARIEMENT_AIR_METEO["FR41002"] != APPARIEMENT_AIR_METEO["FR41004"], (
         "ville et plaine ne peuvent pas partager le même thermomètre"
     )
+
+
+@besoin_courbe
+def test_2022_creux_hydraulique_et_pic_thermique(con):
+    """BRIEF_AIR cite 2022 comme exemple de confusion : deux causes candidates ont bougé
+    ensemble cette année-là — la chaleur ET les précurseurs, le thermique ayant compensé
+    des barrages au plus bas.
+
+    Ces chiffres sont destinés à la prose du livrable ; ils se verrouillent donc comme
+    tout chiffre publié. Le test vérifie les valeurs ET le fait que 2022 soit bien l'extrême
+    de la série dans les deux sens : c'est cette simultanéité, pas les décimales, qui fait
+    l'argument. 2025 est exclu — le Parquet n'en contient qu'une heure, débordement du
+    passage UTC vers l'heure locale.
+    """
+    df = con.execute(
+        f"""SELECT extract('year' FROM date_heure) AS an,
+                   100.0*sum(hydraulique_mw)/sum(production_totale_mw) AS hydro,
+                   100.0*sum(thermique_mw)/sum(production_totale_mw)   AS thermique
+            FROM '{COURBE.as_posix()}'
+            WHERE extract('year' FROM date_heure) BETWEEN 2019 AND 2024
+            GROUP BY 1 ORDER BY 1"""
+    ).df()
+    assert len(df) == 6, f"{len(df)} années pleines (attendu 2019-2024)"
+
+    an_min_hydro = int(df.loc[df["hydro"].idxmin(), "an"])
+    an_max_therm = int(df.loc[df["thermique"].idxmax(), "an"])
+    assert an_min_hydro == 2022 and an_max_therm == 2022, (
+        f"creux hydraulique en {an_min_hydro}, pic thermique en {an_max_therm} — "
+        "l'exemple de confusion du BRIEF_AIR repose sur leur coïncidence en 2022"
+    )
+    ligne_2022 = df.loc[df["an"] == 2022].iloc[0]
+    assert float(ligne_2022["hydro"]) == pytest.approx(12.3, abs=0.2), (
+        "BRIEF_AIR cite « 12,3 % d'hydraulique » pour 2022"
+    )
+    assert float(ligne_2022["thermique"]) == pytest.approx(47.5, abs=0.2), (
+        "BRIEF_AIR cite « 47,5 % de thermique » pour 2022"
+    )
+    ligne_2023 = df.loc[df["an"] == 2023].iloc[0]
+    assert float(ligne_2023["thermique"]) == pytest.approx(34.8, abs=0.2), (
+        "BRIEF_AIR oppose 2022 à « 34,8 % l'année suivante »"
+    )
