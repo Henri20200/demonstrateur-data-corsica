@@ -42,10 +42,19 @@ Titres-affirmations que l'analyse doit valider, invalider ou chiffrer :
 3. « Le pic n'est pas à l'heure de pointe » (heure du maximum d'ozone contre heure du
    maximum de NO₂, à station constante sur les cinq qui mesurent les deux)
 4. « L'air de campagne n'est pas meilleur » (Venaco contre les stations urbaines de fond)
-5. « L'été, le pire moment pour un effort en plein air se situe entre XX h et XX h »
-   (conclusion actionnable — pendant de « l'heure la plus verte ». Elle change de nature
-   avec le recentrage : ce n'est plus une consigne de crise, c'est une information du
-   quotidien)
+5. « L'été, l'air est le plus chargé **entre 11 h et 18 h** » — mesuré le 01/08/2026
+   (conclusion actionnable, pendant de « l'heure la plus verte ». Elle change de nature avec
+   le recentrage : plus une consigne de crise, une information du quotidien).
+   Sur les étés 2020-2025 et les stations de fond, l'ozone dessine un plateau à plus de 95 %
+   de son maximum de 11 h à 18 h, culmine à **93,8 µg/m³ vers 14 h** et creuse à **66,5 vers
+   6 h** : **40 % d'écart** entre le meilleur et le pire moment de la journée. Le créneau est
+   contigu — un test l'exige, une plage trouée ne se résumant pas en « entre X et Y heures ».
+   **Réserve à publier avec le chiffre** : le creux d'ozone du petit matin coïncide avec le
+   **pic de NO₂** (7 h), et pour la même raison chimique — le monoxyde d'azote des moteurs
+   détruit l'ozone. Écrire « courez le matin » sans cette réserve déplacerait l'exposition
+   au lieu de la réduire. Et le chiffre reste un niveau d'exposition, jamais une
+   prescription : la figure dit quand l'air est le plus chargé, elle ne donne pas de conseil
+   médical
 
 **Abandonné le 01/08/2026 : le décompte des dépassements du seuil d'information (180
 µg/m³).** C'est le registre de l'alerte, celui qui fonctionne déjà, et il est presque

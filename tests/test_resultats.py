@@ -864,3 +864,67 @@ def test_l_air_de_campagne_n_est_pas_meilleur(con):
         f"taux de dépassement : Venaco {tx_v:.1f} %, ville {tx_u:.1f} % — la campagne doit "
         "dépasser plus souvent, pas moins"
     )
+
+
+@besoin_serie
+def test_le_pire_creneau_estival_est_l_apres_midi(con):
+    """TITRE N° 5 : la conclusion actionnable du livrable.
+
+    Sur les étés 2020-2025 et les stations de fond, l'ozone dessine un plateau très net de
+    11 h à 18 h, à plus de 95 % de son maximum, contre un creux au petit matin. C'est ce
+    créneau que la figure nomme — et il doit rester CONTIGU : une plage trouée ne se
+    résumerait pas en « entre X et Y heures », et le titre devrait changer de forme.
+
+    Le chiffre publié est un niveau d'exposition, pas une prescription : la figure dit à
+    quelle heure l'air est le plus chargé, elle ne délivre pas de conseil médical.
+    """
+    profil = dict(
+        con.execute(
+            f"""SELECT heure_locale, avg(valeur) FROM '{SERIE.as_posix()}'
+                WHERE polluant = 'O3' AND influence = 'Fond'
+                  AND extract('month' FROM date_locale) IN (6, 7, 8)
+                  AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025
+                GROUP BY 1"""
+        ).fetchall()
+    )
+    assert len(profil) == 24, f"{len(profil)} heures dans le profil (attendu 24)"
+    pic_h = max(profil, key=profil.get)
+    creux_h = min(profil, key=profil.get)
+    assert 13 <= pic_h <= 16, f"pic à {pic_h} h — attendu au cœur de l'après-midi"
+    assert 4 <= creux_h <= 8, f"creux à {creux_h} h — attendu au petit matin"
+
+    plateau = sorted(h for h, v in profil.items() if v >= 0.95 * profil[pic_h])
+    assert plateau == list(range(plateau[0], plateau[-1] + 1)), (
+        f"plateau troué {plateau} — « entre X et Y heures » suppose une plage contiguë"
+    )
+    assert plateau[0] == 11 and plateau[-1] == 18, (
+        f"créneau {plateau[0]}-{plateau[-1]} h — le brief publie « 11 h à 18 h »"
+    )
+    ecart = 100 * (profil[pic_h] - profil[creux_h]) / profil[creux_h]
+    assert ecart > 25, f"écart creux→pic de {ecart:.0f} % — trop faible pour un titre"
+
+
+@besoin_serie
+def test_l_heure_la_plus_propre_en_ozone_est_la_pire_en_no2(con):
+    """La nuance qui empêche le titre n° 5 de devenir un mauvais conseil.
+
+    Le creux d'ozone du petit matin coïncide avec le PIC de NO2 : l'air le moins chargé en
+    l'un est le plus chargé en l'autre, et pour la même raison chimique — le monoxyde d'azote
+    des moteurs détruit l'ozone. Publier « courez le matin » sans cette réserve reviendrait
+    à déplacer l'exposition plutôt qu'à la réduire.
+    """
+    pics = {}
+    for pol, extremum in (("O3", "min"), ("NO2", "max")):
+        rows = con.execute(
+            f"""SELECT heure_locale, avg(valeur) FROM '{SERIE.as_posix()}'
+                WHERE polluant = '{pol}' AND influence = 'Fond' AND station <> 'VENACO'
+                  AND extract('month' FROM date_locale) IN (6, 7, 8)
+                  AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025
+                GROUP BY 1"""
+        ).fetchall()
+        d = dict(rows)
+        pics[pol] = min(d, key=d.get) if extremum == "min" else max(d, key=d.get)
+    assert abs(pics["O3"] - pics["NO2"]) <= 2, (
+        f"creux d'ozone à {pics['O3']} h, pic de NO2 à {pics['NO2']} h — la coïncidence "
+        "fonde la réserve du titre n° 5 ; si elle disparaît, la réserve est à réécrire"
+    )
