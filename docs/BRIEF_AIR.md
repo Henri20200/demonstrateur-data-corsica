@@ -92,6 +92,13 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
   horaires journaliers, aux moyennes journalières et annuelles. Elle se recalcule dans
   `prepare` — donc elle se verrouille par un test, sous peine d'annoncer un chiffre
   « réglementaire » qui ne correspond à aucun décompte officiel.
+- **Les deux sources ne sont pas à la même heure.** Météo-France publie en UTC, le flux
+  LCSQA en heure légale française. Ce n'est pas une supposition : les deux dimanches de
+  changement d'heure comptent 24 heures dans le fichier météo, quand l'heure légale en
+  compte 23 et 25 — seule une échelle à décalage fixe fait ça. La conversion est faite une
+  fois pour toutes dans `prepare`. Reste un piège pour le croisement à venir : le dimanche
+  du retour à l'heure d'hiver, 2 h du matin existe deux fois. La jointure se fera donc sur
+  l'axe UTC et jamais sur l'étiquette locale, sous peine de compter cette heure en double.
 - **Le fichier météo a ses propres réserves**, du même genre que le flux temps réel. Son
   code qualité `QT` distingue la donnée validée de la douteuse en cours de vérification :
   il se filtre avant tout calcul. Et sa dernière journée est tronquée — le fichier

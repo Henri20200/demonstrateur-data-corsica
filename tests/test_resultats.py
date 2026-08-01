@@ -18,6 +18,7 @@ ECRET = DATA_PROCESSED / "edf_ecretement_corse.parquet"
 SARD = DATA_PROCESSED / "entsoe_sardaigne.parquet"
 SARD_XML = DATA_RAW / "entsoe_sardaigne_2023.xml"
 AIR = DATA_PROCESSED / "air_corse.parquet"
+METEO = DATA_PROCESSED / "meteo_corse.parquet"
 
 besoin_courbe = pytest.mark.skipif(
     not COURBE.exists(), reason="data/processed absent — lancer fetch-data puis prepare"
@@ -36,6 +37,9 @@ besoin_sard_xml = pytest.mark.skipif(
 )
 besoin_air = pytest.mark.skipif(
     not AIR.exists(), reason="parquet air absent — lancer fetch-data puis prepare"
+)
+besoin_meteo = pytest.mark.skipif(
+    not METEO.exists(), reason="parquet météo absent — lancer fetch-data puis prepare"
 )
 
 
@@ -255,3 +259,145 @@ def test_air_corse_horodatage_en_heure_locale(con):
         f"SELECT min(heure_locale), max(heure_locale) FROM '{AIR.as_posix()}'"
     ).fetchone()
     assert 0 <= mini <= 23 and 0 <= maxi <= 23, f"heure_locale hors bornes ({mini}-{maxi})"
+
+
+@besoin_meteo
+def test_meteo_corse_conversion_utc_vers_heure_legale(con):
+    """Météo-France publie en UTC, le LCSQA en heure légale : la conversion doit tenir.
+
+    C'est le verrou le plus lourd de conséquences des deux sources d'air. Une erreur de
+    fuseau ne casse rien — elle décale simplement le pic de deux heures, et le
+    titre-affirmation n° 4 du BRIEF_AIR (« le pire moment pour un effort en plein air se
+    situe entre XX h et XX h ») devient un conseil faux, énoncé avec aplomb.
+
+    Deux écarts, et deux seulement, doivent exister entre l'axe UTC et l'axe légal :
+    +1 h l'hiver, +2 h l'été. Le contrôle par mois attrape en plus une conversion
+    INVERSÉE, qui produirait les mêmes deux valeurs mais aux mauvaises saisons.
+    """
+    src = METEO.as_posix()
+    ecarts = [
+        r[0] for r in con.execute(
+            f"SELECT DISTINCT date_diff('hour', date_heure_utc, date_heure_locale) "
+            f"FROM '{src}' ORDER BY 1"
+        ).fetchall()
+    ]
+    assert ecarts == [1, 2], (
+        f"écarts UTC -> heure légale observés : {ecarts} h (attendu [1, 2]) — la "
+        "conversion de fuseau de meteo_corse_to_parquet ne tient plus"
+    )
+    janvier, juillet = con.execute(
+        f"""SELECT max(ecart) FILTER (WHERE mois = 1), min(ecart) FILTER (WHERE mois = 7)
+            FROM (SELECT extract('month' FROM date_locale) AS mois,
+                         date_diff('hour', date_heure_utc, date_heure_locale) AS ecart
+                  FROM '{src}')"""
+    ).fetchone()
+    assert janvier == 1 and juillet == 2, (
+        f"écart de janvier = {janvier} h, de juillet = {juillet} h — conversion inversée "
+        "(l'heure d'été s'applique l'hiver)"
+    )
+
+
+@besoin_meteo
+def test_meteo_corse_la_cle_est_l_axe_utc(con):
+    """L'axe UTC est la clé ; l'axe local ne l'est pas — et c'est un piège de jointure.
+
+    Le dimanche du retour à l'heure d'hiver, 00 h et 01 h UTC donnent toutes deux 02 h
+    en heure légale : le couple (poste, heure locale) est en double une fois par an et
+    par poste. Ce n'est pas une anomalie de préparation — cette heure a réellement lieu
+    deux fois — mais une jointure bâtie sur l'axe local double-compterait cette heure-là.
+
+    Ce test fige les deux moitiés de la règle : l'unicité DOIT tenir sur l'axe UTC, et
+    la duplication locale est attendue, pas subie. Si un jour elle disparaissait (le
+    producteur changeant de convention), il faudrait le savoir avant de croiser.
+    """
+    src = METEO.as_posix()
+    doublons_utc, doublons_loc = con.execute(
+        f"""SELECT
+              (SELECT count(*) FROM (SELECT num_poste, date_heure_utc FROM '{src}'
+                                     GROUP BY 1, 2 HAVING count(*) > 1)),
+              (SELECT count(*) FROM (SELECT num_poste, date_heure_locale FROM '{src}'
+                                     GROUP BY 1, 2 HAVING count(*) > 1))"""
+    ).fetchone()
+    assert doublons_utc == 0, (
+        f"{doublons_utc} couple(s) (poste, heure UTC) en double — la clé du Parquet "
+        "n'est plus unique"
+    )
+    if doublons_loc:
+        heures = con.execute(
+            f"""SELECT DISTINCT CAST(date_locale AS VARCHAR), heure_locale FROM '{src}'
+                WHERE (num_poste, date_heure_locale) IN (
+                  SELECT num_poste, date_heure_locale FROM '{src}'
+                  GROUP BY 1, 2 HAVING count(*) > 1)"""
+        ).fetchall()
+        assert all(h == 2 for _, h in heures), (
+            f"doublons d'heure locale ailleurs qu'à 02 h : {heures} — ce n'est plus le "
+            "seul passage à l'heure d'hiver, la conversion est à revoir"
+        )
+
+
+@besoin_meteo
+def test_meteo_corse_ne_garde_que_des_mesures_fiables(con):
+    """Pendant du verrou `validité` de l'air : `QT` doit avoir filtré, et rien d'autre.
+
+    Le code 2 (« douteuse, en cours de vérification ») ne doit jamais franchir prepare ;
+    aucun code inconnu non plus — sur une nomenclature qui bouge, un tri silencieux
+    laisserait passer de la donnée mise en doute par le producteur lui-même.
+    """
+    from demonstrateur.prepare import QT_RETENUS
+
+    src = METEO.as_posix()
+    codes = {r[0] for r in con.execute(f"SELECT DISTINCT qt FROM '{src}'").fetchall()}
+    assert codes <= set(QT_RETENUS), (
+        f"code(s) qualité {sorted(codes - set(QT_RETENUS))} ont franchi prepare"
+    )
+    nulles = con.execute(
+        f"SELECT count(*) FROM '{src}' WHERE temperature_c IS NULL"
+    ).fetchone()[0]
+    assert nulles == 0, f"{nulles} température(s) NULL ont franchi prepare"
+
+
+@besoin_meteo
+def test_meteo_corse_journees_completes(con):
+    """Aucune journée tronquée : sinon un maximum journalier serait calculé sur un fragment.
+
+    Les deux extrémités du brut le sont par construction — le décalage UTC -> heure légale
+    ampute la première, la coupure de publication la dernière (6 h le 31/07/2026). Elles
+    sont retirées dans prepare, qui REFUSE en outre de publier une série trouée. Ce test
+    est le second filet : il porte sur le Parquet tel qu'il est sur le disque, et attrape
+    donc aussi une sortie laissée par une version antérieure du code. Le seuil est 23 h et
+    non 24 : le dimanche du passage à l'heure d'été n'en compte légitimement que 23.
+    """
+    creuses = con.execute(
+        f"""SELECT CAST(date_locale AS VARCHAR), count(DISTINCT heure_locale) AS h
+            FROM '{METEO.as_posix()}' GROUP BY 1 HAVING h < 23 ORDER BY 1"""
+    ).fetchall()
+    assert not creuses, (
+        f"{len(creuses)} journée(s) incomplète(s) ont franchi prepare : {creuses[:5]} — "
+        "tout maximum journalier calculé dessus serait faux"
+    )
+
+
+@besoin_meteo
+def test_meteo_corse_cycle_diurne_physique(con):
+    """Contrôle de sens, indépendant du code : le jour doit réchauffer, et l'après-midi
+    être le moment chaud.
+
+    Le test précédent vérifie la MÉCANIQUE de la conversion (des écarts de +1/+2 h) ; ce
+    test-ci vérifie qu'elle produit un monde plausible. Une erreur de lecture de la date
+    elle-même — un strptime qui décalerait tout — passerait le premier et échouerait ici.
+    """
+    df = con.execute(
+        f"""SELECT heure_locale, avg(temperature_c) AS t FROM '{METEO.as_posix()}'
+            WHERE extract('month' FROM date_locale) = 7 GROUP BY 1 ORDER BY 1"""
+    ).df()
+    assert len(df) == 24, f"{len(df)} heures locales en juillet (attendu 24)"
+    h_chaud = int(df.loc[df["t"].idxmax(), "heure_locale"])
+    h_froid = int(df.loc[df["t"].idxmin(), "heure_locale"])
+    assert 13 <= h_chaud <= 18, (
+        f"maximum thermique moyen de juillet à {h_chaud} h locale — hors de l'après-midi : "
+        "l'axe horaire est décalé"
+    )
+    assert 3 <= h_froid <= 8, (
+        f"minimum thermique moyen de juillet à {h_froid} h locale — le creux doit précéder "
+        "le lever du jour, pas le suivre"
+    )

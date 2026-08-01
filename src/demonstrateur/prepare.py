@@ -12,6 +12,11 @@ Garde-fous (cf. docs/RECONNAISSANCE.md) :
    le thermique fabriquerait un faux aplomb). Seule `micro_hydraulique_mw` tolère des
    NULL (absente en 2024) et est coalescée à 0, ce que le bouclage 2024 justifie
    (`production_totale_mw` l'exclut aussi). Un test `ENR >= solaire` verrouille la sortie.
+ - météo Corse : les deux sources du sujet air N'ONT PAS le même fuseau — Météo-France
+   publie en UTC, le flux LCSQA en heure légale. La conversion se fait ici, une fois, et
+   `heure_locale` est le SEUL axe par lequel les deux séries se joignent. S'y ajoutent le
+   filtre du code qualité `QT` (pendant de la `validité` de l'air) et le retrait des deux
+   journées de bord, tronquées par construction.
 """
 
 from __future__ import annotations
@@ -34,7 +39,14 @@ MIX = (DATA_RAW / "edf_mix_temps_reel.csv").as_posix()
 COURBE = (DATA_RAW / "edf_courbe_charge_horaire.csv").as_posix()
 ECRET = (DATA_RAW / "edf_ecretement_corse.csv").as_posix()
 AIR = (DATA_RAW / "lcsqa_temps_reel.csv").as_posix()
+METEO = (DATA_RAW / "meteo_horaire_corse.csv.gz").as_posix()
 ENTSOE_ANNEES = range(2019, 2025)  # fenêtre alignée sur la courbe corse
+
+# Codes qualité Météo-France (H_descriptif_champs.csv, relevé le 01/08/2026). Pendant
+# exact de la `validité` du LCSQA. On garde ce qui a passé au moins les contrôles de
+# premier niveau ; on écarte ce qui est explicitement mis en doute.
+QT_RETENUS = (0, 1, 9)  # 0 protégée (validée par le climatologue), 1 validée, 9 filtrée
+QT_ECARTES = (2,)       # 2 douteuse, en cours de vérification
 
 # Codes PSR ENTSO-E -> filières (mêmes libellés que la Corse, pour comparer).
 # On agrège les fossiles en « thermique » ; B10 (STEP) en génération -> hydraulique ;
@@ -385,6 +397,181 @@ def air_corse_to_parquet(dest: str) -> None:
           f"— {ecartees} ligne(s) sans mesure écartée(s) sur {total:,}")
 
 
+def meteo_corse_to_parquet(dest: str) -> None:
+    """Parquet des températures horaires corses (Météo-France, département 20).
+
+    Quatre garde-fous, tous tranchés sur le brut et non supposés :
+
+    - **fuseau.** `AAAAMMJJHH` est en UTC, et c'est PROUVÉ par la structure du fichier
+      (01/08/2026) : les deux dimanches de changement d'heure de 2025 portent 24 heures
+      chacun (30/03 et 26/10), là où en heure légale ils en comptent 23 et 25. Seule une
+      échelle à décalage fixe donne 24 partout. `heure_locale` est donc CONVERTIE ici,
+      alors que celle d'`air_corse` se lit directement : le flux LCSQA, lui, publie en
+      heure légale. Une erreur de fuseau ne casserait rien — elle décalerait le pic de
+      deux heures, et le titre-affirmation n° 4 du BRIEF_AIR (« le pire moment pour un
+      effort en plein air ») deviendrait un conseil faux, énoncé avec aplomb.
+
+    - **clé.** `(num_poste, date_heure_utc)` est unique ; `(num_poste,
+      date_heure_locale)` ne l'est PAS. Le dimanche du retour à l'heure d'hiver, 00 h et
+      01 h UTC donnent toutes deux 02 h locale — 54 couples en double, un par poste, une
+      fois l'an. Ce n'est pas une anomalie (cette heure a bien lieu deux fois) mais un
+      piège de jointure : l'axe UTC est la clé, l'axe local n'est qu'une étiquette de
+      lecture. L'unicité est vérifiée en sortie.
+
+    - **qualité.** `QT` est le pendant de la `validité` du LCSQA. On garde 0 (protégée),
+      1 (validée) et 9 (filtrée) ; on écarte 2 (douteuse, en cours de vérification). Un
+      code inconnu fait ÉCHOUER : pas de tri silencieux sur une nomenclature qui bouge.
+
+    - **journées de bord.** Les deux extrémités sont tronquées PAR CONSTRUCTION : le
+      décalage UTC -> heure légale ampute la première (23 h le 01/01/2025) et le fichier
+      s'arrête aux petites heures du jour de publication (6 h le 31/07/2026). Une
+      « journée » de six heures fabriquerait un faux maximum journalier. Les deux dates
+      de bord sont donc retirées, puis TOUTE la série est vérifiée — pas seulement les
+      nouvelles bornes : un trou de collecte au milieu produirait le même faux maximum,
+      et rien ne dit qu'il se logerait aux extrémités. Le seuil est 23 heures et non 24,
+      parce que le dimanche du passage à l'heure d'été n'en compte légitimement que 23.
+
+    Lecture en `all_varchar` : le fichier porte ~200 colonnes dont on en lit 6. Laisser le
+    sniffer typer les 194 autres, c'est autant d'occasions qu'une valeur inattendue dans
+    une colonne INUTILISÉE fasse tomber le build. Les colonnes utiles, elles, sont
+    converties explicitement et échouent bruyamment si leur format change. Sortie vérifiée
+    identique à la lecture typée (01/08/2026).
+
+    Les 57 postes sont tous conservés — 2 ne publient jamais de température et sortent
+    d'eux-mêmes du filtre. L'appariement station d'air <-> poste météo est une décision de
+    figure (cf. docs/BRIEF_AIR.md), pas de préparation.
+    """
+    con = duckdb.connect()
+    con.execute(
+        f"""
+        CREATE TEMP TABLE meteo AS
+        SELECT NUM_POSTE                          AS num_poste,
+               NOM_USUEL                          AS poste,
+               CAST(LAT  AS DOUBLE)               AS lat,
+               CAST(LON  AS DOUBLE)               AS lon,
+               CAST(ALTI AS INTEGER)              AS alti,
+               strptime(AAAAMMJJHH, '%Y%m%d%H')   AS date_heure_utc,
+               CAST(T    AS DOUBLE)               AS temperature_c,
+               CAST(QT   AS INTEGER)              AS qt
+        FROM read_csv('{METEO}', delim=';', header=true, all_varchar=true)
+        WHERE T IS NOT NULL
+        """
+    )
+    if not con.execute("SELECT count(*) FROM meteo").fetchone()[0]:
+        raise ValueError(
+            "météo Corse : aucune température dans le brut — la structure du fichier du "
+            "département 20 a-t-elle changé ? (colonne T vide de bout en bout)"
+        )
+    # `timezone('UTC', ts)` interprète l'horodatage naïf comme un instant UTC ; le
+    # `timezone('Europe/Paris', …)` externe le rend en heure légale naïve, convention de
+    # toutes les autres sorties du dépôt.
+    con.execute(
+        """
+        CREATE TEMP VIEW meteo_loc AS
+        SELECT *, timezone('Europe/Paris', timezone('UTC', date_heure_utc)) AS date_heure_locale
+        FROM meteo
+        """
+    )
+
+    codes = {r[0] for r in con.execute("SELECT DISTINCT qt FROM meteo").fetchall()}
+    inconnus = sorted(codes - set(QT_RETENUS) - set(QT_ECARTES))
+    if inconnus:
+        raise ValueError(
+            f"météo Corse : code(s) qualité QT inconnu(s) {inconnus} — nomenclature "
+            "Météo-France modifiée ? Trancher garder/écarter avant de publier."
+        )
+
+    premiere, derniere = con.execute(
+        "SELECT min(CAST(date_heure_locale AS DATE)), max(CAST(date_heure_locale AS DATE)) "
+        "FROM meteo_loc"
+    ).fetchone()
+    retenus = ", ".join(str(q) for q in QT_RETENUS)
+    con.execute(
+        f"""
+        COPY (
+          SELECT num_poste, poste, lat, lon, alti,
+                 date_heure_utc,
+                 date_heure_locale,
+                 CAST(date_heure_locale AS DATE)          AS date_locale,
+                 extract('hour' FROM date_heure_locale)   AS heure_locale,
+                 temperature_c, qt
+          FROM meteo_loc
+          WHERE qt IN ({retenus})
+            AND CAST(date_heure_locale AS DATE) > DATE '{premiere}'
+            AND CAST(date_heure_locale AS DATE) < DATE '{derniere}'
+          ORDER BY date_heure_utc, num_poste
+        ) TO '{dest}' (FORMAT PARQUET)
+        """
+    )
+
+    # Garde de sortie 1 : JAMAIS de Parquet vide. Sans elle, un brut réduit à une ou deux
+    # journées (producteur en panne, fichier tronqué à la bascule de millésime) sortirait
+    # à zéro ligne, et la garde de bords ci-dessous passerait sans rien dire — min() et
+    # max() valant NULL, elle ne trouverait aucune borne à examiner.
+    n, postes, d1, d2 = con.execute(
+        f"SELECT count(*), count(DISTINCT num_poste), min(date_locale), max(date_locale) "
+        f"FROM '{dest}'"
+    ).fetchone()
+    if not n:
+        raise ValueError(
+            f"météo Corse : sortie VIDE — le brut ne couvre que {premiere} .. {derniere}, "
+            "dont il ne reste rien après retrait des deux journées de bord. Publier un "
+            "Parquet vide propagerait des figures muettes."
+        )
+
+    # Garde de sortie 2 : AUCUNE journée tronquée, sur TOUTE la série et pas seulement aux
+    # bornes — un maximum journalier calculé sur un fragment de journée serait faux sans
+    # rien signaler, où qu'il tombe. Seuil à 23 h et non 24 : le dimanche du passage à
+    # l'heure d'été n'en compte légitimement que 23. Les deux diagnostics sont distincts
+    # et appellent des gestes différents, d'où le message qui les sépare : une borne
+    # creuse dit que la troncature du producteur dépasse un jour (le retrait est à
+    # élargir), une journée creuse au milieu dit qu'il manque de la donnée.
+    creuses = con.execute(
+        f"""SELECT CAST(date_locale AS VARCHAR), count(DISTINCT heure_locale) AS h
+            FROM '{dest}' GROUP BY 1 HAVING h < 23 ORDER BY 1"""
+    ).fetchall()
+    if creuses:
+        aux_bords = [c for c in creuses if c[0] in {str(d1), str(d2)}]
+        au_milieu = [c for c in creuses if c not in aux_bords]
+        details = []
+        if aux_bords:
+            details.append(
+                f"aux bornes {aux_bords} — la troncature du producteur dépasse un jour "
+                f"(dates extrêmes déjà retirées : {premiere}, {derniere}), élargir le retrait"
+            )
+        if au_milieu:
+            details.append(
+                f"{len(au_milieu)} au milieu de la série, dont {au_milieu[:5]} — trou de "
+                "collecte chez le producteur, à trancher avant de publier"
+            )
+        raise ValueError("météo Corse : journée(s) incomplète(s) : " + " ; ".join(details))
+
+    # Garde de sortie 3 : unicité sur l'axe UTC. Un doublon (poste, heure) doublerait
+    # silencieusement le poids de cette heure dans toute moyenne ou tout maximum.
+    doublons = con.execute(
+        f"""SELECT count(*) FROM (SELECT num_poste, date_heure_utc FROM '{dest}'
+            GROUP BY 1, 2 HAVING count(*) > 1)"""
+    ).fetchone()[0]
+    if doublons:
+        raise ValueError(
+            f"météo Corse : {doublons} couple(s) (poste, heure UTC) en double — la clé "
+            "n'est plus unique, toute moyenne ou somme en serait faussée."
+        )
+
+    # Compté sur la MÊME fenêtre que la sortie : un décompte pris sur tout le brut
+    # inclurait les journées de bord, que la sortie ne contient pas.
+    ecartees = con.execute(
+        f"""SELECT count(*) FROM meteo_loc
+            WHERE qt IN ({', '.join(str(q) for q in QT_ECARTES)})
+              AND CAST(date_heure_locale AS DATE) > DATE '{premiere}'
+              AND CAST(date_heure_locale AS DATE) < DATE '{derniere}'"""
+    ).fetchone()[0]
+    # Pas de flèche ni d'autre caractère hors cp1252 : la console Windows du dépôt ne
+    # sait pas les encoder, et un message de succès ne doit jamais faire tomber un build.
+    print(f"[ok] {Path(dest).name} — {n:,} heures ({postes} postes, du {d1} au {d2}) "
+          f"— {ecartees} douteuse(s) écartée(s), bords tronqués retirés")
+
+
 # Plan de construction : chaque sortie Parquet, sa fonction de build et les sources brutes
 # qui la nourrissent. Sert à la fois à VÉRIFIER les bons bruts (prepare ne bâtit QUE depuis
 # des octets certifiés — AUD-01) et à écrire une lignée qui relie chaque sortie à ses entrées
@@ -398,7 +585,8 @@ _SORTIES_FIXES = [
 ]
 
 
-def _plan_construction(sardaigne_ok: bool, air_ok: bool = False) -> list:
+def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
+                       meteo_ok: bool = False) -> list:
     plan = list(_SORTIES_FIXES)
     if sardaigne_ok:
         plan.append((
@@ -407,6 +595,8 @@ def _plan_construction(sardaigne_ok: bool, air_ok: bool = False) -> list:
         ))
     if air_ok:
         plan.append(("air_corse.parquet", air_corse_to_parquet, ["lcsqa_temps_reel"]))
+    if meteo_ok:
+        plan.append(("meteo_corse.parquet", meteo_corse_to_parquet, ["meteo_horaire_corse"]))
     return plan
 
 
@@ -517,7 +707,8 @@ def main() -> int:
     # staging et on bascule d'un bloc, puis on écrit la lignée sortie -> entrées.
     sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES)
     air_ok = Path(AIR).exists()
-    plan = _plan_construction(sardaigne_ok, air_ok)
+    meteo_ok = Path(METEO).exists()
+    plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok)
     source_ids = [sid for _, _, sids in plan for sid in sids]
 
     entrees = _verifier_bruts(source_ids)
@@ -526,6 +717,8 @@ def main() -> int:
         print("[=] entsoe_sardaigne : fichiers annuels absents (jeton ENTSO-E ?) — étape sautée.")
     if not air_ok:
         print("[=] lcsqa_temps_reel : brut absent — étape air sautée (lancer fetch-data).")
+    if not meteo_ok:
+        print("[=] meteo_horaire_corse : brut absent — étape météo sautée (lancer fetch-data).")
     _ecrire_lignee(entrees, sorties)
 
     print("\nPréparation terminée : data/processed/")
