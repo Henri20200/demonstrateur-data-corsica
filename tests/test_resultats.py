@@ -537,8 +537,8 @@ def test_ajaccio_va_aux_milelli_et_pas_a_campo_dell_oro(con):
     """Second choix contre-intuitif de l'appariement (01/08/2026).
 
     Campo dell'Oro est le poste synoptique de référence d'Ajaccio et il est plus proche du
-    Canetto en ALTITUDE (-30 m contre +51 m). Il est pourtant écarté : à 4,87 km contre
-    1,91 km, et surtout parce que l'écart de 2,6 °C entre les maxima d'été des deux postes
+    Canetto en ALTITUDE (-30 m contre +51 m). Il est pourtant écarté : à 4,84 km contre
+    1,88 km, et surtout parce que l'écart de 2,6 °C entre les maxima d'été des deux postes
     ne s'explique pas par le relief (~0,3 °C de gradient) mais par l'exposition — une aire
     aéroportuaire ventilée par la brise de golfe contre un versant urbain.
 

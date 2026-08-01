@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "621ddd8604f7731a642ff9bd6d09e82d98cab320efeec3973dbc5ee4a03e3726",
-    "date_collecte": "2026-07-31",
-    "taille_octets": 397364
+    "sha256": "14e1d4a3e347dcba89b9a056370e98655391c9693f68af9af0b068d21ba4ace8",
+    "date_collecte": "2026-08-01",
+    "taille_octets": 397361
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -122,7 +122,7 @@
       "GL_MarketDocument/mRID",
       "GL_MarketDocument/createdDateTime"
     ],
-    "date_collecte": "2026-07-22",
+    "date_collecte": "2026-07-31",
     "taille_octets": 5658461
   },
   "entsoe_sardaigne_2023": {
@@ -154,5 +154,27 @@
     ],
     "date_collecte": "2026-07-22",
     "taille_octets": 5912656
+  },
+  "lcsqa_temps_reel": {
+    "url": "https://files.data.gouv.fr/ineris/lcsqa/concentrations-de-polluants-atmospheriques-reglementes/temps-reel/2026/FR_E2_2026-07-30.csv",
+    "filename": "lcsqa_temps_reel.csv",
+    "producteur": "LCSQA / Ineris — mesures des AASQA (Qualitair Corse pour l'île)",
+    "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
+    "format": "csv",
+    "content_type": "text/csv",
+    "sha256": "e02fb0548604fcc604bde2fed7e9c88749cd7d89c4e80a2a5237fb5aedc5b4a7",
+    "date_collecte": "2026-08-01",
+    "taille_octets": 12745848
+  },
+  "meteo_horaire_corse": {
+    "url": "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz",
+    "filename": "meteo_horaire_corse.csv.gz",
+    "producteur": "Météo-France — données climatologiques de base, horaires (département 20)",
+    "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
+    "format": "csv.gz",
+    "content_type": "application/gzip",
+    "sha256": "2645594805d6905ffbfd12ac22c19ebe7fc123e7c41c5c9b88d57b76791ee4d5",
+    "date_collecte": "2026-08-01",
+    "taille_octets": 27281853
   }
 }
