@@ -92,15 +92,40 @@ pluri-décennale découpée en tranches, dont les deux dernières années rééc
 jour. C'est le croisement multi-sources exigé par le BRIEF, et sans lui « de combien
 monte-t-il quand il fait chaud » reste une impression.
 
-**Historique — Geod'air (LCSQA / Ineris), Licence Ouverte.** La base de référence des
-données **validées**, alimentée par les AASQA depuis 2013. Accès par API, sur inscription
-et clé. L'export se filtre par région (code Insee 94 pour la Corse), par station et par
-influence : six stations sur plusieurs années pèsent quelques dizaines de Mo. Les conditions
-générales de l'Ineris placent ces données sous Licence Ouverte, à deux conditions que le
-dépôt tient déjà — ne pas les altérer, citer la source et la date de dernière mise à jour.
-Deux réserves à respecter : les logos Ineris et Prev'air sont des marques protégées, donc
-citer « Geod'air (Ineris / LCSQA) » en toutes lettres et jamais le logo ; et la mention de
-source reste neutre, sans laisser entendre que l'Ineris valide ce travail.
+**Historique — Agence européenne pour l'environnement (AEE), CC-BY. RETENU le
+01/08/2026, à la place de Geod'air.** Même donnée, autre canal, **sans clé** : le namespace
+des fichiers le dit — `FR.LCSQA-INERIS.AQ` — ce sont les mesures de Qualitair Corse
+rapportées par le LCSQA, telles que la France les transmet à l'Europe. Un Parquet par
+station et par polluant, url déterministe (`SPO-<station>_<polluant>.parquet`), et deux jeux
+qui se raccordent bout à bout sans le moindre chevauchement : **E1a validé de 2013 au
+01/01/2025**, puis le **flux continu jusqu'au jour même**. Douze entrées pour l'ozone,
+8,78 Mo — contre les 26 Go qu'aurait coûtés le même historique par le flux national.
+
+Trois choses que ce canal règle et que Geod'air ne réglait pas :
+
+- **l'attente** : ni inscription, ni clé, ni quota, ni règle de bonne conduite ;
+- **la frontière des deux régimes** : la colonne `Verification` déclare, ligne à ligne, ce
+  qui est vérifié (1) et ce qui ne l'est pas encore (2, 3). Le brief annonçait une
+  difficulté de maquette — une frontière à reconstituer et à écrire sur les figures ; le
+  producteur la fournit ;
+- **les frictions 2 et 3**, qui disparaissent : plus d'export en deux temps, plus d'UUID
+  instable, et un format Parquet que DuckDB lit nativement.
+
+**Fuseau : UTC+1 fixe, horodatage en FIN de période** — l'inverse du flux LCSQA. L'axe UTC
+s'obtient donc en retirant **deux heures** : une pour revenir au début de période, une pour
+quitter UTC+1. Établi sur pièce, et vérifié en continu : sur leurs heures communes, les deux
+canaux coïncident à **0,00 µg/m³**. Un test rejoue cette comparaison à chaque run — c'est le
+seul garde-fou sérieux, une erreur d'une heure ne se voyant sur aucune figure.
+
+**Geod'air n'est pas abandonné** : le jour où la clé arrivera, deux canaux servant la même
+donnée feront une vérification croisée gratuite. Ce qui suit reste donc valable si ce jour
+vient. *La base de référence des données validées, alimentée par les AASQA depuis 2013,
+accès par API sur inscription et clé, export filtrable par région (code Insee 94). Licence
+Ouverte selon les CGU de l'Ineris, à deux conditions que le dépôt tient déjà : ne pas
+altérer les données, citer la source et la date de dernière mise à jour. Deux réserves :
+les logos Ineris et Prev'air sont des marques protégées — citer « Geod'air (Ineris / LCSQA) »
+en toutes lettres, jamais le logo ; et la mention de source reste neutre, sans laisser
+entendre que l'Ineris valide ce travail.* La même réserve de logo vaut pour l'AEE.
 
 **Qualitair Corse** — l'AASQA agréée pour l'île. Son portail n'affiche aucune licence :
 écarté comme source de données tant qu'elle n'est pas écrite noir sur blanc. Reste

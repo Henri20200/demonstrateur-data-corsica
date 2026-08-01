@@ -457,14 +457,20 @@ def air_corse_to_parquet(dest: str) -> None:
 # codes PSR d'ENTSO-E, plutôt que déclarées en source — le xls n'est pas un format que
 # `fetch` sait certifier, et aucune sortie quotidienne n'en dépend.
 #
-# (nom, latitude, longitude, altitude en m, mise en service)
+# (nom, latitude, longitude, altitude en m, mise en service, implantation, influence)
 STATIONS_AIR = {
-    "FR41001": ("AJACCIO CANETTO",   41.924694, 8.735694,  39, "2006-05-23"),
-    "FR41063": ("AJACCIO CONFINA 2", 41.947685, 8.796159,  70, "2024-01-31"),
-    "FR41002": ("BASTIA GIRAUD",     42.697918, 9.446417,  60, "2006-08-01"),
-    "FR41017": ("BASTIA MONTESORO",  42.671333, 9.434639,  15, "2006-05-23"),
-    "FR41004": ("BASTIA LA MARANA",  42.535830, 9.475972,  15, "2007-01-03"),
-    "FR41024": ("VENACO",            42.236027, 9.190028, 653, "2011-04-29"),
+    "FR41001": ("AJACCIO CANETTO",   41.924694, 8.735694,  39, "2006-05-23",
+                "Urbaine", "Fond"),
+    "FR41063": ("AJACCIO CONFINA 2", 41.947685, 8.796159,  70, "2024-01-31",
+                "Périurbaine", "Fond"),
+    "FR41002": ("BASTIA GIRAUD",     42.697918, 9.446417,  60, "2006-08-01",
+                "Urbaine", "Fond"),
+    "FR41017": ("BASTIA MONTESORO",  42.671333, 9.434639,  15, "2006-05-23",
+                "Périurbaine", "Fond"),
+    "FR41004": ("BASTIA LA MARANA",  42.535830, 9.475972,  15, "2007-01-03",
+                "Périurbaine", "Industrielle"),
+    "FR41024": ("VENACO",            42.236027, 9.190028, 653, "2011-04-29",
+                "Rurale régionale", "Fond"),
 }
 # CONFINA 2 N'EXISTE QUE DEPUIS 2024 : sur un historique remontant à 2020, elle portera deux
 # ans quand les cinq autres en porteront sept. À écrire sur toute figure qui les compare.
@@ -497,6 +503,87 @@ APPARIEMENT_AIR_METEO = {
     # confirme d'ailleurs : +120 m vers Vivario contre -303 m vers Corte.
     "FR41024": "20354008",  # VENACO (653 m)    <- VIVARIO_SAPC (773 m, 9,86 km)
 }
+
+
+AEE_O3 = (DATA_RAW / "aee_o3_*.parquet").as_posix()
+# Les douze source_ids de sources.yaml : six stations, deux jeux (validé + continu). Sert
+# à vérifier les empreintes AVANT construction et à écrire la lignée des sorties ozone.
+AEE_SOURCES = [
+    f"aee_o3_{slug}_{jeu}"
+    for slug in ("ajaccio_canetto", "ajaccio_confina2", "bastia_giraud",
+                 "bastia_montesoro", "bastia_marana", "venaco")
+    for jeu in ("valide", "continu")
+]
+
+
+def o3_serie_to_parquet(dest: str) -> None:
+    """Série longue d'ozone des six stations corses, assemblée depuis les Parquet de l'AEE.
+
+    C'est elle qui porte les cinq titres : douze ans au lieu d'une journée. Le flux LCSQA
+    garde son rôle de fraîcheur multi-polluants et de contrôle croisé.
+
+    **Fuseau — deux heures à retirer, et pas une.** L'AEE publie en UTC+1 fixe, horodaté à
+    la FIN de la période : une heure pour revenir au début de période, une autre pour
+    quitter UTC+1. Le flux LCSQA, lui, est en UTC+1 fixe au DÉBUT — d'où l'écart d'une seule
+    heure entre les deux sources, mesuré à 0,00 µg/m³ près sur leurs journées communes d'été
+    et d'hiver. Un test rejoue cette comparaison ; c'est le seul garde-fou sérieux contre un
+    décalage qui, ici, ne se verrait sur aucune figure.
+
+    **Raccord des deux jeux : rien à dédoublonner.** Le jeu validé s'arrête au 01/01/2025
+    à 00:00, le continu reprend à 01:00 — vérifié, zéro horodatage commun. La colonne
+    `verification` distingue ensuite ce qui est vérifié (1) de ce qui ne l'est pas encore
+    (2, 3) : la frontière entre les deux régimes est déclarée par le producteur, elle n'a
+    pas à être reconstituée.
+    """
+    con = duckdb.connect()
+    lignes = ", ".join(
+        f"('{code}', '{s[0]}', '{s[5]}', '{s[6]}')" for code, s in STATIONS_AIR.items()
+    )
+    con.execute(
+        f"""
+        CREATE TEMP VIEW serie AS
+        WITH brut AS (
+          SELECT regexp_extract("Samplingpoint", 'SPO-(FR[0-9]+)_', 1) AS code_site,
+                 "Start" - INTERVAL 2 HOUR                             AS date_heure_utc,
+                 CAST("Value" AS DOUBLE)                               AS valeur,
+                 CAST("Validity" AS INTEGER)                           AS validite,
+                 CAST("Verification" AS INTEGER)                       AS verification
+          FROM read_parquet('{AEE_O3}', union_by_name = true)
+        ),
+        nommees(code_site, station, implantation, influence) AS (VALUES {lignes})
+        SELECT b.code_site, n.station, n.implantation, n.influence,
+               b.date_heure_utc,
+               timezone('Europe/Paris', timezone('UTC', b.date_heure_utc))
+                                                        AS date_heure_locale,
+               CAST(timezone('Europe/Paris', timezone('UTC', b.date_heure_utc)) AS DATE)
+                                                        AS date_locale,
+               extract('hour' FROM timezone('Europe/Paris', timezone('UTC', b.date_heure_utc)))
+                                                        AS heure_locale,
+               b.valeur, b.validite, b.verification
+        FROM brut b JOIN nommees n USING (code_site)
+        WHERE b.validite > 0 AND b.valeur IS NOT NULL
+        """
+    )
+    manquantes = set(STATIONS_AIR) - {
+        r[0] for r in con.execute("SELECT DISTINCT code_site FROM serie").fetchall()
+    }
+    if manquantes:
+        raise ValueError(
+            f"ozone : station(s) absente(s) de la série AEE {sorted(manquantes)} — "
+            "fichier non collecté, ou code de point de prélèvement modifié."
+        )
+    con.execute(
+        f"COPY (SELECT * FROM serie ORDER BY date_heure_utc, station) "
+        f"TO '{dest}' (FORMAT PARQUET)"
+    )
+    n, st, d1, d2, verif = con.execute(
+        f"SELECT count(*), count(DISTINCT station), min(date_locale), max(date_locale), "
+        f"count(*) FILTER (WHERE verification = 1) FROM '{dest}'"
+    ).fetchone()
+    if not n:
+        raise ValueError("ozone : série AEE vide après filtre de validité.")
+    print(f"[ok] {Path(dest).name} — {n:,} heures ({st} stations, du {d1} au {d2}) "
+          f"— dont {verif:,} vérifiées")
 
 
 # --- Ozone : la moyenne glissante sur 8 heures --------------------------------------
@@ -617,10 +704,10 @@ def o3_mda8_to_parquet(dest: str) -> None:
     """
     # Cette sortie dérive d'une AUTRE sortie, seul cas du dépôt. Elle lit donc son voisin
     # dans le dossier de `dest` — c'est-à-dire la zone de staging pendant un build, jamais
-    # data/processed : la bascule n'a lieu qu'à la fin, si bien qu'y lire air_corse.parquet
+    # data/processed : la bascule n'a lieu qu'à la fin, si bien qu'y lire la série
     # rendrait la version du run PRÉCÉDENT (et rien du tout au premier run). L'ordre du
-    # plan de construction garantit qu'il est déjà écrit.
-    amont = Path(dest).parent / "air_corse.parquet"
+    # plan de construction garantit qu'elle est déjà écrite.
+    amont = Path(dest).parent / "air_o3_serie.parquet"
     if not amont.exists():
         raise FileNotFoundError(
             f"ozone : {amont.name} absent du dossier de construction — l'ordre du plan "
@@ -629,15 +716,11 @@ def o3_mda8_to_parquet(dest: str) -> None:
     con = duckdb.connect()
     con.execute(
         f"""
-        CREATE TEMP VIEW o3 AS
-        SELECT * FROM '{amont.as_posix()}' WHERE polluant = 'O3'
+        CREATE TEMP VIEW o3 AS SELECT * FROM '{amont.as_posix()}'
         """
     )
     if not con.execute("SELECT count(*) FROM o3").fetchone()[0]:
-        raise ValueError(
-            "ozone : aucune mesure d'O3 dans air_corse.parquet — le libellé de polluant "
-            "a-t-il changé ? (attendu 'O3')"
-        )
+        raise ValueError("ozone : série d'ozone vide en amont du maximum journalier.")
     con.execute(
         f"COPY ({_sql_mda8(_sql_glissant_8h('o3'))} ORDER BY date_locale, station) "
         f"TO '{dest}' (FORMAT PARQUET)"
@@ -846,7 +929,7 @@ _SORTIES_FIXES = [
 
 
 def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
-                       meteo_ok: bool = False) -> list:
+                       meteo_ok: bool = False, aee_ok: bool = False) -> list:
     plan = list(_SORTIES_FIXES)
     if sardaigne_ok:
         plan.append((
@@ -855,9 +938,11 @@ def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
         ))
     if air_ok:
         plan.append(("air_corse.parquet", air_corse_to_parquet, ["lcsqa_temps_reel"]))
-        # APRÈS air_corse.parquet, dont elle dérive en lisant le staging — ne pas remonter
-        # cette ligne au-dessus de la précédente.
-        plan.append(("air_o3_mda8.parquet", o3_mda8_to_parquet, ["lcsqa_temps_reel"]))
+    if aee_ok:
+        plan.append(("air_o3_serie.parquet", o3_serie_to_parquet, sorted(AEE_SOURCES)))
+        # APRÈS air_o3_serie.parquet, dont elle dérive en lisant le staging — ne pas
+        # remonter cette ligne au-dessus de la précédente.
+        plan.append(("air_o3_mda8.parquet", o3_mda8_to_parquet, sorted(AEE_SOURCES)))
     if meteo_ok:
         plan.append(("meteo_corse.parquet", meteo_corse_to_parquet, ["meteo_horaire_corse"]))
     return plan
@@ -971,7 +1056,8 @@ def main() -> int:
     sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES)
     air_ok = Path(AIR).exists()
     meteo_ok = Path(METEO).exists()
-    plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok)
+    aee_ok = len(list(DATA_RAW.glob("aee_o3_*.parquet"))) == len(AEE_SOURCES)
+    plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok, aee_ok)
     source_ids = [sid for _, _, sids in plan for sid in sids]
 
     entrees = _verifier_bruts(source_ids)
@@ -982,6 +1068,8 @@ def main() -> int:
         print("[=] lcsqa_temps_reel : brut absent — étape air sautée (lancer fetch-data).")
     if not meteo_ok:
         print("[=] meteo_horaire_corse : brut absent — étape météo sautée (lancer fetch-data).")
+    if not aee_ok:
+        print("[=] série AEE incomplète — étapes ozone sautées (lancer fetch-data).")
     _ecrire_lignee(entrees, sorties)
 
     print("\nPréparation terminée : data/processed/")

@@ -19,6 +19,8 @@ ECRET = DATA_PROCESSED / "edf_ecretement_corse.parquet"
 SARD = DATA_PROCESSED / "entsoe_sardaigne.parquet"
 SARD_XML = DATA_RAW / "entsoe_sardaigne_2023.xml"
 AIR = DATA_PROCESSED / "air_corse.parquet"
+SERIE = DATA_PROCESSED / "air_o3_serie.parquet"
+MDA8 = DATA_PROCESSED / "air_o3_mda8.parquet"
 METEO = DATA_PROCESSED / "meteo_corse.parquet"
 
 besoin_courbe = pytest.mark.skipif(
@@ -38,6 +40,9 @@ besoin_sard_xml = pytest.mark.skipif(
 )
 besoin_air = pytest.mark.skipif(
     not AIR.exists(), reason="parquet air absent — lancer fetch-data puis prepare"
+)
+besoin_serie = pytest.mark.skipif(
+    not SERIE.exists(), reason="série ozone AEE absente — lancer fetch-data puis prepare"
 )
 besoin_meteo = pytest.mark.skipif(
     not METEO.exists(), reason="parquet météo absent — lancer fetch-data puis prepare"
@@ -586,7 +591,7 @@ def test_appariement_coherent_avec_les_coordonnees_officielles(con):
         f"SELECT DISTINCT num_poste, lat, lon FROM '{METEO.as_posix()}'"
     ).fetchall()
     for code_site, num_poste in APPARIEMENT_AIR_METEO.items():
-        nom, lat, lon, _alt, _debut = STATIONS_AIR[code_site]
+        nom, lat, lon = STATIONS_AIR[code_site][:3]
         classement = sorted(postes, key=lambda p: km((lat, lon), (p[1], p[2])))
         deux_plus_proches = [p[0] for p in classement[:2]]
         assert num_poste in deux_plus_proches, (
@@ -661,3 +666,74 @@ def test_l_heure_locale_derive_de_l_utc_et_non_du_brut(con):
         assert [r[0] for r in ecart_ete] == [2], (
             f"décalage heure locale − UTC en été : {[r[0] for r in ecart_ete]} h, attendu 2"
         )
+
+
+@besoin_serie
+@besoin_air
+def test_la_serie_aee_et_le_flux_lcsqa_coincident(con):
+    """Contrôle croisé de deux canaux indépendants — le seul garde-fou sérieux du fuseau.
+
+    L'AEE et le LCSQA servent la même mesure par deux chemins différents, avec deux
+    conventions horaires différentes : UTC+1 en fin de période pour l'un, UTC+1 en début
+    pour l'autre. D'où deux heures à retirer d'un côté, une seule de l'autre. Une erreur
+    d'une heure ne se verrait sur AUCUNE figure — le profil serait simplement décalé, et
+    « le pire créneau pour un effort en plein air » désignerait la mauvaise heure.
+
+    Sur l'axe UTC reconstruit, les valeurs doivent être IDENTIQUES, pas seulement proches.
+    """
+    n, ecart = con.execute(
+        f"""SELECT count(*), max(abs(a.valeur - l.valeur))
+            FROM '{SERIE.as_posix()}' a
+            JOIN (SELECT date_heure_utc, station, valeur FROM '{AIR.as_posix()}'
+                  WHERE polluant = 'O3') l
+              ON a.date_heure_utc = l.date_heure_utc AND a.station = l.station"""
+    ).fetchone()
+    assert n > 0, (
+        "aucune heure commune entre la série AEE et le flux LCSQA — le recouvrement doit "
+        "exister (le flux publie J-2, l'AEE va jusqu'au jour même)"
+    )
+    assert ecart == 0, (
+        f"{n} heures appariées mais écart max {ecart} µg/m³ — les deux canaux divergent, "
+        "donc l'axe UTC d'au moins l'un des deux est faux"
+    )
+
+
+@besoin_serie
+def test_la_serie_couvre_les_six_stations_sur_douze_ans(con):
+    """La série doit porter les six stations et remonter à 2013, sinon un titre repose
+    sur moins de profondeur qu'annoncé."""
+    n, stations, debut, fin = con.execute(
+        f"""SELECT count(*), count(DISTINCT station), min(date_locale), max(date_locale)
+            FROM '{SERIE.as_posix()}'"""
+    ).fetchone()
+    assert stations == 6, f"{stations} stations dans la série (attendu 6)"
+    assert str(debut) <= "2013-01-02", f"série commençant le {debut} — 2013 attendu"
+    assert n > 400_000, f"{n:,} heures — la série paraît tronquée"
+
+
+@besoin_serie
+def test_les_depassements_se_produisent_sans_alerte(con):
+    """TITRE N° 1 : l'objectif de qualité est franchi des jours où aucun seuil
+    d'information n'est approché.
+
+    C'est l'affirmation qui définit le sujet, et le chiffre est sans appel : sur les étés
+    2013-2025, la totalité des journées dépassant 120 µg/m³ en maximum journalier sur 8 h
+    l'ont fait sans qu'aucune heure n'atteigne les 180 µg/m³ du seuil d'information. Si
+    cette proportion cessait d'être totale, le titre devrait être réécrit — pas la figure.
+    """
+    total, sans_alerte = con.execute(
+        f"""WITH j AS (
+              SELECT date_locale, station, mda8 FROM '{MDA8.as_posix()}'
+              WHERE valide AND extract('month' FROM date_locale) IN (6, 7, 8)
+                AND extract('year' FROM date_locale) BETWEEN 2013 AND 2025),
+            h AS (SELECT date_locale, station, max(valeur) AS mx
+                  FROM '{SERIE.as_posix()}' GROUP BY 1, 2)
+            SELECT count(*) FILTER (WHERE j.mda8 > 120),
+                   count(*) FILTER (WHERE j.mda8 > 120 AND h.mx < 180)
+            FROM j JOIN h USING (date_locale, station)"""
+    ).fetchone()
+    assert total > 500, f"{total} jour-station de dépassement — le titre attend des centaines"
+    assert sans_alerte == total, (
+        f"{sans_alerte}/{total} dépassements sans alerte — le titre n° 1 affirme la "
+        "totalité ; à réécrire si ce n'est plus vrai"
+    )
