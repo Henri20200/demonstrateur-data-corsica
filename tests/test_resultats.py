@@ -530,3 +530,26 @@ def test_2022_creux_hydraulique_et_pic_thermique(con):
     assert float(ligne_2023["thermique"]) == pytest.approx(34.8, abs=0.2), (
         "BRIEF_AIR oppose 2022 à « 34,8 % l'année suivante »"
     )
+
+
+@besoin_meteo
+def test_ajaccio_va_aux_milelli_et_pas_a_campo_dell_oro(con):
+    """Second choix contre-intuitif de l'appariement (01/08/2026).
+
+    Campo dell'Oro est le poste synoptique de référence d'Ajaccio et il est plus proche du
+    Canetto en ALTITUDE (-30 m contre +51 m). Il est pourtant écarté : à 4,87 km contre
+    1,91 km, et surtout parce que l'écart de 2,6 °C entre les maxima d'été des deux postes
+    ne s'explique pas par le relief (~0,3 °C de gradient) mais par l'exposition — une aire
+    aéroportuaire ventilée par la brise de golfe contre un versant urbain.
+
+    Le test vérifie aussi que Campo dell'Oro EXISTE : son écartement doit rester un choix.
+    """
+    milelli, campo = "20004014", "20004002"
+    assert APPARIEMENT_AIR_METEO["FR41001"] == milelli, (
+        "AJACCIO CANETTO doit aller aux Milelli (cf. la justification dans prepare.py)"
+    )
+    dispo = {
+        r[0] for r in con.execute(f"SELECT DISTINCT num_poste FROM '{METEO.as_posix()}'").fetchall()
+    }
+    assert campo in dispo, "Campo dell'Oro doit être disponible — son écartement est délibéré"
+    assert campo not in APPARIEMENT_AIR_METEO.values()

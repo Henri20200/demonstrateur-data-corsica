@@ -175,6 +175,15 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
   ozone/chaleur, seule chose que le titre n° 1 mesure. Une amplitude différente n'est pas
   un décalage — l'écart avec Venaco varie selon l'heure et la saison, et déforme
   exactement ce qu'on cherche à établir.
+- **Ajaccio va aux Milelli, et non à Campo dell'Oro**, pourtant le poste synoptique de
+  référence de la ville et le plus proche du Canetto en altitude (−30 m contre +51 m). Deux
+  raisons : la distance (1,91 km contre 4,87 — coordonnées du Canetto relevées sur pièce,
+  41,9253 N / 8,7350 E, 35 m, le flux LCSQA n'en fournissant aucune), et surtout le fait que
+  les deux postes diffèrent de **2,6 °C sur les maxima d'été** quand le relief n'en explique
+  que 0,3. L'écart vient donc de l'exposition : Campo dell'Oro est une aire aéroportuaire
+  dégagée dans la plaine de la Gravona, que la brise de golfe ventile ; le Canetto est en
+  tissu urbain dense sur les pentes du centre, comme les Milelli. Même leçon qu'à Venaco —
+  ce qui compte est le régime, pas la proximité métrique.
 - **Le poste appelé « BASTIA » n'est pas à Bastia.** Les codes commune portés par
   `num_poste` le disent : 20148 = 2B148 = Lucciana, c'est l'aéroport de Poretta, dans la
   plaine de la Marana ; Bastia ville, c'est « BASTIA_SAPC », 20033 = 2B033. Les deux

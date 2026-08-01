@@ -443,9 +443,18 @@ def air_corse_to_parquet(dest: str) -> None:
 # Chaque ligne s'écrit sur la figure : c'est une approximation assumée, jamais une
 # équivalence. La figure nomme le POSTE, jamais la commune de la station d'air.
 APPARIEMENT_AIR_METEO = {
-    # Ajaccio — le littoral à la station littorale, les hauteurs à la station des hauteurs.
-    "FR41001": "20004002",  # AJACCIO CANETTO   <- AJACCIO (Campo dell'Oro, 5 m, littoral)
-    "FR41063": "20004014",  # AJACCIO CONFINA 2 <- AJACCIO-MILELLI_SAPC (86 m, périurbain)
+    # Ajaccio — les deux stations vont au poste urbain des Milelli, et NON à Campo dell'Oro
+    # malgré son statut de poste synoptique de référence. Coordonnées du Canetto relevées sur
+    # pièce (41,9253 N / 8,7350 E, 35 m, rue Chanoine François Maestroni), le flux LCSQA n'en
+    # donnant aucune : Milelli est à 1,91 km, Campo dell'Oro à 4,87 km.
+    # L'altitude ne départage pas — +51 m d'un côté, -30 m de l'autre, soit ~0,3 °C de
+    # gradient dans les deux cas. Or les deux postes diffèrent de 2,6 °C sur les maxima d'été
+    # (32,8 contre 30,2 en moyenne sur 152 journées) : cet écart ne vient donc PAS du relief,
+    # mais de l'EXPOSITION. Campo dell'Oro est une aire aéroportuaire dégagée dans la plaine
+    # de la Gravona, que la brise de golfe ventile et dont elle écrête les maxima ; le Canetto
+    # est en tissu urbain dense sur les pentes du centre, comme les Milelli.
+    "FR41001": "20004014",  # AJACCIO CANETTO   <- AJACCIO-MILELLI_SAPC (86 m, 1,9 km)
+    "FR41063": "20004014",  # AJACCIO CONFINA 2 <- AJACCIO-MILELLI_SAPC (périurbain nord)
     # Bastia — cf. le piège ci-dessus : deux stations en ville, une dans la plaine.
     "FR41002": "20033015",  # BASTIA GIRAUD     <- BASTIA_SAPC (Bastia ville, 26 m)
     "FR41017": "20033015",  # BASTIA MONTESORO  <- BASTIA_SAPC (Bastia ville, 26 m)

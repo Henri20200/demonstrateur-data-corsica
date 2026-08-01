@@ -281,9 +281,11 @@ sources:
       PIÈGE DE NOMMAGE : le poste « BASTIA » (20148001) n'est PAS à Bastia — 20148 = 2B148
       = Lucciana, c'est l'aéroport de Poretta, dans la plaine de la Marana. Bastia ville,
       c'est « BASTIA_SAPC » (20033015, 2B033). Le code commune que porte NUM_POSTE tranche
-      là où le nom trompe. Postes retenus face aux 6 stations d'ozone : AJACCIO (20004002,
-      littoral) et AJACCIO-MILELLI_SAPC (20004014, hauteurs) ; BASTIA_SAPC pour les deux
-      stations urbaines, BASTIA/Poretta pour celle de la Marana ; VIVARIO_SAPC (20354008)
+      là où le nom trompe. Postes retenus face aux 6 stations d'ozone : AJACCIO-MILELLI_SAPC
+      (20004014) pour les DEUX stations d'Ajaccio — et non AJACCIO/Campo dell'Oro (20004002),
+      poste synoptique de référence mais aire aéroportuaire ventilée par la brise de golfe,
+      2,5 fois plus loin du Canetto ; BASTIA_SAPC pour les deux stations urbaines de Bastia,
+      BASTIA/Poretta pour celle de la Marana ; VIVARIO_SAPC (20354008)
       pour Venaco, qui n'a aucun poste sur sa commune — et NON Corte, pourtant plus proche
       en distance comme en altitude, dont la cuvette encaissée creuse l'amplitude diurne.
       L'appariement complet et ses raisons sont dans `prepare.APPARIEMENT_AIR_METEO` ; il
