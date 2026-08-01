@@ -45,6 +45,12 @@ calcule son empreinte SHA-256 (canonique quand une source réestampille une enve
 volatile à chaque requête, cf. `empreinte_ignore_xml`) et écrit **`data/raw/_manifest.json`**. Une `url` peut
 référencer une variable d'environnement `${NOM}` (jeton d'API, ex. `${ENTSOE_TOKEN}`) :
 expansion au téléchargement uniquement, jamais de secret dans le manifeste ni les logs.
+Le même `${NOM}` vaut pour les **en-têtes HTTP** déclarés dans `entetes:` (jeton porté
+hors de l'url, ex. l'`apikey:` de Geod'air) : le manifeste n'enregistre que le gabarit, et
+un en-tête déclaré ne franchit jamais une redirection qui change d'hôte — httpx retire
+`Authorization` de lui-même, pas un en-tête maison. Ces trois sorties possibles d'un
+secret (log, manifeste, réseau) sont tenues par `tests/test_secrets.py`, pas par la
+vigilance.
 Formats validés : `csv`, `csv.gz`, `json`/`geojson` (`cle_attendue`), `xml`
 (`racine_attendue` — une API en erreur peut renvoyer HTTP 200 avec un document d'erreur,
 qu'il ne faut jamais empreinter comme donnée). Ce manifeste est

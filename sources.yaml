@@ -14,6 +14,16 @@
 #   filename           : nom du fichier local dans data/raw/
 #   licence            : licence de réutilisation (à citer dans chaque visuel)
 #   producteur         : organisme producteur
+#   entetes            : en-têtes HTTP envoyés avec la requête, `nom: valeur`. Les
+#                        valeurs acceptent `${NOM}` comme l'url — tous les producteurs
+#                        ne mettent pas leur jeton dans l'url (Geod'air attend un
+#                        `apikey:`). Même régime que l'url : expansion au seul moment
+#                        du téléchargement, valeur masquée dans tout message, et le
+#                        manifeste n'enregistre que le gabarit — il dit QUE la source
+#                        est authentifiée et par quelle variable, jamais le jeton.
+#                        Un en-tête déclaré ne franchit JAMAIS une redirection qui
+#                        change d'hôte (sinon le jeton partirait chez le tiers).
+#                        Un test refuse tout en-tête d'authentification écrit en dur.
 #   glissant           : true = jeu à fenêtre glissante, re-téléchargé à CHAQUE
 #                        run (le cache n'est jamais un succès pour un jeu périssable)
 #   date_url           : hier | aujourdhui — résout les jetons {AAAA}/{MM}/{JJ} de

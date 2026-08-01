@@ -1,11 +1,20 @@
 """Tests de fumée : le manifeste est bien formé, le package s'importe,
 le garde-fou de validation refuse ce qui n'est pas la donnée attendue."""
 
+import re
+
 import pytest
 import yaml
 
 from demonstrateur.config import ROOT, SOURCES_FILE
-from demonstrateur.fetch import _expanser_date, _expanser_env, _masquer, _valider
+from demonstrateur.fetch import (
+    _expanser_date,
+    _expanser_entetes,
+    _expanser_env,
+    _gabarit_entetes,
+    _masquer,
+    _valider,
+)
 
 
 def test_sources_yaml_est_valide():
@@ -116,6 +125,58 @@ def test_masquage_secret_url_encode():
     masque = _masquer(msg, [secret])
     assert "7a5e6020" not in masque, "le jeton (même url-encodé) ne doit pas fuiter"
     assert "securityToken=•••" in masque
+
+
+def test_entetes_expansion(monkeypatch):
+    """Un ${NOM} dans une valeur d'en-tête suit exactement le régime de l'url."""
+    monkeypatch.setenv("JETON_TEST", "abc123")
+    entetes, secrets = _expanser_entetes({"apikey": "${JETON_TEST}", "Accept": "text/csv"})
+    assert entetes == {"apikey": "abc123", "Accept": "text/csv"}
+    assert secrets == ["abc123"], "seul le jeton est un secret à masquer"
+
+
+def test_entetes_variable_absente(monkeypatch):
+    """En-tête dont la variable manque : échec citant le NOM, jamais de valeur."""
+    monkeypatch.delenv("JETON_TEST", raising=False)
+    with pytest.raises(ValueError, match=r"\$\{JETON_TEST\}"):
+        _expanser_entetes({"apikey": "${JETON_TEST}"})
+
+
+def test_entetes_declaration_mal_formee():
+    """Une déclaration qui n'est pas un dictionnaire de textes est une erreur, pas
+    un en-tête à deviner : un jeton tronqué donnerait un 401 introuvable."""
+    with pytest.raises(ValueError):
+        _expanser_entetes(["apikey: x"])
+    with pytest.raises(ValueError, match="apikey"):
+        _expanser_entetes({"apikey": 12345})
+
+
+def test_entetes_absents_ne_cassent_rien():
+    """Les sources sans en-tête (toutes celles d'aujourd'hui) traversent inchangées."""
+    assert _expanser_entetes(None) == ({}, [])
+    assert _expanser_entetes({}) == ({}, [])
+
+
+def test_gabarit_entetes_ne_porte_jamais_la_valeur(monkeypatch):
+    """Ce qui part au manifeste versionné est le gabarit, même variable définie."""
+    monkeypatch.setenv("JETON_TEST", "abc123")
+    gabarit = _gabarit_entetes({"entetes": {"apikey": "${JETON_TEST}"}})
+    assert gabarit == {"apikey": "${JETON_TEST}"}
+    assert "abc123" not in str(gabarit)
+
+
+def test_entetes_secrets_passent_par_une_variable():
+    """Aucun jeton en dur dans sources.yaml : un en-tête d'authentification se
+    déclare par ${NOM}. Le dépôt est versionné — un secret écrit ici y reste."""
+    cfg = yaml.safe_load(SOURCES_FILE.read_text(encoding="utf-8"))
+    sensibles = ("apikey", "api-key", "authorization", "token", "x-api-key", "cle")
+    for source_id, meta in cfg["sources"].items():
+        for nom, valeur in (meta.get("entetes") or {}).items():
+            if any(mot in nom.lower() for mot in sensibles):
+                assert re.fullmatch(r"\$\{[A-Z][A-Z0-9_]*\}", str(valeur)), (
+                    f"{source_id} : l'en-tête {nom!r} porte une valeur en dur — "
+                    "utiliser ${NOM} et un secret d'environnement"
+                )
 
 
 def test_arborescence():
