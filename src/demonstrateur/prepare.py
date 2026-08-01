@@ -41,7 +41,9 @@ MIX = (DATA_RAW / "edf_mix_temps_reel.csv").as_posix()
 COURBE = (DATA_RAW / "edf_courbe_charge_horaire.csv").as_posix()
 ECRET = (DATA_RAW / "edf_ecretement_corse.csv").as_posix()
 AIR = (DATA_RAW / "lcsqa_temps_reel.csv").as_posix()
-METEO = (DATA_RAW / "meteo_horaire_corse.csv.gz").as_posix()
+# Les deux tranches Météo-France : la close 2020-2024 et la glissante 2025-2026.
+METEO = (DATA_RAW / "meteo_horaire_corse*.csv.gz").as_posix()
+METEO_SOURCES = ["meteo_horaire_corse_2020_2024", "meteo_horaire_corse"]
 ENTSOE_ANNEES = range(2019, 2025)  # fenêtre alignée sur la courbe corse
 
 # Codes qualité Météo-France (H_descriptif_champs.csv, relevé le 01/08/2026). Pendant
@@ -758,6 +760,95 @@ def o3_mda8_to_parquet(dest: str) -> None:
           f"du {d1} au {d2}) — {valides:,} maximum(s) journalier(s) valide(s)")
 
 
+def air_temperature_to_parquet(dest: str) -> None:
+    """Croisement journalier ozone x température : une ligne par station et par jour local.
+
+    C'est la sortie qui rend le titre n° 2 possible — « de combien la charge s'alourdit les
+    jours chauds ». Chaque maximum journalier d'ozone y reçoit les températures du poste qui
+    lui a été apparié (cf. APPARIEMENT_AIR_METEO), avec le nom de ce poste **dans la ligne** :
+    la figure doit pouvoir écrire « température relevée à Vivario » et non « à Venaco ».
+
+    Le jour est le jour LOCAL, celui que vivent les gens, et non un découpage UTC. C'est
+    licite ici parce que les deux séries ont déjà été ramenées à l'heure légale depuis leur
+    axe UTC respectif, chacune avec sa propre convention (UTC pour la météo, UTC+1 en fin de
+    période pour l'air) : la jointure porte donc sur des journées comparables, pas sur des
+    étiquettes brutes qui ne voudraient pas dire la même chose de part et d'autre.
+
+    Seules les journées d'ozone RÉGLEMENTAIREMENT VALIDES entrent — moins de 18 moyennes
+    glissantes, et le maximum n'est pas opposable. La complétude de la température est
+    reportée en colonne plutôt que filtrée : c'est à la figure de dire ce qu'elle exige.
+    """
+    mda8 = Path(dest).parent / "air_o3_mda8.parquet"
+    meteo = Path(dest).parent / "meteo_corse.parquet"
+    for amont in (mda8, meteo):
+        if not amont.exists():
+            raise FileNotFoundError(
+                f"croisement : {amont.name} absent du dossier de construction — l'ordre du "
+                "plan a-t-il changé ? Cette sortie vient APRÈS le maximum journalier et la météo."
+            )
+    couples = ", ".join(f"('{s}', '{p}')" for s, p in APPARIEMENT_AIR_METEO.items())
+    con = duckdb.connect()
+    con.execute(
+        f"""
+        CREATE TEMP VIEW croise AS
+        WITH appariement(code_site, num_poste) AS (VALUES {couples}),
+        temp AS (
+          SELECT num_poste, any_value(poste) AS poste, date_locale,
+                 max(temperature_c)   AS t_max,
+                 min(temperature_c)   AS t_min,
+                 avg(temperature_c)   AS t_moy,
+                 count(*)             AS n_heures_temp
+          FROM '{meteo.as_posix()}' GROUP BY num_poste, date_locale
+        )
+        SELECT o.code_site, o.station, o.implantation, o.influence, o.date_locale,
+               o.mda8, o.heure_du_max, o.n_moyennes_valides,
+               t.num_poste, t.poste,
+               round(t.t_max, 1) AS t_max, round(t.t_min, 1) AS t_min,
+               round(t.t_moy, 1) AS t_moy, t.n_heures_temp
+        FROM '{mda8.as_posix()}' o
+        JOIN appariement a USING (code_site)
+        JOIN temp t ON t.num_poste = a.num_poste AND t.date_locale = o.date_locale
+        WHERE o.valide
+        """
+    )
+    # GARDE DE JOINTURE VIDE — la dette que le brief gardait ouverte. Un croisement qui ne
+    # rencontre rien ne produit pas une erreur : il produit un Parquet vide, des figures
+    # muettes et aucun message. Le cas n'a rien de théorique — les deux séries ont vécu des
+    # semaines sans partager une seule journée, l'une publiant J-1 quand l'autre s'arrêtait
+    # à J-2. Un producteur en retard suffirait à le reproduire.
+    n = con.execute("SELECT count(*) FROM croise").fetchone()[0]
+    if not n:
+        bornes = con.execute(
+            f"SELECT min(date_locale), max(date_locale) FROM '{mda8.as_posix()}' WHERE valide"
+        ).fetchone()
+        bornes_t = con.execute(
+            f"SELECT min(date_locale), max(date_locale) FROM '{meteo.as_posix()}'"
+        ).fetchone()
+        raise ValueError(
+            "croisement air x température VIDE — aucune journée commune. Ozone valide du "
+            f"{bornes[0]} au {bornes[1]}, températures du {bornes_t[0]} au {bornes_t[1]}. "
+            "Un producteur en retard, ou un appariement de postes qui ne pointe plus sur "
+            "des postes existants."
+        )
+    orphelines = con.execute(
+        f"""SELECT count(DISTINCT station) FROM '{mda8.as_posix()}' o
+            WHERE o.valide AND NOT EXISTS (SELECT 1 FROM croise c
+                                           WHERE c.code_site = o.code_site)"""
+    ).fetchone()[0]
+    if orphelines:
+        raise ValueError(
+            f"croisement : {orphelines} station(s) d'ozone sans aucune température — poste "
+            "apparié absent de la météo, ou fenêtres qui ne se recouvrent pas."
+        )
+    con.execute(f"COPY (SELECT * FROM croise ORDER BY date_locale, station) "
+                f"TO '{dest}' (FORMAT PARQUET)")
+    st, d1, d2 = con.execute(
+        f"SELECT count(DISTINCT station), min(date_locale), max(date_locale) FROM '{dest}'"
+    ).fetchone()
+    print(f"[ok] {Path(dest).name} — {n:,} jour-station croisés "
+          f"({st} stations, du {d1} au {d2})")
+
+
 def meteo_corse_to_parquet(dest: str) -> None:
     """Parquet des températures horaires corses (Météo-France, département 20).
 
@@ -814,7 +905,8 @@ def meteo_corse_to_parquet(dest: str) -> None:
                strptime(AAAAMMJJHH, '%Y%m%d%H')   AS date_heure_utc,
                CAST(T    AS DOUBLE)               AS temperature_c,
                CAST(QT   AS INTEGER)              AS qt
-        FROM read_csv('{METEO}', delim=';', header=true, all_varchar=true)
+        FROM read_csv('{METEO}', delim=';', header=true, all_varchar=true,
+                      union_by_name = true)
         WHERE T IS NOT NULL
         """
     )
@@ -858,6 +950,11 @@ def meteo_corse_to_parquet(dest: str) -> None:
                  temperature_c, qt
           FROM meteo_loc
           WHERE qt IN ({retenus})
+            -- Les deux journées de bord partent, par prudence et non par symétrie : la
+            -- DERNIÈRE est tronquée par construction (fichier glissant réécrit au petit
+            -- matin). La première ne l'est plus depuis que la tranche close 2020-2024 est
+            -- déclarée — mais une journée sur près de deux mille quatre cents ne vaut pas
+            -- une exception dans le code.
             AND CAST(date_heure_locale AS DATE) > DATE '{premiere}'
             AND CAST(date_heure_locale AS DATE) < DATE '{derniere}'
           ORDER BY date_heure_utc, num_poste
@@ -962,7 +1059,11 @@ def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
         # remonter cette ligne au-dessus de la précédente.
         plan.append(("air_o3_mda8.parquet", o3_mda8_to_parquet, sorted(AEE_SOURCES)))
     if meteo_ok:
-        plan.append(("meteo_corse.parquet", meteo_corse_to_parquet, ["meteo_horaire_corse"]))
+        plan.append(("meteo_corse.parquet", meteo_corse_to_parquet, sorted(METEO_SOURCES)))
+    if aee_ok and meteo_ok:
+        # APRÈS le maximum journalier ET la météo, dont il lit les deux en staging.
+        plan.append(("air_temperature_jour.parquet", air_temperature_to_parquet,
+                     sorted(AEE_SOURCES) + sorted(METEO_SOURCES)))
     return plan
 
 
@@ -1073,7 +1174,7 @@ def main() -> int:
     # staging et on bascule d'un bloc, puis on écrit la lignée sortie -> entrées.
     sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES)
     air_ok = Path(AIR).exists()
-    meteo_ok = Path(METEO).exists()
+    meteo_ok = len(list(DATA_RAW.glob("meteo_horaire_corse*.csv.gz"))) == len(METEO_SOURCES)
     aee_ok = len(list(DATA_RAW.glob("aee_*.parquet"))) == len(AEE_SOURCES)
     plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok, aee_ok)
     source_ids = [sid for _, _, sids in plan for sid in sids]

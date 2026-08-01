@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "edb3fb69757bb2ed0a5dda378ac2b1b1deb2f797dd74a6674be7242fbd9baf8e",
+    "sha256": "75536a20ab514a2ee19b735e451a6b70ab6dd110951e902bd5001c55d8b175f6",
     "date_collecte": "2026-08-01",
-    "taille_octets": 397251
+    "taille_octets": 397224
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -418,5 +418,16 @@
     "sha256": "c3bacdf09aa1386c407d2654f5136f6b17241eae10201a6454f29fa877459e3f",
     "date_collecte": "2026-08-01",
     "taille_octets": 219273
+  },
+  "meteo_horaire_corse_2020_2024": {
+    "url": "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_previous-2020-2024.csv.gz",
+    "filename": "meteo_horaire_corse_2020_2024.csv.gz",
+    "producteur": "Météo-France — données climatologiques de base, horaires (département 20)",
+    "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
+    "format": "csv.gz",
+    "content_type": "application/gzip",
+    "sha256": "02939cf7fd6c481a9a3ad6ad2f1d4c05366f2e83e51dc0eccde8303bbcc60a77",
+    "date_collecte": "2026-08-01",
+    "taille_octets": 81871766
   }
 }

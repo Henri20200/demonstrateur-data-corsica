@@ -21,6 +21,7 @@ SARD_XML = DATA_RAW / "entsoe_sardaigne_2023.xml"
 AIR = DATA_PROCESSED / "air_corse.parquet"
 SERIE = DATA_PROCESSED / "air_serie.parquet"
 MDA8 = DATA_PROCESSED / "air_o3_mda8.parquet"
+CROISE = DATA_PROCESSED / "air_temperature_jour.parquet"
 METEO = DATA_PROCESSED / "meteo_corse.parquet"
 
 besoin_courbe = pytest.mark.skipif(
@@ -43,6 +44,9 @@ besoin_air = pytest.mark.skipif(
 )
 besoin_serie = pytest.mark.skipif(
     not SERIE.exists(), reason="série ozone AEE absente — lancer fetch-data puis prepare"
+)
+besoin_croise = pytest.mark.skipif(
+    not CROISE.exists(), reason="croisement air x température absent — fetch-data puis prepare"
 )
 besoin_meteo = pytest.mark.skipif(
     not METEO.exists(), reason="parquet météo absent — lancer fetch-data puis prepare"
@@ -765,4 +769,98 @@ def test_le_pic_d_ozone_n_est_pas_a_l_heure_de_pointe(con):
     assert pics["O3"] - pics["NO2"] >= 4, (
         f"pics distants de {pics['O3'] - pics['NO2']} h seulement — le titre n° 3 oppose "
         "l'heure de pointe et l'heure du soleil, il lui faut un écart net"
+    )
+
+
+@besoin_croise
+def test_le_croisement_porte_le_poste_et_non_la_commune(con):
+    """Chaque ligne nomme le poste météo dont vient sa température.
+
+    Sans cette colonne, la figure écrirait « température à Venaco » là où le thermomètre
+    est à Vivario, dix kilomètres plus loin et cent vingt mètres plus haut. Le brief exige
+    que l'approximation soit assumée à l'écrit — encore faut-il que la donnée la porte.
+    """
+    lignes = con.execute(
+        f"SELECT DISTINCT station, poste FROM '{CROISE.as_posix()}' ORDER BY 1"
+    ).fetchall()
+    assert len(lignes) == 6, f"{len(lignes)} couples station/poste (attendu 6)"
+    couples = dict(lignes)
+    assert couples["VENACO"].startswith("VIVARIO"), (
+        f"Venaco croisée avec {couples['VENACO']} — Vivario attendu"
+    )
+    assert all(p for p in couples.values()), "poste météo non renseigné sur certaines lignes"
+
+
+@besoin_croise
+def test_l_ozone_monte_avec_la_chaleur_mais_plafonne(con):
+    """TITRE N° 2, avec sa nuance : la relation existe, et elle n'est pas monotone.
+
+    Sur les étés 2020-2025 et les seules stations de fond, l'ozone gagne près de neuf
+    µg/m³ entre les journées sous 25 °C et celles de 30 à 35 °C. Mais il REDESCEND
+    au-delà de 35 °C. Un titre qui promettrait « plus il fait chaud, plus il y en a »
+    serait donc faux dans sa partie haute — ce test fige la montée ET le plafond, pour
+    qu'une figure ne puisse pas extrapoler la première en oubliant le second.
+
+    Association, jamais causalité : ce sont des journées chaudes qui portent plus d'ozone,
+    pas la chaleur qui le fabrique (cf. la garde du brief).
+    """
+    par_tranche = dict(
+        con.execute(
+            f"""SELECT CASE WHEN t_max < 25 THEN 'froid'
+                            WHEN t_max < 30 THEN 'doux'
+                            WHEN t_max < 35 THEN 'chaud'
+                            ELSE 'tres_chaud' END, avg(mda8)
+                FROM '{CROISE.as_posix()}'
+                WHERE influence = 'Fond' AND extract('month' FROM date_locale) IN (6, 7, 8)
+                  AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025
+                GROUP BY 1"""
+        ).fetchall()
+    )
+    assert par_tranche["chaud"] > par_tranche["froid"] + 5, (
+        f"écart chaud − froid = {par_tranche['chaud'] - par_tranche['froid']:.1f} µg/m³ — "
+        "le titre n° 2 annonce une montée nette"
+    )
+    assert par_tranche["froid"] < par_tranche["doux"] < par_tranche["chaud"], (
+        "la montée doit être régulière jusqu'à 35 °C"
+    )
+    assert par_tranche["tres_chaud"] < par_tranche["chaud"], (
+        "au-delà de 35 °C l'ozone REDESCEND : c'est la nuance du titre n° 2, et elle "
+        "interdit d'extrapoler la montée"
+    )
+
+
+@besoin_croise
+def test_l_air_de_campagne_n_est_pas_meilleur(con):
+    """TITRE N° 4 : Venaco dépasse les stations urbaines, en moyenne et en fréquence.
+
+    Comparaison entre stations « de fond » uniquement — y mêler la station industrielle ou
+    les stations trafic mélangerait les populations (cf. le brief). Les effectifs diffèrent
+    (une station rurale contre quatre urbaines), d'où la comparaison en TAUX et non en
+    nombre de jours.
+    """
+    venaco, urbain = con.execute(
+        f"""SELECT
+              avg(mda8) FILTER (WHERE station = 'VENACO'),
+              avg(mda8) FILTER (WHERE station <> 'VENACO')
+            FROM '{CROISE.as_posix()}'
+            WHERE influence = 'Fond' AND extract('month' FROM date_locale) IN (6, 7, 8)
+              AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025"""
+    ).fetchone()
+    assert venaco > urbain, (
+        f"Venaco {venaco:.1f} µg/m³ contre {urbain:.1f} en ville — le titre n° 4 affirme "
+        "que la campagne n'est pas épargnée"
+    )
+    tx_v, tx_u = con.execute(
+        f"""SELECT
+              100.0 * count(*) FILTER (WHERE station = 'VENACO' AND mda8 > 120)
+                    / nullif(count(*) FILTER (WHERE station = 'VENACO'), 0),
+              100.0 * count(*) FILTER (WHERE station <> 'VENACO' AND mda8 > 120)
+                    / nullif(count(*) FILTER (WHERE station <> 'VENACO'), 0)
+            FROM '{CROISE.as_posix()}'
+            WHERE influence = 'Fond' AND extract('month' FROM date_locale) IN (6, 7, 8)
+              AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025"""
+    ).fetchone()
+    assert tx_v > tx_u, (
+        f"taux de dépassement : Venaco {tx_v:.1f} %, ville {tx_u:.1f} % — la campagne doit "
+        "dépasser plus souvent, pas moins"
     )

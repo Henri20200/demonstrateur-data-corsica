@@ -33,7 +33,12 @@ Titres-affirmations que l'analyse doit valider, invalider ou chiffrer :
 2. « L'air se dégrade quand il fait beau » (de combien la charge s'alourdit les jours
    chauds : écart chiffré entre jours chauds et jours frais. Une **association**, jamais
    une cause — cf. la garde ci-dessous. C'est ce que Qualitair affirme en prose sans que
-   personne le quantifie)
+   personne le quantifie.
+   **Nuance mesurée le 01/08/2026, et elle interdit d'extrapoler** : sur les étés 2020-2025
+   et les stations de fond, l'ozone gagne près de 9 µg/m³ entre les journées sous 25 °C
+   (90,4) et celles de 30 à 35 °C (99,0) — puis **redescend à 95,1 au-delà de 35 °C**. La
+   relation n'est pas monotone. Un titre promettant « plus il fait chaud, plus il y en a »
+   serait faux dans sa partie haute ; un test fige la montée *et* le plafond)
 3. « Le pic n'est pas à l'heure de pointe » (heure du maximum d'ozone contre heure du
    maximum de NO₂, à station constante sur les cinq qui mesurent les deux)
 4. « L'air de campagne n'est pas meilleur » (Venaco contre les stations urbaines de fond)
@@ -85,7 +90,11 @@ d'ozone : près des moteurs, le monoxyde d'azote le détruit. Ni SO₂ ni CO ne 
 mesurés en Corse.
 
 **Températures — Météo-France, « données climatologiques de base — horaires »,
-Licence Ouverte 2.0.** Un seul CSV compressé pour toute l'île, et non deux : pour ce jeu,
+Licence Ouverte 2.0. Deux tranches déclarées depuis le 01/08/2026** : la close 2020-2024
+(82 Mo, figée) et la glissante 2025-2026, qui se raccordent sans trou. La première n'a été
+déclarée qu'à l'arrivée de l'historique d'ozone — avant, c'étaient 82 Mo que rien n'aurait
+lu. Le croisement couvre donc **2020-2026**, la profondeur tranchée, quand la série d'ozone
+remonte elle à 2013. Un seul CSV compressé pour toute l'île, et non deux : pour ce jeu,
 le producteur ne connaît ni 2A ni 2B, il publie la Corse sous l'ancien département « 20 »
 (vérifié le 01/08/2026 — 57 postes, dont Ajaccio, Bastia, Corte et Vivario). Profondeur
 pluri-décennale découpée en tranches, dont les deux dernières années réécrites chaque
@@ -257,8 +266,10 @@ ne doit se lire comme un reproche, ni laisser croire qu'une information serait t
   Le flux LCSQA est donc passé de `date_url: hier` à `avant-hier`, ce qui les aligne (1
   journée commune au lieu de 0, vérifié). Un jour de fraîcheur en moins ne coûte rien face
   à une dataviz de référence arrêtée en 2023 ; ne jamais pouvoir croiser, si. La garde
-  qui refusera une jointure vide reste due, au moment d'écrire le croisement : un
-  producteur en retard ramènerait le commun à zéro sans prévenir.
+  qui refuse une jointure vide est **posée** (01/08/2026) et éprouvée : un croisement sans
+  journée commune arrête le build avec les bornes des deux séries dans le message, au lieu
+  de publier un Parquet vide et des figures muettes. Une seconde garde refuse qu'une station
+  d'ozone se retrouve sans aucune température.
 - **L'appariement station d'air ↔ poste météo est tranché (01/08/2026).** Le flux LCSQA ne
   porte aucune coordonnée ; elles viennent donc du **référentiel du même producteur** —
   LCSQA/Ineris, « Dataset D : métadonnées des stations de mesures », feuille

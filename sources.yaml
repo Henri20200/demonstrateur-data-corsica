@@ -255,6 +255,27 @@ sources:
   # ATTENTION : l'url porte ses millésimes. « latest-2025-2026 » deviendra
   # « latest-2026-2027 » au changement d'année ; aucun jeton {AAAA} ne sait écrire une
   # paire d'années. À corriger à la main en janvier 2027 — l'échec sera bruyant (404).
+  # --- Températures horaires corses, tranche CLOSE 2020-2024 ---
+  # Déclarée le 01/08/2026, quand l'historique d'ozone est arrivé : jusque-là ces 82 Mo
+  # n'auraient été lus par personne, et leur empreinte re-vérifiée à chaque run pour rien.
+  # Le brief l'avait prévu ainsi — « le jour venu, c'est une entrée figée de plus, même url,
+  # même format ». Vérifiée sur pièce le 01/08/2026 : 81,9 Mo, 206 colonnes, première ligne
+  # AJACCIO au 01/01/2020 à 00 h. Elle se raccorde sans trou au fichier glissant, qui
+  # reprend au 01/01/2025 — le producteur découpe exactement là où la profondeur a été
+  # tranchée. FIGÉE : tranche close, jamais réécrite, donc jamais retéléchargée.
+  meteo_horaire_corse_2020_2024:
+    url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_previous-2020-2024.csv.gz"
+    filename: "meteo_horaire_corse_2020_2024.csv.gz"
+    licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
+    producteur: "Météo-France — données climatologiques de base, horaires (département 20)"
+    format: csv.gz
+    delimiter: ";"
+    colonnes_attendues: [NUM_POSTE, NOM_USUEL, AAAAMMJJHH, T, QT]
+    notes: >
+      Tranche close 2020-2024, pendant figé du fichier glissant. Mêmes colonnes, même
+      fuseau UTC, mêmes codes qualité QT. Sa dernière journée n'est PAS tronquée
+      (contrairement au glissant) : le fichier ne sera plus jamais réécrit.
+
   meteo_horaire_corse:
     url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz"
     filename: "meteo_horaire_corse.csv.gz"
