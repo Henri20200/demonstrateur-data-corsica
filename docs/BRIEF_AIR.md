@@ -133,15 +133,65 @@ le problème. D'où le découpage, qui épouse la politique de fraîcheur déjà
 Météo-France découpe ses fichiers exactement de la même façon, sans qu'on ait à forcer
 quoi que ce soit : les deux dernières années dans un fichier réécrit chaque jour, le passé
 clos dans un autre. Seul le premier est déclaré (`meteo_horaire_corse`, 27 Mo, glissant).
-Le second n'a de sens qu'en face de l'historique Geod'air, dont la profondeur reste à
-trancher : le déclarer aujourd'hui, ce serait 82 Mo que rien ne lit. Le jour venu, c'est
-une entrée figée de plus — même url, même format.
+
+**Profondeur arrêtée le 01/08/2026 : du 01/01/2020 à hier.** Deux constats l'ont décidée.
+
+Le premier : *le flux temps réel n'accumule rien*. Son fichier porte un nom fixe, écrasé
+à chaque run — `air_corse.parquet` pèse 7 Ko, une seule journée. Il n'est donc pas un
+historique en formation, c'est un point de fraîcheur, un seul. **Geod'air porte la
+totalité du contenu analytique des quatre titres-affirmations**, et sa profondeur décide
+de ce que l'étude peut dire.
+
+Le second : *le choix est binaire, pas graduel*. Rester à 2025 laisse le fichier météo
+glissant suffire ; remonter d'un seul mois avant impose `previous-2020-2024`, 82 Mo en
+bloc. Et une fois ces 82 Mo payés, s'arrêter à 2022 ou 2023 coûterait le même prix pour
+deux ou trois étés de moins. La coupure du producteur météo tombe donc exactement où il
+faut, et le raccord `previous` + `latest` se fait sans trou.
+
+Ce que la profondeur longue achète : sept étés au lieu de deux, dont un en cours. Les
+deux titres qui en dépendent sont le décompte de dépassements du seuil d'information et
+le créneau horaire estival — soit la seule affirmation qui promet un chiffre officiel et
+la seule conclusion actionnable. Le risque n'est pas théorique : le 31/07/2026, le maximum
+insulaire plafonnait à 148,7 µg/m³ (Bastia Montesoro), sous le seuil de 180. Sur dix-neuf
+mois, « zéro dépassement » était un résultat possible.
+
+Réserve assumée : 2020 est une année de confinements, où l'ozone urbain a plutôt monté,
+faute de monoxyde d'azote pour le détruire. Sans effet sur des titres qui ne comparent pas
+les années entre elles — mais à signaler si un décompte annuel apparaît.
+
+`previous-2020-2024` a été **vérifié sur pièce le 01/08/2026** — HTTP 200, 81,9 Mo,
+206 colonnes, `NUM_POSTE`/`NOM_USUEL`/`AAAAMMJJHH`/`T`/`QT` présentes, première ligne
+AJACCIO au 01/01/2020 à 00 h. Il n'est pas déclaré pour autant : tant que Geod'air n'est
+pas là, ce seraient 82 Mo dont l'empreinte serait re-vérifiée à chaque run pour rien. Le
+jour venu, c'est une entrée figée de plus — même url, même format.
+
+Deux inconnues ne se lèveront qu'avec la clé, et toutes deux touchent la maquette autant
+que le pipeline. **Où s'arrête le validé** : Geod'air consolide a posteriori, et le flux
+temps réel ne comble pas le trou entre sa dernière date et hier — l'étude aura donc deux
+régimes, un historique validé et un point de fraîcheur brut, dont la frontière s'écrit sur
+les figures. **L'âge des stations** : « Ajaccio Confina 2 » porte un ordinal qui sent le
+remplacement ; si elle est plus jeune que 2020, une figure à six stations aura des séries
+tronquées, et il faudra soit écrire la profondeur par station, soit couper au plus petit
+dénominateur commun pour ce qui compare les stations entre elles.
+
+L'export demandera **O₃ et NO₂** à la maille horaire, en une interrogation sur la région :
+le titre n° 2 repose sur le NO₂, et un second export serait une seconde interrogation là
+où la règle de bonne conduite pousse à l'inverse. Le relevé du 31/07/2026 confirme que ce
+périmètre suffit — les cinq stations urbaines et périurbaines mesurent les deux polluants,
+ce qui permet de jouer le titre n° 2 à station constante, même lieu et même heure. Venaco
+n'a pas de NO₂, et n'a pas d'heure de pointe non plus.
 
 Trois frictions à lever dans `fetch.py`, aucune rédhibitoire :
 
-1. **La clé passe par un en-tête HTTP** (`apikey:`), là où le dépôt ne sait injecter
-   `${VAR}` que dans l'URL. À étendre aux en-têtes — et à ne jamais journaliser : une
-   commande curl affichée en entier suffirait à rejouer l'incident ENTSO-E.
+1. ~~**La clé passe par un en-tête HTTP** (`apikey:`), là où le dépôt ne sait injecter
+   `${VAR}` que dans l'URL.~~ **Levée le 01/08/2026** : champ `entetes:` dans
+   `sources.yaml`, `${NOM}` expansé au seul moment du téléchargement, gabarit seul au
+   manifeste. Un secret a trois sorties possibles — le log, le manifeste versionné, et le
+   réseau si une redirection emmène l'en-tête chez un tiers. Les trois sont tenues par
+   `tests/test_secrets.py`, et chacune a été vérifiée par mutation : sans le correctif, le
+   test correspondant échoue. La troisième n'était pas au programme et méritait de l'être —
+   httpx retire l'en-tête `Authorization` quand l'origine change, mais pas un `apikey:`
+   maison : le jeton serait parti chez le CDN, sans un message d'erreur pour le dire.
 2. **L'export se fait en deux temps** : une requête de génération qui renvoie un
    identifiant, puis un téléchargement à réessayer jusqu'à ce que le fichier soit prêt.
    L'URL finale porte un UUID et n'est pas stable ; c'est l'URL de commande, elle
