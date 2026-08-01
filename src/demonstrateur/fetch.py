@@ -70,6 +70,13 @@ _VAR_ENV_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
 # pas se confondre, et un `%` d'url encodée (%2F) n'est jamais interprété au passage.
 _JETON_DATE_RE = re.compile(r"\{(AAAA|MM|JJ)\}")
 _MAX_REDIRECTIONS = 10
+# Journée visée par `date_url`, en jours de recul. « avant-hier » n'est pas un excès de
+# prudence : il ALIGNE deux producteurs qui ne publient pas au même rythme. Le fichier
+# météo est réécrit au petit matin et sa dernière journée, tronquée, est coupée par
+# prepare — sa dernière journée complète est donc J-2 quand le flux d'air offre J-1. À
+# « hier », les deux sources ne partagent JAMAIS une journée, et le croisement promis par
+# le BRIEF (l'ozone et la chaleur du même jour) est hors d'atteinte. Cf. docs/BRIEF_AIR.md.
+_DECALAGE_JOUR = {"avant-hier": 2, "hier": 1, "aujourdhui": 0}
 
 
 def _load_manifest() -> dict:
@@ -141,10 +148,11 @@ def _expanser_entetes(entetes: dict | None) -> tuple[dict[str, str], list[str]]:
 def _expanser_date(url: str, quand: str | None) -> str:
     """Remplace les jetons `{AAAA}`/`{MM}`/`{JJ}` d'une url par la date demandée.
 
-    `quand` vaut « hier » (défaut sûr : la journée est close, donc complète) ou
-    « aujourdhui » (fichier encore en cours de remplissage). Les deux déclarations
-    doivent être cohérentes : un `date_url` sans jeton dans l'url, ou l'inverse, est
-    une erreur de configuration — pas un silence qui téléchargerait la mauvaise chose.
+    `quand` vaut « aujourdhui » (fichier encore en cours de remplissage), « hier »
+    (journée close, donc complète) ou « avant-hier » (journée close ET déjà publiée par
+    les producteurs plus lents — cf. `_DECALAGE_JOUR`). Les deux déclarations doivent
+    être cohérentes : un `date_url` sans jeton dans l'url, ou l'inverse, est une erreur
+    de configuration — pas un silence qui téléchargerait la mauvaise chose.
     """
     porte_jetons = bool(_JETON_DATE_RE.search(url))
     if not porte_jetons and not quand:
@@ -159,9 +167,11 @@ def _expanser_date(url: str, quand: str | None) -> str:
             "l'url porte des jetons {AAAA}/{MM}/{JJ} mais date_url n'est pas déclaré "
             "(attendu : hier | aujourdhui)"
         )
-    if quand not in {"hier", "aujourdhui"}:
-        raise ValueError(f"date_url={quand!r} inconnu — attendu : hier | aujourdhui")
-    jour = date.today() - timedelta(days=1) if quand == "hier" else date.today()
+    if quand not in _DECALAGE_JOUR:
+        raise ValueError(
+            f"date_url={quand!r} inconnu — attendu : {' | '.join(_DECALAGE_JOUR)}"
+        )
+    jour = date.today() - timedelta(days=_DECALAGE_JOUR[quand])
     valeurs = {"AAAA": f"{jour.year:04d}", "MM": f"{jour.month:02d}", "JJ": f"{jour.day:02d}"}
     return _JETON_DATE_RE.sub(lambda m: valeurs[m.group(1)], url)
 

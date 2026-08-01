@@ -223,7 +223,14 @@ sources:
     licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
     producteur: "LCSQA / Ineris — mesures des AASQA (Qualitair Corse pour l'île)"
     glissant: true      # une journée nouvelle chaque jour : le cache serait un faux succès
-    date_url: hier      # journée close = 24 h complètes (le fichier du jour se remplit encore)
+    # « avant-hier » et non « hier » : ALIGNEMENT sur Météo-France, pas prudence. Le
+    # fichier météo est réécrit au petit matin, sa dernière journée est tronquée et prepare
+    # la coupe — sa dernière journée complète est J-2 quand le LCSQA publie déjà J-1. À
+    # « hier », les deux sources n'ont jamais une journée en commun (vérifié le 01/08/2026 :
+    # air au 31/07, météo au 30/07, sortis du MÊME run) et le croisement ozone x chaleur
+    # promis par le BRIEF devenait impossible sur la donnée fraîche. Un jour de fraîcheur
+    # en moins ne coûte rien ; ne jamais pouvoir croiser, si.
+    date_url: avant-hier
     format: csv
     delimiter: ";"
     colonnes_attendues: [Zas, nom site, Polluant, valeur, validité]

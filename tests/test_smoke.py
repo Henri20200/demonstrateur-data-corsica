@@ -40,6 +40,23 @@ def test_expanser_date_resout_hier_et_aujourdhui():
     assert _expanser_date(gabarit, "aujourdhui").endswith(f"F_{aujourdhui:%Y-%m-%d}.csv")
 
 
+def test_expanser_date_resout_avant_hier():
+    """« avant-hier » recule de DEUX jours — l'alignement avec Météo-France en dépend.
+
+    Une confusion avec « hier » ne casserait rien de visible : l'url resterait valide, le
+    fichier existerait, et le croisement ozone x température retomberait silencieusement
+    à zéro journée commune.
+    """
+    from datetime import date, timedelta
+
+    gabarit = "https://ex.fr/{AAAA}/F_{AAAA}-{MM}-{JJ}.csv"
+    avant_hier = date.today() - timedelta(days=2)
+    assert _expanser_date(gabarit, "avant-hier").endswith(f"F_{avant_hier:%Y-%m-%d}.csv")
+    hier = date.today() - timedelta(days=1)
+    assert _expanser_date(gabarit, "avant-hier") != _expanser_date(gabarit, "hier")
+    assert _expanser_date(gabarit, "hier").endswith(f"F_{hier:%Y-%m-%d}.csv")
+
+
 def test_expanser_date_refuse_les_declarations_incoherentes():
     """Jeton sans date_url, date_url sans jeton, valeur inconnue : tous des échecs."""
     with pytest.raises(ValueError):
