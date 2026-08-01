@@ -199,3 +199,31 @@ def test_entetes_secrets_passent_par_une_variable():
 def test_arborescence():
     for rel in ("data/raw", "data/processed", "outputs", "src/demonstrateur"):
         assert (ROOT / rel).exists(), f"dossier manquant : {rel}"
+
+
+def test_toute_sortie_du_livrable_est_regeneree_par_le_cron():
+    """Un module qui écrit dans outputs/ DOIT être appelé par le pipeline planifié.
+
+    Le défaut que ce test attrape s'est produit le 01/08/2026, et rien ne l'a signalé :
+    les figures de l'air, la note et la page assemblée n'existaient que parce qu'elles
+    avaient été lancées à la main. Le cron aurait régénéré `outputs/` sans elles — au
+    mieux en les laissant vieillir, au pire en les écrasant.
+
+    Est « producteur » tout module du paquet qui a un `main()` et touche à `OUTPUTS` ou
+    à `export_html`. L'heuristique écarte d'elle-même la bibliothèque de visualisation
+    (pas de `main`) et les étapes de collecte ou de préparation (qui n'écrivent pas dans
+    outputs/).
+    """
+    src = ROOT / "src" / "demonstrateur"
+    workflow = (ROOT / ".github" / "workflows" / "pipeline.yml").read_text(encoding="utf-8")
+    producteurs = []
+    for module in sorted(src.glob("*.py")):
+        code = module.read_text(encoding="utf-8")
+        if "def main(" in code and ("OUTPUTS" in code or "export_html(" in code):
+            producteurs.append(module.stem)
+    assert producteurs, "aucun module producteur détecté — l'heuristique a-t-elle dérivé ?"
+    manquants = [m for m in producteurs if f"demonstrateur.{m}" not in workflow]
+    assert not manquants, (
+        f"module(s) écrivant dans outputs/ mais absent(s) du pipeline planifié : "
+        f"{manquants}. Leurs sorties vieilliraient sans que rien ne le dise."
+    )
