@@ -374,6 +374,15 @@ def air_corse_to_parquet(dest: str) -> None:
         f"""
         COPY (
           SELECT "Date de début"                       AS debut,
+                 -- Axe UTC, symétrique de celui de la météo (qui fait le trajet inverse) :
+                 -- `timezone('Europe/Paris', ts)` lit l'horodatage naïf comme une heure
+                 -- légale, `timezone('UTC', …)` le rend en UTC naïf. Sans cet axe continu,
+                 -- une fenêtre glissante de 8 h se décale aux changements d'heure — trop
+                 -- courte en mars, doublée en octobre. C'est aussi l'axe sur lequel le
+                 -- BRIEF exige de joindre les températures.
+                 timezone('UTC', timezone('Europe/Paris', "Date de début"))
+                                                       AS date_heure_utc,
+                 CAST("Date de début" AS DATE)         AS date_locale,
                  extract('hour' FROM "Date de début")  AS heure_locale,
                  "Zas"                                 AS zone,
                  "code site"                           AS code_site,
@@ -390,11 +399,185 @@ def air_corse_to_parquet(dest: str) -> None:
         ) TO '{dest}' (FORMAT PARQUET)
         """
     )
+    # Garde : l'étiquette locale doit rester une clé. Le dimanche du retour à l'heure
+    # d'hiver, 2 h existe DEUX fois — deux mesures distinctes portent alors le même
+    # horodatage, et `timezone('Europe/Paris', …)` ne peut pas deviner laquelle est
+    # UTC+2 et laquelle est UTC+1. Le jour où le cas se présentera (fin octobre), le
+    # build s'arrêtera ici plutôt que de produire une moyenne glissante fausse d'une
+    # heure : il faudra trancher sur pièce, avec le fichier sous les yeux.
+    doublons = con.execute(
+        f"SELECT count(*) FROM (SELECT code_site, polluant, debut FROM '{dest}' "
+        f"GROUP BY 1,2,3 HAVING count(*) > 1)"
+    ).fetchone()[0]
+    if doublons:
+        raise ValueError(
+            f"air Corse : {doublons} horodatage(s) local(aux) en double — jour du retour "
+            "à l'heure d'hiver ? L'axe UTC ne peut pas être reconstruit sans lever "
+            "l'ambiguïté (cf. docs/BRIEF_AIR.md)."
+        )
     n, stations, especes = con.execute(
         f"SELECT count(*), count(DISTINCT station), count(DISTINCT polluant) FROM '{dest}'"
     ).fetchone()
     print(f"[ok] {Path(dest).name} — {n:,} mesures ({stations} stations, {especes} polluants) "
           f"— {ecartees} ligne(s) sans mesure écartée(s) sur {total:,}")
+
+
+# --- Ozone : la moyenne glissante sur 8 heures --------------------------------------
+# Aucune des deux sources ne la sert : ni le flux temps réel, ni l'API Geod'air, qui
+# s'arrête aux moyennes horaires. Elle se recalcule donc ici — et comme le chiffre qui
+# en sort sera présenté comme réglementaire, la règle n'est pas déduite mais RECOPIÉE du
+# guide du producteur : LCSQA/Ineris, « Guide Calcul des statistiques relatives à la
+# Qualité de l'Air », Ineris-219621-2801775-v1.0 (mars 2024), § 5.3.3 et 5.3.4, qui
+# transcrit les annexes VII et XI de la directive 2008/50/CE.
+#
+#   § 5.3.3 — la moyenne glissante sur 8 heures de l'heure h est la moyenne arithmétique
+#   des données horaires VALIDES parmi l'heure h et les sept précédentes, divisée par leur
+#   nombre (nHvalide) et non par 8. Sur une journée complète, 24 moyennes sont calculées :
+#   la première porte sur 17 h (J-1) → 1 h (J), la dernière sur 16 h → 24 h (J).
+#   Validité : nHvalide >= 6 (75 % de 8).
+#
+#   § 5.3.4 — le maximum journalier est le maximum des moyennes glissantes VALIDES du
+#   jour. Validité : n8Hvalide >= 18 (75 % de 24).
+#
+# Un décalage d'une heure se glisserait ici sans bruit : le guide étiquette ses heures à
+# la FIN de la période (01 h → 24 h), le flux LCSQA les étiquette au DÉBUT (00 h → 23 h,
+# colonnes « Date de début »/« Date de fin » — vérifié sur le brut du 31/07/2026). En
+# étiquette de début, la moyenne dont la dernière heure est `d` couvre [d-7 h, d] et
+# s'attribue au jour calendaire de `d` : d = 00 h donne bien la période 17 h (J-1) → 1 h,
+# d = 23 h la période 16 h → 24 h. Le test rejoue le tableau 26 du guide pour le prouver.
+MIN_HEURES_8H = 6       # § 5.3.3 — 75 % de 8
+MIN_MOYENNES_MDA8 = 18  # § 5.3.4 — 75 % de 24
+
+
+def _sql_glissant_8h(source: str) -> str:
+    """SQL des moyennes glissantes sur 8 h de l'ozone, à partir d'une table de mesures.
+
+    `source` est une table/vue portant au moins code_site, date_heure_utc, date_locale et
+    valeur, déjà filtrée sur l'ozone et sur les mesures valides.
+
+    Deux points que le tableau 26 du guide a tranchés contre l'intuition :
+
+    - **la moyenne se calcule sur une grille horaire complète, pas sur les heures
+      mesurées.** Une heure dont la mesure propre est invalide porte quand même sa
+      moyenne glissante, calculée sur les heures valides qui la précèdent — le guide en
+      donne l'exemple à 13 h, sans valeur horaire mais avec une moyenne de 121,1429
+      déclarée valide. Ne produire de moyennes qu'aux heures mesurées en perdait deux sur
+      treize dans son exemple : le décompte de la journée tombait à 11, sous les 18
+      requis, et des journées parfaitement opposables auraient été rejetées.
+    - **la fenêtre est un RANGE temporel, jamais un nombre de lignes.** Avec un
+      `ROWS 7 PRECEDING`, trois heures manquantes feraient remonter la fenêtre à onze
+      heures en arrière, mêlant un fond de matinée fraîche à un pic d'après-midi.
+
+    La grille couvre les journées LOCALES entières, bornes calculées en UTC : aux
+    changements d'heure elle produit d'elle-même 23 ou 25 heures, sans cas particulier.
+    """
+    local = "timezone('Europe/Paris', timezone('UTC', date_heure_utc))"
+    return f"""
+        WITH mesures AS (SELECT * FROM {source}),
+        bornes AS (
+            SELECT code_site,
+                   any_value(station)       AS station,
+                   any_value(implantation)  AS implantation,
+                   any_value(influence)     AS influence,
+                   timezone('UTC', timezone('Europe/Paris',
+                       CAST(min(date_locale) AS TIMESTAMP)))                   AS debut_utc,
+                   timezone('UTC', timezone('Europe/Paris',
+                       CAST(max(date_locale) AS TIMESTAMP) + INTERVAL 23 HOUR)) AS fin_utc
+            FROM mesures GROUP BY code_site
+        ),
+        grille AS (
+            SELECT b.code_site, b.station, b.implantation, b.influence,
+                   g.h AS date_heure_utc
+            FROM bornes b,
+                 LATERAL generate_series(b.debut_utc, b.fin_utc, INTERVAL 1 HOUR) AS g(h)
+        ),
+        jointe AS (
+            SELECT g.code_site, g.station, g.implantation, g.influence,
+                   g.date_heure_utc, m.valeur
+            FROM grille g
+            LEFT JOIN mesures m
+                   ON m.code_site = g.code_site
+                  AND m.date_heure_utc = g.date_heure_utc
+        )
+        SELECT code_site, station, implantation, influence, date_heure_utc,
+               CAST({local} AS DATE)              AS date_locale,
+               extract('hour' FROM {local})       AS heure_locale,
+               avg(valeur)   OVER f               AS moyenne_8h,
+               count(valeur) OVER f               AS n_heures
+        FROM jointe
+        WINDOW f AS (
+            PARTITION BY code_site ORDER BY date_heure_utc
+            RANGE BETWEEN INTERVAL 7 HOURS PRECEDING AND CURRENT ROW
+        )
+    """
+
+
+def _sql_mda8(glissant: str) -> str:
+    """SQL du maximum journalier des moyennes glissantes 8 h, depuis `_sql_glissant_8h`."""
+    return f"""
+        SELECT code_site, station, implantation, influence, date_locale,
+               max(moyenne_8h)                          AS mda8,
+               arg_max(heure_locale, moyenne_8h)        AS heure_du_max,
+               count(*)                                 AS n_moyennes_valides,
+               count(*) >= {MIN_MOYENNES_MDA8}          AS valide
+        FROM ({glissant}) WHERE n_heures >= {MIN_HEURES_8H}
+        GROUP BY 1, 2, 3, 4, 5
+    """
+
+
+def o3_mda8_to_parquet(dest: str) -> None:
+    """Parquet du maximum journalier de la moyenne glissante 8 h en ozone, par station.
+
+    C'est la statistique de l'objectif de qualité pour la santé (120 µg/m³ en maximum
+    journalier de la moyenne sur huit heures, art. R221-1 du code de l'environnement) —
+    à ne jamais confondre avec le seuil d'information-recommandation, qui vaut 180 µg/m³
+    en moyenne HORAIRE. Deux métriques, deux décomptes, jamais la même figure.
+
+    La colonne `valide` porte le critère du producteur : elle est FAUSSE quand la journée
+    compte moins de 18 moyennes glissantes valides, et une telle ligne ne doit jamais
+    entrer dans un décompte de dépassements. Elle est conservée plutôt que filtrée, pour
+    que la figure puisse dire combien de journées ont été écartées, et pourquoi.
+    """
+    # Cette sortie dérive d'une AUTRE sortie, seul cas du dépôt. Elle lit donc son voisin
+    # dans le dossier de `dest` — c'est-à-dire la zone de staging pendant un build, jamais
+    # data/processed : la bascule n'a lieu qu'à la fin, si bien qu'y lire air_corse.parquet
+    # rendrait la version du run PRÉCÉDENT (et rien du tout au premier run). L'ordre du
+    # plan de construction garantit qu'il est déjà écrit.
+    amont = Path(dest).parent / "air_corse.parquet"
+    if not amont.exists():
+        raise FileNotFoundError(
+            f"ozone : {amont.name} absent du dossier de construction — l'ordre du plan "
+            "a-t-il changé ? Cette sortie doit être bâtie APRÈS air_corse.parquet."
+        )
+    con = duckdb.connect()
+    con.execute(
+        f"""
+        CREATE TEMP VIEW o3 AS
+        SELECT * FROM '{amont.as_posix()}' WHERE polluant = 'O3'
+        """
+    )
+    if not con.execute("SELECT count(*) FROM o3").fetchone()[0]:
+        raise ValueError(
+            "ozone : aucune mesure d'O3 dans air_corse.parquet — le libellé de polluant "
+            "a-t-il changé ? (attendu 'O3')"
+        )
+    con.execute(
+        f"COPY ({_sql_mda8(_sql_glissant_8h('o3'))} ORDER BY date_locale, station) "
+        f"TO '{dest}' (FORMAT PARQUET)"
+    )
+    n, stations, valides, d1, d2 = con.execute(
+        f"SELECT count(*), count(DISTINCT station), count(*) FILTER (WHERE valide), "
+        f"min(date_locale), max(date_locale) FROM '{dest}'"
+    ).fetchone()
+    if not n:
+        raise ValueError(
+            "ozone : sortie VIDE — aucune moyenne glissante n'atteint "
+            f"{MIN_HEURES_8H} heures valides. Profondeur d'entrée insuffisante ?"
+        )
+    # Pas de flèche ni d'unicode exotique ici : la console Windows du dépôt est en cp1252
+    # et un message de succès ne doit jamais faire tomber un build (même leçon que la météo).
+    print(f"[ok] {Path(dest).name} — {n:,} jour-station ({stations} stations, "
+          f"du {d1} au {d2}) — {valides:,} maximum(s) journalier(s) valide(s)")
 
 
 def meteo_corse_to_parquet(dest: str) -> None:
@@ -595,6 +778,9 @@ def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
         ))
     if air_ok:
         plan.append(("air_corse.parquet", air_corse_to_parquet, ["lcsqa_temps_reel"]))
+        # APRÈS air_corse.parquet, dont elle dérive en lisant le staging — ne pas remonter
+        # cette ligne au-dessus de la précédente.
+        plan.append(("air_o3_mda8.parquet", o3_mda8_to_parquet, ["lcsqa_temps_reel"]))
     if meteo_ok:
         plan.append(("meteo_corse.parquet", meteo_corse_to_parquet, ["meteo_horaire_corse"]))
     return plan

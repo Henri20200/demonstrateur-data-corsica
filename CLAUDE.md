@@ -67,7 +67,13 @@ les échecs n'interrompent pas les autres sources (retour code 1 en fin de run).
 
 **`prepare.py`** → DuckDB lit les `.csv.gz` directement (sans tout charger en mémoire) et
 produit des Parquet dans `data/processed/`. Ajouter une transformation = une fonction ici,
-appelée depuis `main()`. Avant toute lecture, chaque brut est **vérifié contre son empreinte**
+appelée depuis `main()`. **Une statistique réglementaire ne se déduit pas, elle se recopie
+depuis le guide de son producteur, et se verrouille sur l'exemple chiffré de ce guide** :
+la moyenne glissante 8 h de l'ozone suit le § 5.3.3 du guide LCSQA/Ineris, et
+`tests/test_ozone_8h.py` rejoue son tableau 26 — c'est lui qui a corrigé le calcul, pas
+une relecture. Une sortie qui dérive d'une autre sortie (`air_o3_mda8.parquet`) lit son
+amont dans le dossier de `dest`, donc le **staging** : `data/processed` contiendrait
+encore le run précédent. Avant toute lecture, chaque brut est **vérifié contre son empreinte**
 de manifeste (un Parquet ne dérive jamais d'une donnée non certifiée) ; la construction se fait
 en **staging puis bascule d'un bloc** — pas de sortie publiée à moitié. `prepare` écrit
 **`data/processed/_build.json`** : la lignée qui relie chaque sortie à ses sources, à sa propre
