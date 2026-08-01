@@ -224,3 +224,48 @@ sources:
       « validité » peut être négative (vu le 30/07/2026 sur Bastia Giraud) et doit être
       filtrée avant tout calcul. L'historique validé viendra de Geod'air (API à clé),
       source figée distincte — cf. docs/BRIEF_AIR.md.
+
+  # --- Températures horaires corses (Météo-France) : le croisement du BRIEF air ---
+  # PIÈGE DE PÉRIMÈTRE, vérifié le 01/08/2026 : pour ce jeu, Météo-France ne connaît
+  # NI 2A NI 2B — l'île entière est publiée sous le département « 20 » (aucune ressource
+  # H_2A_/H_2B_ dans le catalogue ; 57 postes sous H_20_). Un seul fichier, pas deux.
+  # Le découpage du producteur épouse notre politique de fraîcheur à la lettre :
+  #   H_20_latest-2025-2026.csv.gz    deux dernières années, réécrit chaque jour -> glissant
+  #   H_20_previous-2020-2024.csv.gz  historique clos (82 Mo)                    -> figé
+  # Le « previous » n'est PAS déclaré : il n'a de sens qu'en face de l'historique Geod'air,
+  # dont ni la profondeur ni la date d'arrivée ne sont tranchées. Le jour venu, une entrée
+  # figée de plus suffit — même url, même format.
+  # ATTENTION : l'url porte ses millésimes. « latest-2025-2026 » deviendra
+  # « latest-2026-2027 » au changement d'année ; aucun jeton {AAAA} ne sait écrire une
+  # paire d'années. À corriger à la main en janvier 2027 — l'échec sera bruyant (404).
+  meteo_horaire_corse:
+    url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz"
+    filename: "meteo_horaire_corse.csv.gz"
+    licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
+    producteur: "Météo-France — données climatologiques de base, horaires (département 20)"
+    glissant: true      # réécrit quotidiennement : sans re-téléchargement, hier n'y est pas
+    format: csv.gz
+    delimiter: ";"
+    colonnes_attendues: [NUM_POSTE, NOM_USUEL, AAAAMMJJHH, T, QT]
+    notes: >
+      ~27 Mo, 57 postes, ~755 000 lignes horaires depuis le 01/01/2025. T = température
+      sous abri instantanée (°C et 1/10) ; AAAAMMJJHH est en UTC, comme les sources EDF.
+      GARDE-FOU, la DERNIÈRE journée du fichier est TRONQUÉE : rafraîchi vers 05 h 47 UTC,
+      il s'arrête aux petites heures du jour de publication (relevé le 01/08/2026 : dernière
+      heure = 2026-07-31 03 h UTC). Une « journée » de 4 heures fausserait tout maximum
+      journalier — la dernière date se coupe dans prepare, et le croisement avec le LCSQA
+      (date_url: hier) porte sur la dernière journée COMPLÈTE commune aux deux sources,
+      jamais sur la date la plus récente de l'une d'elles.
+      QT est le code qualité, et il se filtre avant tout calcul, exactement comme la
+      « validité » du LCSQA : 0 = protégée (validée par le climatologue), 1 = validée,
+      9 = filtrée (contrôles de premier niveau), 2 = DOUTEUSE en cours de vérification.
+      Relevé le 01/08/2026 : 735 053 heures en 1 et 17 440 en 9, aucune en 2 — le filtre
+      reste dû, une valeur pouvant être remise en doute au fil des révisions.
+      Postes utiles face aux 6 stations d'ozone : AJACCIO (20004002) et AJACCIO-MILELLI
+      (20004014) ; BASTIA (20148001). Aucun poste sur la commune de Venaco — les plus
+      proches sont VIVARIO_SAPC (20354008, ~8 km) et CORTE (20096008, ~9 km, 350 m contre
+      ~600 m à Venaco). L'appariement station d'air <-> poste météo se tranche dans prepare
+      et s'écrit sur la figure : ce n'est pas la même mesure au même endroit.
+      Le fichier porte ~200 colonnes (vent, pression, nébulosité…) ; GLO (rayonnement
+      global, J/cm²) est le seul autre champ tentant pour l'ozone — hors BRIEF, à ne pas
+      ouvrir sans décision.

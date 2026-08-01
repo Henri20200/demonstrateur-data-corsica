@@ -45,10 +45,12 @@ d'ozone : près des moteurs, le monoxyde d'azote le détruit. Ni SO₂ ni CO ne 
 mesurés en Corse.
 
 **Températures — Météo-France, « données climatologiques de base — horaires »,
-Licence Ouverte 2.0.** CSV compressés par département (2A, 2B), profondeur pluri-
-décennale, actualisation quotidienne sur les deux dernières années. C'est le croisement
-multi-sources exigé par le BRIEF, et sans lui « de combien monte-t-il quand il fait
-chaud » reste une impression.
+Licence Ouverte 2.0.** Un seul CSV compressé pour toute l'île, et non deux : pour ce jeu,
+le producteur ne connaît ni 2A ni 2B, il publie la Corse sous l'ancien département « 20 »
+(vérifié le 01/08/2026 — 57 postes, dont Ajaccio, Bastia, Corte et Vivario). Profondeur
+pluri-décennale découpée en tranches, dont les deux dernières années réécrites chaque
+jour. C'est le croisement multi-sources exigé par le BRIEF, et sans lui « de combien
+monte-t-il quand il fait chaud » reste une impression.
 
 **Historique — Geod'air (LCSQA / Ineris), Licence Ouverte.** La base de référence des
 données **validées**, alimentée par les AASQA depuis 2013. Accès par API, sur inscription
@@ -90,6 +92,17 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
   horaires journaliers, aux moyennes journalières et annuelles. Elle se recalcule dans
   `prepare` — donc elle se verrouille par un test, sous peine d'annoncer un chiffre
   « réglementaire » qui ne correspond à aucun décompte officiel.
+- **Le fichier météo a ses propres réserves**, du même genre que le flux temps réel. Son
+  code qualité `QT` distingue la donnée validée de la douteuse en cours de vérification :
+  il se filtre avant tout calcul. Et sa dernière journée est tronquée — le fichier
+  s'arrête aux petites heures du jour de publication, si bien qu'une « journée » de
+  quatre heures fausserait n'importe quel maximum journalier. Le croisement porte donc
+  sur la dernière journée complète commune aux deux sources.
+- **Aucun poste météo ne se trouve à Venaco.** Les plus proches sont Vivario (8 km,
+  773 m) et Corte (9 km, 350 m, contre 600 m à Venaco) : le thermomètre n'est pas au
+  pied de l'analyseur, et l'écart d'altitude se paie en degrés. Ajaccio et Bastia n'ont
+  pas ce problème. L'appariement retenu s'écrit sur la figure — c'est une approximation
+  assumée, pas une équivalence.
 - **Comparer ce qui est comparable.** Ville contre campagne se joue entre stations « de
   fond » ; y mêler la station industrielle ou les stations trafic mélangerait les
   populations. Le périmètre s'écrit sur la figure.
@@ -109,6 +122,13 @@ le problème. D'où le découpage, qui épouse la politique de fraîcheur déjà
   polluant et type de statistique, sous peine de suspension du compte.
 - **LCSQA sur data.gouv = source glissante.** La fraîcheur, sans clé ni quota. La page de
   l'API y renvoie elle-même pour les moyennes horaires actualisées.
+
+Météo-France découpe ses fichiers exactement de la même façon, sans qu'on ait à forcer
+quoi que ce soit : les deux dernières années dans un fichier réécrit chaque jour, le passé
+clos dans un autre. Seul le premier est déclaré (`meteo_horaire_corse`, 27 Mo, glissant).
+Le second n'a de sens qu'en face de l'historique Geod'air, dont la profondeur reste à
+trancher : le déclarer aujourd'hui, ce serait 82 Mo que rien ne lit. Le jour venu, c'est
+une entrée figée de plus — même url, même format.
 
 Trois frictions à lever dans `fetch.py`, aucune rédhibitoire :
 
