@@ -11,7 +11,7 @@ import duckdb
 import pytest
 
 from demonstrateur.config import DATA_PROCESSED, DATA_RAW
-from demonstrateur.prepare import APPARIEMENT_AIR_METEO
+from demonstrateur.prepare import APPARIEMENT_AIR_METEO, STATIONS_AIR
 
 COURBE = DATA_PROCESSED / "edf_courbe_corse.parquet"
 MIX = DATA_PROCESSED / "edf_mix_corse.parquet"
@@ -537,8 +537,8 @@ def test_les_deux_stations_d_ajaccio_ne_partagent_pas_leur_poste(con):
     """Les deux stations d'Ajaccio vont à des postes DIFFÉRENTS, et c'est délibéré.
 
     Elles sont distantes de 5,6 km et ne partagent pas leur environnement. Le Canetto
-    (33,3 m, en ville) va aux Milelli ; Confina 2 (58,65 m, dominant la plaine de la
-    Gravona) va à Campo dell'Oro.
+    (39 m, en ville) va aux Milelli ; Confina 2 (70 m, dominant la plaine de la Gravona)
+    va à Campo dell'Oro.
 
     Un même critère produit ces deux choix opposés, et c'est ce que le test protège : dans
     les deux cas l'écart d'altitude reste sous ~0,3 °C de gradient, donc l'altitude ne
@@ -549,10 +549,10 @@ def test_les_deux_stations_d_ajaccio_ne_partagent_pas_leur_poste(con):
     """
     milelli, campo = "20004014", "20004002"
     assert APPARIEMENT_AIR_METEO["FR41001"] == milelli, (
-        "AJACCIO CANETTO doit aller aux Milelli (1,88 km, contre 4,84 pour Campo dell'Oro)"
+        "AJACCIO CANETTO doit aller aux Milelli (1,97 km, contre 4,77 pour Campo dell'Oro)"
     )
     assert APPARIEMENT_AIR_METEO["FR41063"] == campo, (
-        "AJACCIO CONFINA 2 doit aller à Campo dell'Oro (2,98 km, contre 6,93 pour Milelli)"
+        "AJACCIO CONFINA 2 doit aller à Campo dell'Oro (3,31 km, contre 6,31 pour Milelli)"
     )
     assert APPARIEMENT_AIR_METEO["FR41001"] != APPARIEMENT_AIR_METEO["FR41063"], (
         "les deux stations d'Ajaccio sont à 5,6 km l'une de l'autre : rien n'impose "
@@ -562,3 +562,47 @@ def test_les_deux_stations_d_ajaccio_ne_partagent_pas_leur_poste(con):
         r[0] for r in con.execute(f"SELECT DISTINCT num_poste FROM '{METEO.as_posix()}'").fetchall()
     }
     assert {milelli, campo} <= dispo, "les deux postes doivent exister dans la météo"
+
+
+@besoin_meteo
+def test_appariement_coherent_avec_les_coordonnees_officielles(con):
+    """L'appariement se vérifie contre les COORDONNÉES, plus seulement contre lui-même.
+
+    Les positions viennent du référentiel du producteur (Dataset D du LCSQA) et non plus
+    de relevés à la main. Un poste apparié doit donc figurer parmi les DEUX plus proches
+    de sa station : le critère retenu autorise à préférer le second — c'est le cas de
+    Venaco, où Corte est plus proche mais écarté pour son amplitude — mais jamais à choisir
+    un poste lointain, qui signalerait une coquille de code plutôt qu'un arbitrage.
+    """
+    from math import asin, cos, radians, sin, sqrt
+
+    def km(a, b):
+        (la1, lo1), (la2, lo2) = a, b
+        h = (sin(radians(la2 - la1) / 2) ** 2
+             + cos(radians(la1)) * cos(radians(la2)) * sin(radians(lo2 - lo1) / 2) ** 2)
+        return 2 * 6371 * asin(sqrt(h))
+
+    postes = con.execute(
+        f"SELECT DISTINCT num_poste, lat, lon FROM '{METEO.as_posix()}'"
+    ).fetchall()
+    for code_site, num_poste in APPARIEMENT_AIR_METEO.items():
+        nom, lat, lon, _alt, _debut = STATIONS_AIR[code_site]
+        classement = sorted(postes, key=lambda p: km((lat, lon), (p[1], p[2])))
+        deux_plus_proches = [p[0] for p in classement[:2]]
+        assert num_poste in deux_plus_proches, (
+            f"{nom} appariée au poste {num_poste}, absent des deux plus proches "
+            f"{deux_plus_proches} — coquille probable"
+        )
+
+
+def test_confina_2_est_trop_jeune_pour_l_historique():
+    """Confina 2 n'existe que depuis 2024 : toute figure comparant les stations sur
+    plusieurs années doit le dire, sous peine de faire passer une série courte pour
+    une série trouée. Le référentiel du producteur fait foi ; ce test fige le fait."""
+    debuts = {code: STATIONS_AIR[code][4] for code in STATIONS_AIR}
+    assert debuts["FR41063"] == "2024-01-31", "date de mise en service de Confina 2"
+    autres = [d for c, d in debuts.items() if c != "FR41063"]
+    assert all(d < "2012-01-01" for d in autres), (
+        "les cinq autres stations mesurent depuis 2006-2011 — l'écart de profondeur "
+        "avec Confina 2 est le point à écrire sur les figures"
+    )

@@ -161,53 +161,43 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
   à une dataviz de référence arrêtée en 2023 ; ne jamais pouvoir croiser, si. La garde
   qui refusera une jointure vide reste due, au moment d'écrire le croisement : un
   producteur en retard ramènerait le commun à zéro sans prévenir.
-- **L'appariement station d'air ↔ poste météo est tranché (01/08/2026)**, et il est
-  *nominatif* : six lignes écrites à la main dans `prepare.py`, pas un calcul de distance.
-  D'abord parce que le flux LCSQA ne porte **aucune coordonnée** — un appariement
-  automatique exigerait une source de plus, pour un résultat qui n'aurait de mieux que
-  l'apparence de l'objectivité. Ensuite parce que le critère qui compte n'est pas la
-  distance mais la similarité de **régime thermique**.
-- **Venaco va à Vivario, et non à Corte** — contre le plus proche, en distance comme en
-  altitude. Corte est encaissée : sa cuvette creuse l'amplitude diurne, très nettement
-  l'été, et le changement de régime se sent dès Saint-Pierre-de-Venaco, entre les deux.
-  La nuance est décisive. Un biais d'altitude *constant* serait inoffensif ici : il
-  décalerait l'axe des températures sans toucher à la **pente** de la relation
-  ozone/chaleur, seule chose que le titre n° 1 mesure. Une amplitude différente n'est pas
-  un décalage — l'écart avec Venaco varie selon l'heure et la saison, et déforme
-  exactement ce qu'on cherche à établir.
-- **Ajaccio va aux Milelli, et non à Campo dell'Oro**, pourtant le poste synoptique de
-  référence de la ville et le plus proche du Canetto en altitude (−30 m contre +51 m). Deux
-  raisons : la distance (1,88 km contre 4,84 — coordonnées du Canetto relevées sur pièce,
-  41,9253 N / 8,7350 E, le flux LCSQA n'en fournissant aucune ; 35 m relevés, 33,3 m au
-  modèle altimétrique IGN, qui valide aussi les altitudes déclarées des deux postes), et surtout le fait que
-  les deux postes diffèrent de **2,6 °C sur les maxima d'été** quand le relief n'en explique
-  que 0,3. L'écart vient donc de l'**exposition** : Campo dell'Oro est une aire aéroportuaire
-  dégagée en bord de golfe, dans la plaine de la Gravona, que la brise de mer ventile et dont
-  elle écrête les maxima ; les Milelli sont abrités 80 m plus haut, à l'écart du front de mer.
-  Le critère n'est donc pas une ressemblance de bâti — le poste des Milelli est au **Domaine
-  des Milelli**, douze hectares d'oliveraie et d'arboretum sur un replat, et non en ville —
-  mais l'abri contre le vent de mer, seule chose que les 2,6 °C mesurés désignent. Même leçon
-  qu'à Venaco : ce qui compte est le régime, pas la proximité métrique.
-- **Confina 2 va à Campo dell'Oro — le même critère, le résultat inverse.** À 41,943329 N /
-  8,804377 E et **58,65 m**, elle est plus de deux fois plus près de Campo dell'Oro (2,98 km
-  contre 6,93) et l'altitude ne la départage pas davantage que le Canetto : 27 m d'écart d'un
-  côté, 54 m de l'autre, soit 0,16 et 0,32 °C de gradient — un sixième de degré entre les deux
-  options, quand les postes eux-mêmes sont distants de 2,6 °C. Restent la distance et
-  l'exposition, qui pointent ensemble vers l'aéroport : Confina domine la plaine de la Gravona
-  où il est installé, tandis que les Milelli sont de l'autre côté de la ville, sur le versant
-  qui fait face au golfe. **Les deux stations d'Ajaccio ne partagent donc pas leur poste**, et
-  c'est voulu — elles sont à 5,6 km l'une de l'autre. C'est la cohérence du *critère* qui
-  compte, pas celle du résultat.
-- **Ce choix a d'abord été pris à l'envers**, sur la foi d'un premier relevé donnant 90 m.
-  Deux relevés successifs existaient, distants de 720 m et de 31 m d'altitude ; le modèle
-  altimétrique de l'IGN a tranché en concordant **au centimètre** avec le second (58,65 m)
-  quand il s'écartait de 10,5 m du premier. Une altitude fausse de trente mètres suffisait à
-  inverser la décision — de quoi mesurer ce que vaut, ici, une coordonnée vérifiée.
-- **Le poste appelé « BASTIA » n'est pas à Bastia.** Les codes commune portés par
-  `num_poste` le disent : 20148 = 2B148 = Lucciana, c'est l'aéroport de Poretta, dans la
-  plaine de la Marana ; Bastia ville, c'est « BASTIA_SAPC », 20033 = 2B033. Les deux
-  stations urbaines vont donc à la ville et la station de la Marana au poste de la plaine.
-  S'y fier au nom mettrait le thermomètre de la plaine au pied des analyseurs urbains.
+- **L'appariement station d'air ↔ poste météo est tranché (01/08/2026).** Le flux LCSQA ne
+  porte aucune coordonnée ; elles viennent donc du **référentiel du même producteur** —
+  LCSQA/Ineris, « Dataset D : métadonnées des stations de mesures », feuille
+  `AirQualityStations`, Licence Ouverte 2.0, publié dans le même jeu data.gouv que le flux.
+  Les positions ne sont donc plus relevées à la main mais déclarées par celui qui mesure.
+
+  | Station | Alt. | Poste retenu | Distance |
+  |---|---|---|---|
+  | Ajaccio Canetto | 39 m | Milelli | 1,97 km |
+  | Ajaccio Confina 2 | 70 m | Campo dell'Oro | 3,31 km |
+  | Bastia Giraud | 60 m | Bastia ville | 0,72 km |
+  | Bastia Montesoro | 15 m | Bastia ville | 3,76 km |
+  | Bastia La Marana | 15 m | Poretta (Lucciana) | 0,93 km |
+  | Venaco | 653 m | Vivario | 9,86 km |
+
+- **Un seul critère, des résultats parfois opposés.** Les deux postes d'Ajaccio diffèrent de
+  2,6 °C sur les maxima d'été quand les écarts d'altitude en jeu pèsent au plus 0,3 °C de
+  gradient : l'altitude ne départage pas, ce sont la proximité et l'exposition qui décident —
+  Campo dell'Oro est une aire aéroportuaire que la brise de golfe ventile, les Milelli un
+  replat d'oliveraie abrité 80 m plus haut. D'où deux postes différents pour deux stations
+  distantes de 5,6 km. C'est la cohérence du *critère* qui compte, pas celle du résultat.
+- **Venaco va à Vivario, et non à Corte**, pourtant plus proche (5,84 km contre 9,86). Corte
+  est encaissée : sa cuvette creuse l'amplitude diurne, très nettement l'été, et le changement
+  de régime se sent dès Saint-Pierre-de-Venaco. Mesuré sur 152 journées d'été : **17,0 °C
+  d'amplitude à Corte contre 15,4 à Vivario**, et un écart entre les deux qui passe de 1,8 °C
+  sur les minima à 3,4 sur les maxima. Un biais qui se *déforme* au fil du jour, là où un
+  simple décalage d'altitude serait resté inoffensif — c'est précisément ce qui casserait la
+  relation ozone/température. L'altitude confirme : +120 m vers Vivario, −303 m vers Corte.
+- **Le poste appelé « BASTIA » n'est pas à Bastia** — 20148 = 2B148 = Lucciana, l'aéroport de
+  Poretta, à 18,5 km de Bastia ville (« BASTIA_SAPC », 2B033). Le référentiel des stations
+  place « Bastia La Marana » sur cette même commune de Lucciana : les deux se répondent à
+  0,93 km et 5 m d'altitude près.
+- **Confina 2 ne mesure que depuis le 31/01/2024**, quand les cinq autres stations remontent
+  à 2006-2011. Sur un historique partant de 2020, elle portera deux ans contre sept : toute
+  figure comparant les stations doit l'écrire, sous peine de faire passer une série courte
+  pour une série trouée. (La fiche publique de Qualitair annonce le 01/08/2023, et omet
+  l'ozone que son propre flux publie — le référentiel fait foi.)
 - **La figure nomme le poste, jamais la commune de la station d'air.** « Ozone à Venaco,
   température relevée à Vivario » est exact ; « température à Venaco » serait faux. C'est
   une approximation assumée, pas une équivalence — et le titre n° 3 (ville contre
