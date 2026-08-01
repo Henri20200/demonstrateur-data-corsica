@@ -125,6 +125,27 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
                 l'est pas). Le défaut (-85) passe sous ticks + titre d'axe ; à creuser
                 quand une légende occupe la bande basse (cf. T6)
     """
+    preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px)
+    dest = OUTPUTS / f"{name}.html"
+    # "directory" : pas de CDN (le visuel se charge sans réseau tiers) ni de JS
+    # embarqué par fichier (~4,5 Mo x5) — une seule copie partagée dans outputs/.
+    # div_id fixe : sans lui, Plotly tire un UUID à chaque export et deux runs sur les
+    # mêmes données produisent des fichiers différents — or la planification ne committe
+    # que ce qui a réellement changé.
+    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name)
+    print(f"[ok] {dest}")
+    return str(dest)
+
+
+def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
+                    note: str = "", pied_decalage_px: int = -85):
+    """Applique le template et incruste la mention de source obligatoire. Renvoie `fig`.
+
+    Extraite d'`export_html` pour que la page d'assemblage obtienne EXACTEMENT les mêmes
+    figures que les fichiers individuels : le sourçage est câblé une seule fois, et une
+    figure ne peut pas se retrouver publiée sans sa mention parce qu'elle a pris un autre
+    chemin de sortie.
+    """
     fig.update_layout(template=template())
     if sous_titre:
         # Commentaire = sous-titre NATIF (un seul bloc avec le titre) : contrairement à
@@ -143,12 +164,4 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
         # 16px + ink_soft : plancher relevé (22/07) + contraste WCAG AA (muted échouait).
         font=dict(family=SANS, size=16, color=PALETTE["ink_soft"]),
     )
-    dest = OUTPUTS / f"{name}.html"
-    # "directory" : pas de CDN (le visuel se charge sans réseau tiers) ni de JS
-    # embarqué par fichier (~4,5 Mo x5) — une seule copie partagée dans outputs/.
-    # div_id fixe : sans lui, Plotly tire un UUID à chaque export et deux runs sur les
-    # mêmes données produisent des fichiers différents — or la planification ne committe
-    # que ce qui a réellement changé.
-    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name)
-    print(f"[ok] {dest}")
-    return str(dest)
+    return fig

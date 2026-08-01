@@ -250,3 +250,50 @@ def test_la_note_dit_ce_que_les_chiffres_ne_disent_pas():
         "la note doit nommer le poste météo retenu pour Venaco — l'approximation "
         "s'assume par écrit, elle ne se devine pas"
     )
+
+
+PAGE = OUTPUTS / "air_ozone.html"
+
+besoin_page = pytest.mark.skipif(
+    not PAGE.exists(), reason="page absente — lancer python -m demonstrateur.page_air"
+)
+
+
+@besoin_page
+def test_la_page_ne_depend_d_aucun_service_tiers():
+    """Le BRIEF exige un livrable déployable en iframe SANS dépendance tierce.
+
+    Un CDN qui s'ajoute est la régression silencieuse type : la page continue de
+    s'afficher sur le poste du développeur, et casse le jour où elle est déployée derrière
+    un réseau fermé — ou pire, elle expose les lecteurs à un tiers. Toutes les ressources
+    doivent être locales à outputs/, qui se déploie d'un bloc.
+    """
+    h = PAGE.read_text(encoding="utf-8")
+    externes = [s for s in re.findall(r'(?:src|href)="([^"]+)"', h)
+                if s.startswith(("http://", "https://", "//"))]
+    assert not externes, f"ressources tierces référencées : {externes}"
+    for local in re.findall(r'(?:src|href)="([^"]+)"', h):
+        assert (OUTPUTS / local).exists(), f"ressource locale manquante : {local}"
+    assert h.count('src="plotly.min.js"') == 1, (
+        "plotly.min.js doit être chargé UNE fois pour les cinq graphiques"
+    )
+
+
+@besoin_page
+def test_la_page_reste_lisible_en_trois_minutes():
+    """Le brief fixe un plafond de lecture, et c'est un critère de « fini ».
+
+    Sans garde, une page grossit paragraphe après paragraphe sans que personne décide.
+    Le brief tranche à l'avance : si ça déborde, on retranche un titre — on n'abrège ni
+    les sources ni la note.
+    """
+    h = PAGE.read_text(encoding="utf-8")
+    prose = re.sub(r"<[^>]+>", " ", re.sub(r"<(script|style)[\s\S]*?</\1>", " ", h))
+    mots = len(prose.split())
+    assert mots < 700, (
+        f"{mots} mots de prose, soit plus de trois minutes de lecture — retrancher une "
+        "section plutôt qu'abréger les mentions de source"
+    )
+    assert len(re.findall(r'class="plotly-graph-div"', h)) == 5, (
+        "les cinq titres du brief doivent être représentés"
+    )
