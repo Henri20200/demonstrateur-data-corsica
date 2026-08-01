@@ -268,7 +268,7 @@ def _format(meta: dict) -> str:
     if meta.get("format"):
         return str(meta["format"]).lower()
     nom = meta["filename"].lower()
-    for ext in ("csv.gz", "geojson", "json", "xml", "csv"):
+    for ext in ("csv.gz", "geojson", "json", "xml", "csv", "parquet"):
         if nom.endswith("." + ext):
             return ext
     return ""
@@ -371,6 +371,41 @@ def _valider(dest: Path, meta: dict, content_type: str) -> None:
         cle = meta.get("cle_attendue")
         if cle and (not isinstance(obj, dict) or cle not in obj):
             raise ValueError(f"clé racine {cle!r} absente du JSON")
+    elif fmt == "parquet":
+        # Un fichier Parquet s'ouvre ET se referme par le nombre magique « PAR1 » : le
+        # contrôle coûte huit octets et attrape aussi bien une page d'erreur qu'un
+        # téléchargement tronqué, cas qu'un simple contrôle de taille laisserait passer.
+        if dest.stat().st_size < 8:
+            raise ValueError(f"fichier Parquet trop court ({dest.stat().st_size} octets)")
+        with open(dest, "rb") as f:
+            tete = f.read(4)
+            f.seek(-4, 2)
+            pied = f.read(4)
+        if tete != b"PAR1" or pied != b"PAR1":
+            raise ValueError(
+                f"nombre magique Parquet absent (début {tete!r}, fin {pied!r}) — "
+                "réponse d'erreur ou fichier tronqué"
+            )
+        attendues = meta.get("colonnes_attendues", [])
+        if attendues:
+            # DuckDB lit le seul schéma, sans charger les données : il est déjà une
+            # dépendance du projet, autant s'en servir plutôt que décoder le pied Thrift.
+            import duckdb
+
+            # `read_parquet(...)` explicite, et non `FROM '...'` : la validation porte sur
+            # le fichier de travail `.parquet.part`, dont DuckDB ne reconnaîtrait pas
+            # l'extension pour choisir son lecteur.
+            cols = [
+                r[0]
+                for r in duckdb.connect()
+                .execute(f"DESCRIBE SELECT * FROM read_parquet('{dest.as_posix()}')")
+                .fetchall()
+            ]
+            manquantes = [c for c in attendues if c not in cols]
+            if manquantes:
+                raise ValueError(
+                    f"colonnes attendues absentes du Parquet {manquantes} — trouvé {cols[:8]}…"
+                )
     elif fmt == "xml":
         # Piège ENTSO-E : une requête en erreur (jeton, pas de données, période)
         # renvoie HTTP 200 + un `Acknowledgement_MarketDocument` — jamais l'empreinter
