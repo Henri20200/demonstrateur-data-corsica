@@ -443,22 +443,41 @@ def air_corse_to_parquet(dest: str) -> None:
 # Chaque ligne s'écrit sur la figure : c'est une approximation assumée, jamais une
 # équivalence. La figure nomme le POSTE, jamais la commune de la station d'air.
 APPARIEMENT_AIR_METEO = {
-    # Ajaccio — les deux stations vont au poste urbain des Milelli, et NON à Campo dell'Oro
-    # malgré son statut de poste synoptique de référence. Coordonnées du Canetto relevées sur
-    # pièce (41,9253 N / 8,7350 E, rue Chanoine François Maestroni), le flux LCSQA n'en
-    # donnant aucune : Milelli est à 1,88 km, Campo dell'Oro à 4,84 km. Altitude relevée
-    # 35 m, 33,3 m au modèle altimétrique de l'IGN — qui valide au passage les altitudes
-    # déclarées des deux postes (85,85 m aux Milelli contre 86 déclarés, 4,45 m à Campo
-    # dell'Oro contre 5). Le front de mer étant à 5 m, la montée vers le Canetto fait ~28 m
-    # de dénivelé : bien sensible à pied, sans faire pour autant une station d'altitude.
-    # L'altitude ne départage pas — +51 m d'un côté, -30 m de l'autre, soit ~0,3 °C de
-    # gradient dans les deux cas. Or les deux postes diffèrent de 2,6 °C sur les maxima d'été
-    # (32,8 contre 30,2 en moyenne sur 152 journées) : cet écart ne vient donc PAS du relief,
-    # mais de l'EXPOSITION. Campo dell'Oro est une aire aéroportuaire dégagée dans la plaine
-    # de la Gravona, que la brise de golfe ventile et dont elle écrête les maxima ; le Canetto
-    # est en tissu urbain dense sur les pentes du centre, comme les Milelli.
+    # Ajaccio — les deux stations vont aux Milelli, et NON à Campo dell'Oro malgré son statut
+    # de poste synoptique de référence de la ville. Le flux LCSQA ne donnant aucune
+    # coordonnée, celles des stations ont été relevées sur pièce et recoupées sur le modèle
+    # altimétrique de l'IGN, qui valide au passage les altitudes déclarées par Météo-France
+    # (Milelli 85,85 m contre 86 déclarés ; Campo dell'Oro 4,45 m contre 5).
+    #
+    # Canetto : 41,9253 N / 8,7350 E, rue Chanoine François Maestroni, 33,3 m (IGN).
+    # Milelli à 1,88 km, Campo dell'Oro à 4,84 km.
+    #
+    # L'ALTITUDE NE DÉPARTAGE PAS ce cas : +53 m vers les Milelli, -28 m vers Campo dell'Oro,
+    # soit au plus 0,3 °C de gradient d'un côté comme de l'autre. Or les deux postes diffèrent
+    # de 2,6 °C sur les maxima d'été (32,8 contre 30,2, moyenne sur 152 journées complètes).
+    # L'écart ne vient donc pas du relief mais de l'EXPOSITION : Campo dell'Oro est une aire
+    # aéroportuaire dégagée en bord de golfe, dans la plaine de la Gravona, que la brise de
+    # mer ventile et dont elle écrête les maxima ; les Milelli sont abrités 80 m plus haut,
+    # à l'écart du front de mer.
+    #
+    # Ce que les Milelli NE sont PAS — une version antérieure de ce commentaire l'écrivait à
+    # tort : du tissu urbain. Le poste est au Domaine des Milelli (route des Milelli, quartier
+    # Castelluccio/Loretto), douze hectares d'oliveraie et d'arboretum sur un replat si plat
+    # que 427 m d'écart n'y coûtent que 50 cm de dénivelé. Le critère retenu n'est donc pas
+    # une ressemblance de bâti, mais l'abri contre le vent de mer — la seule chose que les
+    # 2,6 °C mesurés désignent.
     "FR41001": "20004014",  # AJACCIO CANETTO   <- AJACCIO-MILELLI_SAPC (86 m, 1,88 km)
-    "FR41063": "20004014",  # AJACCIO CONFINA 2 <- AJACCIO-MILELLI_SAPC (périurbain nord)
+    # Confina 2 : 41,9467 N / 8,7970 E, 79,5 m (IGN ; 90 m relevés — l'écart est normal sur
+    # un versant, où quelques dizaines de mètres de côté valent dix mètres de dénivelé, là où
+    # le replat des Milelli concorde à 50 cm près). Raisonnement INVERSE de celui du Canetto :
+    # ici l'altitude départage franchement (-4 m vers les Milelli contre -85 m vers Campo
+    # dell'Oro) tandis que la distance dit l'inverse (6,36 km contre 3,21 km). L'altitude
+    # l'emporte, parce que 85 m ne sont pas qu'un demi-degré de gradient : c'est le passage
+    # d'un versant au-dessus de la ville à une plaine littorale ventilée. Réserve assumée —
+    # Confina regarde vers la vallée de la Gravona, et si ce versant reçoit ses écoulements
+    # d'air froid nocturnes, son régime tiendrait davantage de la plaine. Rien dans les
+    # données disponibles ne tranche ce point.
+    "FR41063": "20004014",  # AJACCIO CONFINA 2 <- AJACCIO-MILELLI_SAPC (86 m, 6,36 km)
     # Bastia — cf. le piège ci-dessus : deux stations en ville, une dans la plaine.
     "FR41002": "20033015",  # BASTIA GIRAUD     <- BASTIA_SAPC (Bastia ville, 26 m)
     "FR41017": "20033015",  # BASTIA MONTESORO  <- BASTIA_SAPC (Bastia ville, 26 m)

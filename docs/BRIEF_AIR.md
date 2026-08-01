@@ -181,10 +181,22 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
   41,9253 N / 8,7350 E, le flux LCSQA n'en fournissant aucune ; 35 m relevés, 33,3 m au
   modèle altimétrique IGN, qui valide aussi les altitudes déclarées des deux postes), et surtout le fait que
   les deux postes diffèrent de **2,6 °C sur les maxima d'été** quand le relief n'en explique
-  que 0,3. L'écart vient donc de l'exposition : Campo dell'Oro est une aire aéroportuaire
-  dégagée dans la plaine de la Gravona, que la brise de golfe ventile ; le Canetto est en
-  tissu urbain dense sur les pentes du centre, comme les Milelli. Même leçon qu'à Venaco —
-  ce qui compte est le régime, pas la proximité métrique.
+  que 0,3. L'écart vient donc de l'**exposition** : Campo dell'Oro est une aire aéroportuaire
+  dégagée en bord de golfe, dans la plaine de la Gravona, que la brise de mer ventile et dont
+  elle écrête les maxima ; les Milelli sont abrités 80 m plus haut, à l'écart du front de mer.
+  Le critère n'est donc pas une ressemblance de bâti — le poste des Milelli est au **Domaine
+  des Milelli**, douze hectares d'oliveraie et d'arboretum sur un replat, et non en ville —
+  mais l'abri contre le vent de mer, seule chose que les 2,6 °C mesurés désignent. Même leçon
+  qu'à Venaco : ce qui compte est le régime, pas la proximité métrique.
+- **Confina 2 relève du raisonnement inverse, et garde une réserve.** À 41,9467 N / 8,7970 E
+  et 79,5 m (IGN), elle est deux fois plus près de Campo dell'Oro (3,21 km contre 6,36) mais
+  à quatre mètres de l'altitude des Milelli, contre quatre-vingt-cinq de celle de Campo
+  dell'Oro. Ici l'altitude *départage*, là où elle ne départageait pas au Canetto : 85 m ne
+  sont pas qu'un demi-degré de gradient, c'est le passage d'un versant dominant la ville à
+  une plaine littorale ventilée. Les Milelli l'emportent donc — avec une réserve écrite :
+  Confina regarde vers la vallée de la Gravona, et si ce versant en reçoit les écoulements
+  d'air froid nocturnes, son régime tiendrait davantage de la plaine. Aucune donnée
+  disponible ne tranche ce point.
 - **Le poste appelé « BASTIA » n'est pas à Bastia.** Les codes commune portés par
   `num_poste` le disent : 20148 = 2B148 = Lucciana, c'est l'aéroport de Poretta, dans la
   plaine de la Marana ; Bastia ville, c'est « BASTIA_SAPC », 20033 = 2B033. Les deux
