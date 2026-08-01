@@ -12,9 +12,11 @@ Garde-fous (cf. docs/RECONNAISSANCE.md) :
    le thermique fabriquerait un faux aplomb). Seule `micro_hydraulique_mw` tolère des
    NULL (absente en 2024) et est coalescée à 0, ce que le bouclage 2024 justifie
    (`production_totale_mw` l'exclut aussi). Un test `ENR >= solaire` verrouille la sortie.
- - météo Corse : les deux sources du sujet air N'ONT PAS le même fuseau — Météo-France
-   publie en UTC, le flux LCSQA en heure légale. La conversion se fait ici, une fois, et
-   `heure_locale` est le SEUL axe par lequel les deux séries se joignent. S'y ajoutent le
+ - fuseaux du sujet air : les trois sources diffèrent, et AUCUNE n'est en heure légale.
+   Météo-France publie en UTC, le flux LCSQA en UTC+1 FIXE (corrigé le 01/08/2026 — le
+   brief disait « heure légale », démenti par les 24 heures publiées aux dimanches de
+   changement d'heure). Chacune est ramenée ici à un axe UTC commun, d'où se déduit
+   l'heure légale — celle des titres, seul axe par lequel les séries se lisent. S'y ajoutent le
    filtre du code qualité `QT` (pendant de la `validité` de l'air) et le retrait des deux
    journées de bord, tronquées par construction.
 """
@@ -352,9 +354,19 @@ def air_corse_to_parquet(dest: str) -> None:
       donnée manquante (cf. RECONNAISSANCE.md) — ces lignes ne contiennent aucune mesure.
       Les valeurs 1 et 4 en portent toutes une.
 
-    Horodatage en **heure légale française**, établi le 31/07/2026 : le fichier du jour
-    publiait l'heure 19:00 alors qu'il était 20 h 07 locale (18 h 07 UTC) — un horodatage
-    UTC aurait été dans le futur. `heure_locale` se lit donc directement, sans conversion.
+    **Horodatage en UTC+1 FIXE**, corrigé le 01/08/2026 — le brief affirmait « heure légale »,
+    et c'était faux. L'observation qui fondait cette affirmation (le fichier publiait 19:00
+    alors qu'il était 20 h 07 locale, donc 18 h 07 UTC) écarte bien l'UTC, mais elle est tout
+    aussi compatible avec UTC+1 fixe. Le test qui tranche est celui que ce module applique
+    déjà à la météo : aux deux dimanches de changement d'heure, le flux publie **24 heures**,
+    de 00:00 à 23:00, sans doublon (vérifié sur les archives des 30/03 et 26/10/2025). Une
+    heure légale en compterait 23 et 25. Seule une échelle à décalage fixe fait ça.
+
+    Conséquence : l'axe UTC se construit par **soustraction d'une heure**, pas par conversion
+    de fuseau. L'ancien calcul était juste en hiver et faux d'une heure en été — de quoi
+    décaler la jointure avec les températures, que le BRIEF exige justement sur l'axe UTC.
+    L'heure LÉGALE, elle, se calcule depuis l'axe UTC : c'est celle que vivent les gens, donc
+    celle des titres (« à quelle heure »), et elle ne se lit plus directement dans le brut.
 
     Aucune ligne corse = ÉCHEC : si le producteur renomme son organisme, il faut un arrêt
     bruyant, jamais un Parquet vide qui se propagerait en figures muettes.
@@ -374,16 +386,15 @@ def air_corse_to_parquet(dest: str) -> None:
         f"""
         COPY (
           SELECT "Date de début"                       AS debut,
-                 -- Axe UTC, symétrique de celui de la météo (qui fait le trajet inverse) :
-                 -- `timezone('Europe/Paris', ts)` lit l'horodatage naïf comme une heure
-                 -- légale, `timezone('UTC', …)` le rend en UTC naïf. Sans cet axe continu,
-                 -- une fenêtre glissante de 8 h se décale aux changements d'heure — trop
-                 -- courte en mars, doublée en octobre. C'est aussi l'axe sur lequel le
-                 -- BRIEF exige de joindre les températures.
-                 timezone('UTC', timezone('Europe/Paris', "Date de début"))
-                                                       AS date_heure_utc,
-                 CAST("Date de début" AS DATE)         AS date_locale,
-                 extract('hour' FROM "Date de début")  AS heure_locale,
+                 -- Le brut est en UTC+1 FIXE (cf. docstring) : l'axe UTC s'obtient en
+                 -- retirant une heure, jamais par conversion de fuseau. C'est l'axe continu
+                 -- sur lequel la fenêtre glissante de 8 h et la jointure météo s'appuient.
+                 "Date de début" - INTERVAL 1 HOUR     AS date_heure_utc,
+                 -- L'heure LÉGALE se déduit de l'UTC, symétrique de la météo. C'est elle que
+                 -- lisent les titres — 14 h veut dire 14 h pour qui habite l'île.
+                 timezone('Europe/Paris', timezone('UTC', "Date de début" - INTERVAL 1 HOUR))                                 AS date_heure_locale,
+                 CAST(timezone('Europe/Paris', timezone('UTC', "Date de début" - INTERVAL 1 HOUR)) AS DATE)                   AS date_locale,
+                 extract('hour' FROM timezone('Europe/Paris', timezone('UTC', "Date de début" - INTERVAL 1 HOUR)))            AS heure_locale,
                  "Zas"                                 AS zone,
                  "code site"                           AS code_site,
                  "nom site"                            AS station,
@@ -399,21 +410,30 @@ def air_corse_to_parquet(dest: str) -> None:
         ) TO '{dest}' (FORMAT PARQUET)
         """
     )
-    # Garde : l'étiquette locale doit rester une clé. Le dimanche du retour à l'heure
-    # d'hiver, 2 h existe DEUX fois — deux mesures distinctes portent alors le même
-    # horodatage, et `timezone('Europe/Paris', …)` ne peut pas deviner laquelle est
-    # UTC+2 et laquelle est UTC+1. Le jour où le cas se présentera (fin octobre), le
-    # build s'arrêtera ici plutôt que de produire une moyenne glissante fausse d'une
-    # heure : il faudra trancher sur pièce, avec le fichier sous les yeux.
+    # Garde : la grille du brut doit rester RÉGULIÈRE — un horodatage par heure, sans trou
+    # ni doublon. C'est la signature d'un fuseau fixe, et c'est ce qui autorise à retirer une
+    # heure plutôt qu'à convertir. Si le producteur passait un jour à l'heure légale, le
+    # dimanche de mars perdrait une heure et celui d'octobre en doublerait une : la garde
+    # sauterait ce jour-là, au lieu de laisser filer un axe UTC faux pendant des mois.
+    # C'est exactement l'erreur qu'a connue ce module, faute d'avoir posé ce test plus tôt.
+    attendues, distinctes = con.execute(
+        f"SELECT date_diff('hour', min(debut), max(debut)) + 1, count(DISTINCT debut) "
+        f"FROM '{dest}'"
+    ).fetchone()
+    if distinctes != attendues:
+        raise ValueError(
+            f"air Corse : grille horaire irrégulière — {distinctes} horodatages distincts "
+            f"pour {attendues} heures entre les bornes. Le producteur a-t-il basculé en heure "
+            "légale ? L'axe UTC ne se déduit plus par soustraction (cf. docs/BRIEF_AIR.md)."
+        )
     doublons = con.execute(
         f"SELECT count(*) FROM (SELECT code_site, polluant, debut FROM '{dest}' "
         f"GROUP BY 1,2,3 HAVING count(*) > 1)"
     ).fetchone()[0]
     if doublons:
         raise ValueError(
-            f"air Corse : {doublons} horodatage(s) local(aux) en double — jour du retour "
-            "à l'heure d'hiver ? L'axe UTC ne peut pas être reconstruit sans lever "
-            "l'ambiguïté (cf. docs/BRIEF_AIR.md)."
+            f"air Corse : {doublons} couple(s) (station, polluant, heure) en double — "
+            "la clé de mesure n'est plus unique."
         )
     n, stations, especes = con.execute(
         f"SELECT count(*), count(DISTINCT station), count(DISTINCT polluant) FROM '{dest}'"

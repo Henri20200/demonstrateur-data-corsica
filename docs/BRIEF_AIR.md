@@ -188,13 +188,30 @@ ne doit se lire comme un reproche, ni laisser croire qu'une information serait t
   celui de la météo. Sur l'étiquette locale, une fenêtre de 8 heures se raccourcit en mars
   et compte double en octobre. Le jour d'attribution, lui, reste **local** : c'est la
   journée vécue qui a un sens, pas le découpage UTC.
-- **Les deux sources ne sont pas à la même heure.** Météo-France publie en UTC, le flux
-  LCSQA en heure légale française. Ce n'est pas une supposition : les deux dimanches de
-  changement d'heure comptent 24 heures dans le fichier météo, quand l'heure légale en
-  compte 23 et 25 — seule une échelle à décalage fixe fait ça. La conversion est faite une
-  fois pour toutes dans `prepare`. Reste un piège pour le croisement à venir : le dimanche
-  du retour à l'heure d'hiver, 2 h du matin existe deux fois. La jointure se fera donc sur
-  l'axe UTC et jamais sur l'étiquette locale, sous peine de compter cette heure en double.
+- **Aucune des sources n'est en heure légale** (établi le 01/08/2026, après correction).
+  Météo-France publie en **UTC**, le flux LCSQA en **UTC+1 fixe**. Le brief a longtemps
+  affirmé « heure légale » pour le LCSQA, sur la foi d'une observation qui écartait l'UTC
+  mais s'accommodait tout aussi bien d'UTC+1 : le fichier publiait 19:00 quand il était
+  20 h 07 locale. Le test qui tranche est celui déjà appliqué à la météo — aux deux
+  dimanches de changement d'heure, le flux publie **24 heures**, de 00:00 à 23:00, sans
+  doublon, là où une heure légale en compterait 23 et 25 (vérifié sur les archives des
+  30/03 et 26/10/2025). L'axe UTC du flux d'air se construit donc par **soustraction d'une
+  heure**, non par conversion de fuseau : l'ancien calcul était juste en hiver et faux d'une
+  heure en été. L'heure **légale** se déduit ensuite de l'axe UTC — c'est celle que vivent
+  les gens, donc celle des titres, et elle ne se lit pas dans le brut.
+- **Ce que la correction change, et ce qu'elle épargne.** La jointure avec les températures
+  — que ce brief exige justement sur l'axe UTC — était décalée d'une heure en été, comme
+  l'attribution du jour pour l'heure de minuit. La moyenne glissante sur 8 heures, elle,
+  était juste : un décalage constant ne déforme pas une fenêtre. En revanche une journée de
+  brut ne recouvre plus une journée locale : elle donne 23 heures du jour J et une heure du
+  jour J+1, ce qui suffit encore à un maximum journalier opposable (23 heures ≥ 18) mais
+  produit une journée résiduelle, correctement marquée invalide.
+- **Le piège du retour à l'heure d'hiver tombe** avec cette correction : en fuseau fixe,
+  2 h du matin n'existe jamais deux fois dans le brut. La garde a donc changé d'objet —
+  elle vérifie désormais que la grille horaire reste **régulière**, un horodatage par heure
+  sans trou ni doublon. Si le producteur basculait un jour en heure légale, le dimanche de
+  mars perdrait une heure et celui d'octobre en doublerait une : le build s'arrêterait ce
+  jour-là, au lieu de laisser filer un axe faux pendant des mois — ce qui vient d'arriver.
 - **Le fichier météo a ses propres réserves**, du même genre que le flux temps réel. Son
   code qualité `QT` distingue la donnée validée de la douteuse en cours de vérification :
   il se filtre avant tout calcul. Et sa dernière journée est tronquée — le fichier

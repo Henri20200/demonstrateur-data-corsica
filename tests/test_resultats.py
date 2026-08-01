@@ -606,3 +606,58 @@ def test_confina_2_est_trop_jeune_pour_l_historique():
         "les cinq autres stations mesurent depuis 2006-2011 — l'écart de profondeur "
         "avec Confina 2 est le point à écrire sur les figures"
     )
+
+
+@besoin_air
+def test_le_flux_lcsqa_est_en_fuseau_fixe_pas_en_heure_legale(con):
+    """Le test qui manquait, et dont l'absence a laissé passer un axe UTC faux en été.
+
+    Le brief a longtemps affirmé que le flux LCSQA publiait en heure légale française. Une
+    seule observation le fondait — le fichier publiait 19:00 alors qu'il était 20 h 07 locale
+    — qui écarte bien l'UTC mais s'accommode tout aussi bien d'UTC+1 fixe. Les archives des
+    deux dimanches de changement d'heure 2025 ont tranché : 24 heures publiées, de 00:00 à
+    23:00, sans doublon, là où une heure légale en compterait 23 et 25.
+
+    D'où l'axe UTC par soustraction d'une heure. Ce test verrouille les deux faces :
+    l'écart doit être CONSTANT — c'est la signature d'un fuseau fixe, et une conversion de
+    fuseau le ferait varier d'une saison à l'autre — et la grille doit rester régulière.
+    """
+    ecarts, mini, maxi = con.execute(
+        f"""SELECT count(DISTINCT date_diff('minute', date_heure_utc, debut)),
+                   min(date_diff('minute', date_heure_utc, debut)),
+                   max(date_diff('minute', date_heure_utc, debut))
+            FROM '{AIR.as_posix()}'"""
+    ).fetchone()
+    assert ecarts == 1 and mini == 60, (
+        f"écart brut→UTC : {ecarts} valeur(s) distincte(s), de {mini} à {maxi} min — "
+        "attendu 60 min partout. Un écart variable signalerait une heure légale, et "
+        "l'axe UTC ne pourrait plus se déduire par soustraction"
+    )
+    attendues, distinctes = con.execute(
+        f"""SELECT date_diff('hour', min(debut), max(debut)) + 1, count(DISTINCT debut)
+            FROM '{AIR.as_posix()}'"""
+    ).fetchone()
+    assert distinctes == attendues, (
+        f"grille horaire irrégulière : {distinctes} horodatages pour {attendues} heures — "
+        "trou ou doublon, donc bascule possible du producteur vers l'heure légale"
+    )
+
+
+@besoin_air
+def test_l_heure_locale_derive_de_l_utc_et_non_du_brut(con):
+    """L'heure des titres est l'heure VÉCUE, pas l'étiquette du producteur.
+
+    En été, l'heure locale vaut UTC+2 quand le brut est en UTC+1 : la colonne heure_locale
+    doit donc différer de l'heure du brut. Les lire comme identiques — ce que faisait le
+    code avant correction — décalerait d'une heure « le pire créneau pour un effort en plein
+    air », qui est la conclusion actionnable du brief.
+    """
+    ecart_ete = con.execute(
+        f"""SELECT DISTINCT (heure_locale - extract('hour' FROM date_heure_utc) + 24) % 24
+            FROM '{AIR.as_posix()}'
+            WHERE extract('month' FROM date_locale) IN (5, 6, 7, 8, 9)"""
+    ).fetchall()
+    if ecart_ete:  # le flux ne porte qu'une journée : muet hors saison d'été
+        assert [r[0] for r in ecart_ete] == [2], (
+            f"décalage heure locale − UTC en été : {[r[0] for r in ecart_ete]} h, attendu 2"
+        )
