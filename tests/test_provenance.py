@@ -8,8 +8,11 @@ sans dépendre de fetch-data + prepare, contrairement aux tests de résultats.
 import json
 from pathlib import Path
 
+import re
+
 import pytest
 
+from demonstrateur.config import OUTPUTS
 from demonstrateur.provenance import EmpreinteDivergente, empreinte, verifier
 
 # Réponse ENTSO-E miniature : enveloppe de document (mRID, createdDateTime) + un TimeSeries
@@ -185,3 +188,65 @@ def test_figures_refuse_sortie_alteree(monkeypatch):
     with pytest.raises(EmpreinteDivergente):
         figures.main()
     assert exports == [], "figures a exporté malgré une lignée divergente"
+
+
+# --- Note méthodologique : le sourçage s'y vérifie, il ne s'y déclare pas -------------
+NOTE = OUTPUTS / "a0_note_methodologique.html"
+
+besoin_note = pytest.mark.skipif(
+    not NOTE.exists(), reason="note absente — lancer python -m demonstrateur.note_air"
+)
+
+
+def _texte_note() -> str:
+    """Texte de la note, balises retirées et espaces normalisés.
+
+    Chercher une phrase dans le HTML brut rendrait ces tests dépendants du formatage :
+    un retour à la ligne d'éditeur ou un <strong> au milieu d'une phrase suffirait à les
+    faire tomber sans que le livrable ait changé. Ce qui doit être vérifié, c'est ce que
+    le lecteur lit.
+    """
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", NOTE.read_text(encoding="utf-8")))
+
+
+@besoin_note
+def test_la_note_porte_licences_producteurs_et_date():
+    """La définition de « fini » du BRIEF_AIR exige sources, dates, limites et licences.
+
+    Une note méthodologique est le seul endroit du livrable où l'on puisse vérifier d'un
+    coup d'œil que rien n'a été emprunté sans le dire. Ce test refuse qu'une mention
+    disparaisse à la faveur d'une réécriture — le cas typique étant l'allègement d'un
+    paragraphe jugé trop long.
+    """
+    h = _texte_note()
+    for mention in ("CC-BY", "Licence Ouverte", "Qualitair Corse", "Météo-France",
+                    "Agence européenne pour l'environnement", "LCSQA"):
+        assert mention in h, f"mention obligatoire absente de la note : {mention}"
+    assert re.search(r"collectées le \d{4}-\d{2}-\d{2}", h), (
+        "la note doit porter une date de collecte, et la tenir de la lignée de build"
+    )
+    assert "n'en ont pas validé les conclusions" in h, (
+        "la note doit dire que les producteurs ne cautionnent pas l'étude — le brief "
+        "l'exige pour l'Ineris, et la même réserve vaut pour l'AEE et Météo-France"
+    )
+
+
+@besoin_note
+def test_la_note_dit_ce_que_les_chiffres_ne_disent_pas():
+    """Les trois limites que le brief interdit de taire.
+
+    Ce sont elles qui distinguent une note méthodologique d'un argumentaire : sans la
+    première, l'étude laisserait croire qu'elle démontre une causalité qu'elle n'établit
+    pas.
+    """
+    h = _texte_note()
+    assert "coïncidence" in h and "pas une cause" in h, (
+        "la note doit énoncer que l'association mesurée n'est pas une causalité"
+    )
+    assert "ne porte pas d'étiquette d'origine" in h, (
+        "la note doit dire que l'origine de l'ozone n'est pas déterminable ici"
+    )
+    assert "Vivario" in h, (
+        "la note doit nommer le poste météo retenu pour Venaco — l'approximation "
+        "s'assume par écrit, elle ne se devine pas"
+    )
