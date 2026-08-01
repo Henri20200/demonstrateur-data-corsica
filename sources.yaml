@@ -278,11 +278,16 @@ sources:
       9 = filtrée (contrôles de premier niveau), 2 = DOUTEUSE en cours de vérification.
       Relevé le 01/08/2026 : 735 053 heures en 1 et 17 440 en 9, aucune en 2 — le filtre
       reste dû, une valeur pouvant être remise en doute au fil des révisions.
-      Postes utiles face aux 6 stations d'ozone : AJACCIO (20004002) et AJACCIO-MILELLI
-      (20004014) ; BASTIA (20148001). Aucun poste sur la commune de Venaco — les plus
-      proches sont VIVARIO_SAPC (20354008, ~8 km) et CORTE (20096008, ~9 km, 350 m contre
-      ~600 m à Venaco). L'appariement station d'air <-> poste météo se tranche dans prepare
-      et s'écrit sur la figure : ce n'est pas la même mesure au même endroit.
+      PIÈGE DE NOMMAGE : le poste « BASTIA » (20148001) n'est PAS à Bastia — 20148 = 2B148
+      = Lucciana, c'est l'aéroport de Poretta, dans la plaine de la Marana. Bastia ville,
+      c'est « BASTIA_SAPC » (20033015, 2B033). Le code commune que porte NUM_POSTE tranche
+      là où le nom trompe. Postes retenus face aux 6 stations d'ozone : AJACCIO (20004002,
+      littoral) et AJACCIO-MILELLI_SAPC (20004014, hauteurs) ; BASTIA_SAPC pour les deux
+      stations urbaines, BASTIA/Poretta pour celle de la Marana ; VIVARIO_SAPC (20354008)
+      pour Venaco, qui n'a aucun poste sur sa commune — et NON Corte, pourtant plus proche
+      en distance comme en altitude, dont la cuvette encaissée creuse l'amplitude diurne.
+      L'appariement complet et ses raisons sont dans `prepare.APPARIEMENT_AIR_METEO` ; il
+      s'écrit sur la figure : ce n'est pas la même mesure au même endroit.
       Le fichier porte ~200 colonnes (vent, pression, nébulosité…) ; GLO (rayonnement
       global, J/cm²) est le seul autre champ tentant pour l'ozone — hors BRIEF, à ne pas
       ouvrir sans décision.

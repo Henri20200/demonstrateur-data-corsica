@@ -422,6 +422,47 @@ def air_corse_to_parquet(dest: str) -> None:
           f"— {ecartees} ligne(s) sans mesure écartée(s) sur {total:,}")
 
 
+# --- Appariement station d'air <-> poste météo (décidé le 01/08/2026) ----------------
+# « De combien l'ozone monte-t-il quand il fait chaud » exige une température en face de
+# chaque mesure. L'ozone est mesuré en 6 points, la température en 55 : il faut dire
+# lequel va avec lequel, et ce n'est pas une jointure mais une DÉCISION.
+#
+# Elle est nominative, et non calculée par distance, pour deux raisons. D'abord parce que
+# le flux LCSQA ne porte AUCUNE coordonnée (vérifié sur ses 23 colonnes) : un appariement
+# automatique demanderait une source de plus, à certifier, pour un résultat qui n'aurait
+# de mieux que l'apparence de l'objectivité. Ensuite parce que le critère qui compte n'est
+# pas la distance mais la similarité de RÉGIME thermique — un poste plus loin peut être
+# bien meilleur qu'un poste tout proche mais autrement exposé.
+#
+# PIÈGE DE NOMMAGE, vérifié par les codes commune INSEE que porte `num_poste` : le poste
+# appelé « BASTIA » n'est PAS à Bastia. 20148 = 2B148 = Lucciana, c'est l'aéroport de
+# Poretta, dans la plaine de la Marana (42,541 N). Bastia ville, c'est « BASTIA_SAPC »,
+# 20033 = 2B033 (42,704 N). Les apparier à l'envers mettrait le thermomètre de la plaine
+# au pied des analyseurs urbains, et réciproquement.
+#
+# Chaque ligne s'écrit sur la figure : c'est une approximation assumée, jamais une
+# équivalence. La figure nomme le POSTE, jamais la commune de la station d'air.
+APPARIEMENT_AIR_METEO = {
+    # Ajaccio — le littoral à la station littorale, les hauteurs à la station des hauteurs.
+    "FR41001": "20004002",  # AJACCIO CANETTO   <- AJACCIO (Campo dell'Oro, 5 m, littoral)
+    "FR41063": "20004014",  # AJACCIO CONFINA 2 <- AJACCIO-MILELLI_SAPC (86 m, périurbain)
+    # Bastia — cf. le piège ci-dessus : deux stations en ville, une dans la plaine.
+    "FR41002": "20033015",  # BASTIA GIRAUD     <- BASTIA_SAPC (Bastia ville, 26 m)
+    "FR41017": "20033015",  # BASTIA MONTESORO  <- BASTIA_SAPC (Bastia ville, 26 m)
+    "FR41004": "20148001",  # BASTIA LA MARANA  <- BASTIA (Lucciana/Poretta, 10 m, plaine)
+    # Venaco — aucun poste sur la commune, et le choix ne va pas au plus proche.
+    # CORTE est à ~9 km et 350 m (contre ~600 m à Venaco), donc plus proche en altitude
+    # que VIVARIO ; il est pourtant ÉCARTÉ. Corte est encaissée : sa cuvette creuse
+    # l'amplitude diurne, très nettement l'été, et le changement de régime se sent dès
+    # Saint-Pierre-de-Venaco, entre les deux. Or un biais d'altitude constant serait
+    # inoffensif ici — il décalerait l'axe des températures sans toucher à la PENTE de la
+    # relation ozone/chaleur, seule chose que le titre n° 1 mesure. Une amplitude
+    # différente, elle, n'est pas un décalage : l'écart avec Venaco varie selon l'heure et
+    # la saison, et déforme précisément ce qu'on cherche à établir.
+    "FR41024": "20354008",  # VENACO            <- VIVARIO_SAPC (773 m, ~8 km)
+}
+
+
 # --- Ozone : la moyenne glissante sur 8 heures --------------------------------------
 # Aucune des deux sources ne la sert : ni le flux temps réel, ni l'API Geod'air, qui
 # s'arrête aux moyennes horaires. Elle se recalcule donc ici — et comme le chiffre qui

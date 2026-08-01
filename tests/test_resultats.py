@@ -11,6 +11,7 @@ import duckdb
 import pytest
 
 from demonstrateur.config import DATA_PROCESSED, DATA_RAW
+from demonstrateur.prepare import APPARIEMENT_AIR_METEO
 
 COURBE = DATA_PROCESSED / "edf_courbe_corse.parquet"
 MIX = DATA_PROCESSED / "edf_mix_corse.parquet"
@@ -400,4 +401,91 @@ def test_meteo_corse_cycle_diurne_physique(con):
     assert 3 <= h_froid <= 8, (
         f"minimum thermique moyen de juillet à {h_froid} h locale — le creux doit précéder "
         "le lever du jour, pas le suivre"
+    )
+
+
+# --- Appariement station d'air <-> poste météo ---------------------------------------
+# Cette table est une DÉCISION, pas un calcul : rien dans les données ne la vérifie
+# d'elle-même, et une erreur y serait invisible — le pipeline tournerait, les figures
+# sortiraient, et la température affichée en face de l'ozone serait celle d'un autre
+# endroit. D'où ces verrous.
+
+@besoin_air
+def test_appariement_couvre_toutes_les_stations_ozone(con):
+    """Aucune station d'ozone ne doit rester sans poste, ni l'inverse.
+
+    Le jour où Qualitair Corse ouvre une septième station, elle apparaîtra dans le Parquet
+    sans température associée : ce test le dit, au lieu de laisser la station disparaître
+    silencieusement du croisement.
+    """
+    stations = {
+        r[0]
+        for r in con.execute(
+            f"SELECT DISTINCT code_site FROM '{AIR.as_posix()}' WHERE polluant = 'O3'"
+        ).fetchall()
+    }
+    sans_poste = stations - set(APPARIEMENT_AIR_METEO)
+    assert not sans_poste, f"station(s) d'ozone sans poste météo : {sorted(sans_poste)}"
+    fantomes = set(APPARIEMENT_AIR_METEO) - stations
+    assert not fantomes, f"apparié(s) mais absent(s) des mesures d'ozone : {sorted(fantomes)}"
+
+
+@besoin_meteo
+def test_les_postes_apparies_existent_et_mesurent(con):
+    """Chaque poste cité existe dans la météo et y porte de vraies températures."""
+    postes = {
+        r[0]: r[1]
+        for r in con.execute(
+            f"SELECT num_poste, count(temperature_c) FROM '{METEO.as_posix()}' GROUP BY 1"
+        ).fetchall()
+    }
+    for code_site, num_poste in APPARIEMENT_AIR_METEO.items():
+        assert num_poste in postes, (
+            f"{code_site} apparié au poste {num_poste}, absent du fichier Météo-France"
+        )
+        assert postes[num_poste] > 0, f"poste {num_poste} sans aucune température"
+
+
+@besoin_meteo
+def test_venaco_va_a_vivario_et_pas_a_corte(con):
+    """Verrou de la décision du 01/08/2026, contre-intuitive donc fragile.
+
+    Corte est plus proche de Venaco en distance ET en altitude ; c'est pourtant Vivario
+    qui est retenu, parce que la cuvette de Corte creuse l'amplitude diurne — un écart qui
+    varie selon l'heure et la saison, là où un simple biais d'altitude serait inoffensif.
+    Quelqu'un qui « corrigerait » vers le plus proche casserait la relation que le titre
+    n° 1 cherche à mesurer. Le test vérifie aussi que Corte EXISTE : l'écarter doit rester
+    un choix, jamais une absence subie.
+    """
+    corte = "20096008"
+    assert APPARIEMENT_AIR_METEO["FR41024"] == "20354008", (
+        "Venaco doit être apparié à VIVARIO_SAPC (cf. la justification dans prepare.py)"
+    )
+    dispo = {
+        r[0] for r in con.execute(f"SELECT DISTINCT num_poste FROM '{METEO.as_posix()}'").fetchall()
+    }
+    assert corte in dispo, "CORTE doit être disponible — son écartement est délibéré"
+    assert APPARIEMENT_AIR_METEO["FR41024"] != corte
+
+
+@besoin_meteo
+def test_le_poste_nomme_bastia_n_est_pas_a_bastia(con):
+    """Piège de nommage : « BASTIA » (20148 = Lucciana) est l'aéroport de Poretta, dans la
+    plaine ; Bastia ville est « BASTIA_SAPC » (20033). `num_poste` porte le code commune,
+    ce qui rend le contrôle possible sans coordonnées.
+
+    Les deux stations urbaines vont donc à la ville, et la station de la plaine de la
+    Marana au poste de la plaine. Les intervertir sur la foi du nom mettrait le
+    thermomètre de la plaine au pied des analyseurs urbains.
+    """
+    for code_site in ("FR41002", "FR41017"):  # Giraud, Montesoro — dans Bastia
+        assert APPARIEMENT_AIR_METEO[code_site].startswith("20033"), (
+            f"{code_site} est une station de Bastia ville : son poste doit être sur la "
+            "commune 2B033, pas celui qui s'appelle « BASTIA » (Lucciana)"
+        )
+    assert APPARIEMENT_AIR_METEO["FR41004"].startswith("20148"), (
+        "BASTIA LA MARANA est dans la plaine : poste de Lucciana/Poretta attendu"
+    )
+    assert APPARIEMENT_AIR_METEO["FR41002"] != APPARIEMENT_AIR_METEO["FR41004"], (
+        "ville et plaine ne peuvent pas partager le même thermomètre"
     )

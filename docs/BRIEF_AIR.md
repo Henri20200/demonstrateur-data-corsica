@@ -135,11 +135,29 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
   à une dataviz de référence arrêtée en 2023 ; ne jamais pouvoir croiser, si. La garde
   qui refusera une jointure vide reste due, au moment d'écrire le croisement : un
   producteur en retard ramènerait le commun à zéro sans prévenir.
-- **Aucun poste météo ne se trouve à Venaco.** Les plus proches sont Vivario (8 km,
-  773 m) et Corte (9 km, 350 m, contre 600 m à Venaco) : le thermomètre n'est pas au
-  pied de l'analyseur, et l'écart d'altitude se paie en degrés. Ajaccio et Bastia n'ont
-  pas ce problème. L'appariement retenu s'écrit sur la figure — c'est une approximation
-  assumée, pas une équivalence.
+- **L'appariement station d'air ↔ poste météo est tranché (01/08/2026)**, et il est
+  *nominatif* : six lignes écrites à la main dans `prepare.py`, pas un calcul de distance.
+  D'abord parce que le flux LCSQA ne porte **aucune coordonnée** — un appariement
+  automatique exigerait une source de plus, pour un résultat qui n'aurait de mieux que
+  l'apparence de l'objectivité. Ensuite parce que le critère qui compte n'est pas la
+  distance mais la similarité de **régime thermique**.
+- **Venaco va à Vivario, et non à Corte** — contre le plus proche, en distance comme en
+  altitude. Corte est encaissée : sa cuvette creuse l'amplitude diurne, très nettement
+  l'été, et le changement de régime se sent dès Saint-Pierre-de-Venaco, entre les deux.
+  La nuance est décisive. Un biais d'altitude *constant* serait inoffensif ici : il
+  décalerait l'axe des températures sans toucher à la **pente** de la relation
+  ozone/chaleur, seule chose que le titre n° 1 mesure. Une amplitude différente n'est pas
+  un décalage — l'écart avec Venaco varie selon l'heure et la saison, et déforme
+  exactement ce qu'on cherche à établir.
+- **Le poste appelé « BASTIA » n'est pas à Bastia.** Les codes commune portés par
+  `num_poste` le disent : 20148 = 2B148 = Lucciana, c'est l'aéroport de Poretta, dans la
+  plaine de la Marana ; Bastia ville, c'est « BASTIA_SAPC », 20033 = 2B033. Les deux
+  stations urbaines vont donc à la ville et la station de la Marana au poste de la plaine.
+  S'y fier au nom mettrait le thermomètre de la plaine au pied des analyseurs urbains.
+- **La figure nomme le poste, jamais la commune de la station d'air.** « Ozone à Venaco,
+  température relevée à Vivario » est exact ; « température à Venaco » serait faux. C'est
+  une approximation assumée, pas une équivalence — et le titre n° 3 (ville contre
+  campagne) n'en dépend pas du tout, puisqu'il compare des concentrations sans température.
 - **Comparer ce qui est comparable.** Ville contre campagne se joue entre stations « de
   fond » ; y mêler la station industrielle ou les stations trafic mélangerait les
   populations. Le périmètre s'écrit sur la figure.
