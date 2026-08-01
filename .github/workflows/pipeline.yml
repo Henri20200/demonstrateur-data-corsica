@@ -47,16 +47,23 @@ jobs:
       # Les sources figées ne sont ainsi pas re-téléchargées, et si le rafraîchissement
       # du temps réel échoue, fetch conserve le relevé précédent (au lieu de repartir
       # de zéro et de faire échouer prepare).
-      # VOLUME, depuis le sujet air : data/raw approche 150 Mo, et une entrée de cache est
-      # écrite par run. Le quota de 10 Go par dépôt se remplit donc en quelques jours et
-      # GitHub évince les plus anciennes — un run tombera de temps à autre sur un cache
-      # vide et retéléchargera tout. C'est lent, pas faux : les empreintes restent
-      # vérifiées. À surveiller si la durée des runs dérive.
+      # CLÉ INDEXÉE SUR sources.yaml, et non sur l'identifiant de run (corrigé le
+      # 01/08/2026). Avec `github.run_id`, chaque passage écrivait une entrée NEUVE : depuis
+      # le sujet air, data/raw approche 150 Mo, soit 600 Mo de cache par jour à raison de
+      # quatre runs — le quota de 10 Go se remplissait en deux semaines, puis l'éviction
+      # forçait un retéléchargement complet. Indexée sur le contenu de sources.yaml, une
+      # seule entrée existe par version du fichier ; elle n'est réécrite que le jour où une
+      # source est ajoutée ou modifiée, et `restore-keys` récupère alors la précédente pour
+      # ne télécharger que la nouveauté.
+      # Contrepartie assumée : les jeux GLISSANTS que le cache conserve restent ceux du
+      # premier run. Sans conséquence — ils sont rafraîchis à chaque passage par
+      # définition, et s'ils ne l'étaient pas, la garde de fraîcheur de T1 le dirait
+      # (avertissement au-delà de 24 h, blocage au-delà de 48 h). À surveiller si la durée des runs dérive.
       - name: Restaurer data/raw des runs précédents
         uses: actions/cache@v4
         with:
           path: data/raw
-          key: data-raw-${{ github.run_id }}
+          key: data-raw-${{ hashFiles('sources.yaml') }}
           restore-keys: data-raw-
 
       # Le cache ne transporte que la DONNÉE : _manifest.json, lui, est versionné et
