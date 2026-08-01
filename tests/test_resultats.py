@@ -19,7 +19,7 @@ ECRET = DATA_PROCESSED / "edf_ecretement_corse.parquet"
 SARD = DATA_PROCESSED / "entsoe_sardaigne.parquet"
 SARD_XML = DATA_RAW / "entsoe_sardaigne_2023.xml"
 AIR = DATA_PROCESSED / "air_corse.parquet"
-SERIE = DATA_PROCESSED / "air_o3_serie.parquet"
+SERIE = DATA_PROCESSED / "air_serie.parquet"
 MDA8 = DATA_PROCESSED / "air_o3_mda8.parquet"
 METEO = DATA_PROCESSED / "meteo_corse.parquet"
 
@@ -684,9 +684,10 @@ def test_la_serie_aee_et_le_flux_lcsqa_coincident(con):
     n, ecart = con.execute(
         f"""SELECT count(*), max(abs(a.valeur - l.valeur))
             FROM '{SERIE.as_posix()}' a
-            JOIN (SELECT date_heure_utc, station, valeur FROM '{AIR.as_posix()}'
-                  WHERE polluant = 'O3') l
-              ON a.date_heure_utc = l.date_heure_utc AND a.station = l.station"""
+            JOIN (SELECT date_heure_utc, station, polluant, valeur FROM '{AIR.as_posix()}'
+                  WHERE polluant IN ('O3', 'NO2')) l
+              ON a.date_heure_utc = l.date_heure_utc AND a.station = l.station
+             AND a.polluant = l.polluant"""
     ).fetchone()
     assert n > 0, (
         "aucune heure commune entre la série AEE et le flux LCSQA — le recouvrement doit "
@@ -727,7 +728,7 @@ def test_les_depassements_se_produisent_sans_alerte(con):
               WHERE valide AND extract('month' FROM date_locale) IN (6, 7, 8)
                 AND extract('year' FROM date_locale) BETWEEN 2013 AND 2025),
             h AS (SELECT date_locale, station, max(valeur) AS mx
-                  FROM '{SERIE.as_posix()}' GROUP BY 1, 2)
+                  FROM '{SERIE.as_posix()}' WHERE polluant = 'O3' GROUP BY 1, 2)
             SELECT count(*) FILTER (WHERE j.mda8 > 120),
                    count(*) FILTER (WHERE j.mda8 > 120 AND h.mx < 180)
             FROM j JOIN h USING (date_locale, station)"""
@@ -736,4 +737,32 @@ def test_les_depassements_se_produisent_sans_alerte(con):
     assert sans_alerte == total, (
         f"{sans_alerte}/{total} dépassements sans alerte — le titre n° 1 affirme la "
         "totalité ; à réécrire si ce n'est plus vrai"
+    )
+
+
+@besoin_serie
+def test_le_pic_d_ozone_n_est_pas_a_l_heure_de_pointe(con):
+    """TITRE N° 3 : l'ozone et le NO2 culminent à des heures opposées.
+
+    Comparaison à STATION CONSTANTE — les cinq qui mesurent les deux polluants, Venaco
+    exclue puisqu'elle n'a plus de NO2 et n'a pas d'heure de pointe à opposer. Le NO2 suit
+    les moteurs et culmine le matin ; l'ozone se fabrique sous le soleil et culmine
+    l'après-midi. Si les deux pics se rapprochaient à moins de quatre heures, le titre
+    n'aurait plus de sens.
+    """
+    pics = dict(
+        con.execute(
+            f"""SELECT polluant, arg_max(heure_locale, m) FROM (
+                  SELECT polluant, heure_locale, avg(valeur) AS m
+                  FROM '{SERIE.as_posix()}'
+                  WHERE extract('month' FROM date_locale) IN (6, 7, 8)
+                    AND station <> 'VENACO'
+                  GROUP BY 1, 2) GROUP BY 1"""
+        ).fetchall()
+    )
+    assert 13 <= pics["O3"] <= 18, f"pic d'ozone à {pics['O3']} h — attendu l'après-midi"
+    assert 5 <= pics["NO2"] <= 10, f"pic de NO2 à {pics['NO2']} h — attendu le matin"
+    assert pics["O3"] - pics["NO2"] >= 4, (
+        f"pics distants de {pics['O3'] - pics['NO2']} h seulement — le titre n° 3 oppose "
+        "l'heure de pointe et l'heure du soleil, il lui faut un écart net"
     )

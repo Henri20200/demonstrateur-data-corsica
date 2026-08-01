@@ -505,22 +505,35 @@ APPARIEMENT_AIR_METEO = {
 }
 
 
-AEE_O3 = (DATA_RAW / "aee_o3_*.parquet").as_posix()
+AEE_MESURES = (DATA_RAW / "aee_*.parquet").as_posix()
 # Les douze source_ids de sources.yaml : six stations, deux jeux (validé + continu). Sert
 # à vérifier les empreintes AVANT construction et à écrire la lignée des sorties ozone.
+# L'ozone couvre les six stations ; le NO2 les cinq qui le mesurent encore (Venaco l'a
+# mesuré autrefois, plus aujourd'hui — il sort donc du titre n° 3, qui compare les deux
+# polluants AU MÊME endroit).
 AEE_SOURCES = [
-    f"aee_o3_{slug}_{jeu}"
-    for slug in ("ajaccio_canetto", "ajaccio_confina2", "bastia_giraud",
-                 "bastia_montesoro", "bastia_marana", "venaco")
+    f"aee_{pol}_{slug}_{jeu}"
+    for pol, stations in (
+        ("o3", ("ajaccio_canetto", "ajaccio_confina2", "bastia_giraud",
+                "bastia_montesoro", "bastia_marana", "venaco")),
+        ("no2", ("ajaccio_canetto", "ajaccio_confina2", "bastia_giraud",
+                 "bastia_montesoro", "bastia_marana")),
+    )
+    for slug in stations
     for jeu in ("valide", "continu")
 ]
+# Code polluant de l'AEE (suffixe des fichiers SPO-<station>_<code>) -> libellé du dépôt,
+# aligné sur celui du flux LCSQA pour que les deux canaux se comparent sans traduction.
+POLLUANTS_AEE = {7: "O3", 8: "NO2"}
 
 
-def o3_serie_to_parquet(dest: str) -> None:
-    """Série longue d'ozone des six stations corses, assemblée depuis les Parquet de l'AEE.
+def air_serie_to_parquet(dest: str) -> None:
+    """Série longue d'ozone et de NO2, assemblée depuis les Parquet de l'AEE.
 
     C'est elle qui porte les cinq titres : douze ans au lieu d'une journée. Le flux LCSQA
-    garde son rôle de fraîcheur multi-polluants et de contrôle croisé.
+    garde son rôle de fraîcheur multi-polluants et de contrôle croisé. Le polluant est une
+    COLONNE et non une sortie séparée : le titre n° 3 compare l'ozone au NO2 à station et à
+    heure constantes, ce qu'une seule table rend immédiat.
 
     **Fuseau — deux heures à retirer, et pas une.** L'AEE publie en UTC+1 fixe, horodaté à
     la FIN de la période : une heure pour revenir au début de période, une autre pour
@@ -539,19 +552,22 @@ def o3_serie_to_parquet(dest: str) -> None:
     lignes = ", ".join(
         f"('{code}', '{s[0]}', '{s[5]}', '{s[6]}')" for code, s in STATIONS_AIR.items()
     )
+    especes = ", ".join(f"({c}, '{nom}')" for c, nom in POLLUANTS_AEE.items())
     con.execute(
         f"""
         CREATE TEMP VIEW serie AS
         WITH brut AS (
           SELECT regexp_extract("Samplingpoint", 'SPO-(FR[0-9]+)_', 1) AS code_site,
+                 CAST(regexp_extract("Samplingpoint", '_([0-9]+)$', 1) AS INTEGER) AS code_pol,
                  "Start" - INTERVAL 2 HOUR                             AS date_heure_utc,
                  CAST("Value" AS DOUBLE)                               AS valeur,
                  CAST("Validity" AS INTEGER)                           AS validite,
                  CAST("Verification" AS INTEGER)                       AS verification
-          FROM read_parquet('{AEE_O3}', union_by_name = true)
+          FROM read_parquet('{AEE_MESURES}', union_by_name = true)
         ),
-        nommees(code_site, station, implantation, influence) AS (VALUES {lignes})
-        SELECT b.code_site, n.station, n.implantation, n.influence,
+        nommees(code_site, station, implantation, influence) AS (VALUES {lignes}),
+        especes(code_pol, polluant) AS (VALUES {especes})
+        SELECT b.code_site, n.station, n.implantation, n.influence, e.polluant,
                b.date_heure_utc,
                timezone('Europe/Paris', timezone('UTC', b.date_heure_utc))
                                                         AS date_heure_locale,
@@ -560,12 +576,13 @@ def o3_serie_to_parquet(dest: str) -> None:
                extract('hour' FROM timezone('Europe/Paris', timezone('UTC', b.date_heure_utc)))
                                                         AS heure_locale,
                b.valeur, b.validite, b.verification
-        FROM brut b JOIN nommees n USING (code_site)
+        FROM brut b JOIN nommees n USING (code_site) JOIN especes e USING (code_pol)
         WHERE b.validite > 0 AND b.valeur IS NOT NULL
         """
     )
     manquantes = set(STATIONS_AIR) - {
-        r[0] for r in con.execute("SELECT DISTINCT code_site FROM serie").fetchall()
+        r[0] for r in con.execute(
+            "SELECT DISTINCT code_site FROM serie WHERE polluant = 'O3'").fetchall()
     }
     if manquantes:
         raise ValueError(
@@ -576,14 +593,15 @@ def o3_serie_to_parquet(dest: str) -> None:
         f"COPY (SELECT * FROM serie ORDER BY date_heure_utc, station) "
         f"TO '{dest}' (FORMAT PARQUET)"
     )
-    n, st, d1, d2, verif = con.execute(
+    n, st, d1, d2, o3, no2 = con.execute(
         f"SELECT count(*), count(DISTINCT station), min(date_locale), max(date_locale), "
-        f"count(*) FILTER (WHERE verification = 1) FROM '{dest}'"
+        f"count(*) FILTER (WHERE polluant = 'O3'), count(*) FILTER (WHERE polluant = 'NO2') "
+        f"FROM '{dest}'"
     ).fetchone()
     if not n:
-        raise ValueError("ozone : série AEE vide après filtre de validité.")
+        raise ValueError("air : série AEE vide après filtre de validité.")
     print(f"[ok] {Path(dest).name} — {n:,} heures ({st} stations, du {d1} au {d2}) "
-          f"— dont {verif:,} vérifiées")
+          f"— {o3:,} ozone, {no2:,} NO2")
 
 
 # --- Ozone : la moyenne glissante sur 8 heures --------------------------------------
@@ -707,7 +725,7 @@ def o3_mda8_to_parquet(dest: str) -> None:
     # data/processed : la bascule n'a lieu qu'à la fin, si bien qu'y lire la série
     # rendrait la version du run PRÉCÉDENT (et rien du tout au premier run). L'ordre du
     # plan de construction garantit qu'elle est déjà écrite.
-    amont = Path(dest).parent / "air_o3_serie.parquet"
+    amont = Path(dest).parent / "air_serie.parquet"
     if not amont.exists():
         raise FileNotFoundError(
             f"ozone : {amont.name} absent du dossier de construction — l'ordre du plan "
@@ -716,7 +734,7 @@ def o3_mda8_to_parquet(dest: str) -> None:
     con = duckdb.connect()
     con.execute(
         f"""
-        CREATE TEMP VIEW o3 AS SELECT * FROM '{amont.as_posix()}'
+        CREATE TEMP VIEW o3 AS SELECT * FROM '{amont.as_posix()}' WHERE polluant = 'O3'
         """
     )
     if not con.execute("SELECT count(*) FROM o3").fetchone()[0]:
@@ -939,7 +957,7 @@ def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
     if air_ok:
         plan.append(("air_corse.parquet", air_corse_to_parquet, ["lcsqa_temps_reel"]))
     if aee_ok:
-        plan.append(("air_o3_serie.parquet", o3_serie_to_parquet, sorted(AEE_SOURCES)))
+        plan.append(("air_serie.parquet", air_serie_to_parquet, sorted(AEE_SOURCES)))
         # APRÈS air_o3_serie.parquet, dont elle dérive en lisant le staging — ne pas
         # remonter cette ligne au-dessus de la précédente.
         plan.append(("air_o3_mda8.parquet", o3_mda8_to_parquet, sorted(AEE_SOURCES)))
@@ -1056,7 +1074,7 @@ def main() -> int:
     sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES)
     air_ok = Path(AIR).exists()
     meteo_ok = Path(METEO).exists()
-    aee_ok = len(list(DATA_RAW.glob("aee_o3_*.parquet"))) == len(AEE_SOURCES)
+    aee_ok = len(list(DATA_RAW.glob("aee_*.parquet"))) == len(AEE_SOURCES)
     plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok, aee_ok)
     source_ids = [sid for _, _, sids in plan for sid in sids]
 

@@ -98,8 +98,15 @@ des fichiers le dit — `FR.LCSQA-INERIS.AQ` — ce sont les mesures de Qualitai
 rapportées par le LCSQA, telles que la France les transmet à l'Europe. Un Parquet par
 station et par polluant, url déterministe (`SPO-<station>_<polluant>.parquet`), et deux jeux
 qui se raccordent bout à bout sans le moindre chevauchement : **E1a validé de 2013 au
-01/01/2025**, puis le **flux continu jusqu'au jour même**. Douze entrées pour l'ozone,
-8,78 Mo — contre les 26 Go qu'aurait coûtés le même historique par le flux national.
+01/01/2025**, puis le **flux continu jusqu'au jour même**. Vingt-deux entrées — douze pour
+l'ozone (six stations), dix pour le NO2 (cinq stations) — soit un peu plus de 15 Mo, contre
+les 26 Go qu'aurait coûtés le même historique par le flux national.
+
+Le NO₂ sert le titre n° 3, qui oppose l'heure du pic d'ozone à celle du pic de NO₂ **à
+station constante**. Venaco en est écartée : elle a mesuré le NO₂ par le passé — le jeu
+validé en porte encore — mais ne le mesure plus. Comparer deux polluants au même endroit
+exige qu'ils y soient tous deux mesurés, et une station rurale n'a de toute façon pas
+d'heure de pointe à opposer.
 
 Trois choses que ce canal règle et que Geod'air ne réglait pas :
 
