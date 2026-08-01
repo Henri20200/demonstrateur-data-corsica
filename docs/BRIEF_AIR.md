@@ -4,25 +4,65 @@
 Démarrage après la mise en ligne de l'étude électricité (septembre 2026) — *date butoir
 à trancher*.
 
-## Question fermée (figée le 31/07/2026)
-> Quand l'air corse est-il le plus chargé en ozone — à quelle heure, à quelle saison,
-> à quel endroit de l'île — et de combien monte-t-il quand il fait chaud ?
+## Question fermée (figée le 31/07/2026, **recentrée le 01/08/2026**)
+> Les jours où rien n'est signalé, quand l'air corse est-il le plus chargé en ozone —
+> à quelle heure, à quelle saison, à quel endroit de l'île — et de combien s'alourdit-il
+> quand il fait chaud ?
+
+**Pourquoi « les jours où rien n'est signalé ».** Qualitair Corse produit des études de
+qualité, et alerte par les médias régionaux quand un seuil est franchi : sur les épisodes,
+la population *est* informée, et ce canal fonctionne. Deux registres se distinguent donc,
+et un seul est vide :
+
+- **l'épisode** — un seuil réglementaire est franchi, l'alerte part, les médias relaient.
+  Rien à y ajouter, et prétendre le contraire serait présomptueux ;
+- **le régime ordinaire** — l'air des jours où aucun seuil n'est approché, donc dont aucun
+  communiqué ne parle. Par construction, un dispositif d'alerte ne peut rien en dire.
+
+Le trou est vérifié sur les deux premières journées traitées, deux journées de juillet
+parfaitement banales : le maximum horaire plafonne à 148,7 µg/m³ — loin des 180 du seuil
+d'information — et pourtant l'objectif de qualité pour la santé (120 µg/m³ en maximum
+journalier sur 8 heures) est franchi, par une station le 30/07 et deux le 31/07. Aucune
+alerte, aucun article : il n'y avait rien à annoncer.
 
 Titres-affirmations que l'analyse doit valider, invalider ou chiffrer :
-1. « L'air se dégrade quand il fait beau » (le pic d'ozone suit le soleil, pas les
-   moteurs : écart entre jours chauds et jours frais, et nombre de dépassements du
-   seuil d'information sur la profondeur retenue)
-2. « Le pic n'est pas à l'heure de pointe » (heure du maximum d'ozone contre heure du
-   maximum de NO₂)
-3. « L'air de campagne n'est pas meilleur » (Venaco contre les stations urbaines)
-4. « L'été, le pire moment pour un effort en plein air se situe entre XX h et XX h »
-   (conclusion actionnable — pendant de « l'heure la plus verte »)
+1. « On dépasse les jours où personne n'alerte » (combien de journées franchissent
+   l'objectif de qualité **sans** qu'aucun seuil d'information soit approché — l'écart
+   chiffré entre ce qui est signalé et ce qui est mesuré ; c'est le titre qui définit
+   le sujet)
+2. « L'air se dégrade quand il fait beau » (de combien la charge s'alourdit les jours
+   chauds : écart chiffré entre jours chauds et jours frais. Une **association**, jamais
+   une cause — cf. la garde ci-dessous. C'est ce que Qualitair affirme en prose sans que
+   personne le quantifie)
+3. « Le pic n'est pas à l'heure de pointe » (heure du maximum d'ozone contre heure du
+   maximum de NO₂, à station constante sur les cinq qui mesurent les deux)
+4. « L'air de campagne n'est pas meilleur » (Venaco contre les stations urbaines de fond)
+5. « L'été, le pire moment pour un effort en plein air se situe entre XX h et XX h »
+   (conclusion actionnable — pendant de « l'heure la plus verte ». Elle change de nature
+   avec le recentrage : ce n'est plus une consigne de crise, c'est une information du
+   quotidien)
+
+**Abandonné le 01/08/2026 : le décompte des dépassements du seuil d'information (180
+µg/m³).** C'est le registre de l'alerte, celui qui fonctionne déjà, et il est presque
+toujours vide en Corse. En faire un titre nous placerait en concurrence sur le seul terrain
+où nous n'avons rien à apporter. Le décompte qui compte est celui de l'objectif de qualité,
+franchi les jours ordinaires.
 
 ## Test du prompt (critère éliminatoire)
 Un LLM généraliste sait déjà expliquer que l'ozone monte avec la chaleur. Ce qu'il ne
 peut pas produire : le chiffre corse, daté d'hier, sur six stations nommées, croisé aux
 températures relevées le même jour, avec l'empreinte des fichiers qui l'ont produit.
 La fraîcheur et la lignée font le livrable, pas l'explication.
+
+**Un second test, ajouté le 01/08/2026 : celui de l'existant.** Le premier écarte ce qu'un
+modèle sait déjà dire ; celui-ci écarte ce qui est déjà publié. Qualitair Corse produit des
+études de qualité — pesticides, métaux lourds, benzène, particules, air portuaire — mais
+**aucune dédiée à l'ozone**, et leur page « Bilans et tendances » s'arrête à 2022, en PNG.
+Refaire leur décompte annuel ne vaudrait rien ; en revanche personne ne chiffre ce qu'ils
+énoncent en prose, personne ne publie de profil horaire, et personne ne dit à quelle heure
+éviter de courir. S'y ajoute leur propre constat, rapporté par l'utilisateur : ces études
+sont bonnes **et peu lues**. Le différenciant n'est donc pas de mieux mesurer — c'est de
+rendre lisible en trois minutes ce qui dort dans des PDF, sur une donnée d'hier.
 
 ## Sources (vérifiées sur pièce le 31/07/2026)
 
@@ -65,6 +105,15 @@ source reste neutre, sans laisser entendre que l'Ineris valide ce travail.
 **Qualitair Corse** — l'AASQA agréée pour l'île. Son portail n'affiche aucune licence :
 écarté comme source de données tant qu'elle n'est pas écrite noir sur blanc. Reste
 citable en prose (bilans, billets d'épisode) comme n'importe quelle source documentaire.
+
+**Posture à leur égard, arrêtée le 01/08/2026 — elle engage la note méthodologique.**
+Ce sont **leurs analyseurs qui produisent nos mesures** : les données corses du flux LCSQA
+sortent de leur réseau. L'étude ne comble donc aucune lacune de leur part et ne prétend pas
+mieux mesurer — elle occupe un créneau que leur mandat ne couvre pas, celui du régime
+ordinaire, là où le leur couvre l'épisode et l'alerte. Ils sont cités en toutes lettres,
+comme producteurs de la donnée et comme source documentaire du texte. Rien dans le livrable
+ne doit se lire comme un reproche, ni laisser croire qu'une information serait tue : sur les
+épisodes, leur alerte par les médias régionaux fonctionne et informe réellement.
 
 ## Ce que ces données ne diront pas
 
@@ -292,6 +341,17 @@ Trois frictions à lever dans `fetch.py`, aucune rédhibitoire :
    légitimement différer de l'original : c'est le cas que `--recertifier` traite déjà.
 
 ## Définition de « fini »
+
+**Forme du livrable, arrêtée le 01/08/2026** — elle découle directement du recentrage :
+si le contenu existe déjà mais reste peu lu, alors la forme *est* l'apport.
+
+- [ ] **court** : la page se parcourt en trois minutes. Si elle déborde, retrancher un
+      titre — jamais abréger les sources ni la note méthodologique
+- [ ] **accessible au plus grand nombre** : prose pédagogique, sans jargon ni technicité de
+      style. Le sérieux vient de la précision et des sources, jamais du vocabulaire — même
+      exigence que l'étude électricité, y compris dans les passages les plus techniques
+- [ ] **sourcé à vue** : chaque chiffre porte d'où il vient, sans qu'il faille chercher
+
 - [ ] une page interactive exportée en HTML déployable en iframe sans dépendance tierce
 - [ ] chaque visuel cite sa source et sa date, par `viz.export_html`
 - [ ] les sources entrent par `sources.yaml`, avec licence et producteur ; rien à la main
