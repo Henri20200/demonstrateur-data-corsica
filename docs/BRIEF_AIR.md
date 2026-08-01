@@ -83,15 +83,36 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
 - **Les valeurs du flux temps réel sont brutes et non validées.** Le 30/07/2026, Bastia
   Giraud porte un code de validité négatif sur ses relevés d'ozone. Le filtre sur la
   validité se pose avant tout calcul, et se verrouille par un test.
-- **Deux métriques réglementaires cohabitent** : le seuil d'information-recommandation
-  (180 µg/m³ en moyenne horaire) et l'objectif de qualité pour la santé (120 µg/m³ sur
-  8 heures glissantes). Elles ne comptent pas la même chose ; jamais dans la même figure.
-  Les deux valeurs sont à re-sourcer sur le texte réglementaire avant écriture.
+- **Deux métriques réglementaires cohabitent**, et les deux valeurs sont désormais
+  **re-sourcées sur le texte** (art. R221-1 du code de l'environnement, vérifié le
+  01/08/2026) : le seuil de recommandation et d'information vaut « 180 µg/m³ en moyenne
+  horaire » ; l'objectif de qualité pour la santé vaut « 120 µg/m³ pour le maximum
+  journalier de la moyenne sur huit heures, pendant une année civile ». Le même article
+  porte le seuil d'alerte (240 µg/m³ en moyenne horaire) et une **valeur cible** distincte
+  de l'objectif de qualité — même 120 µg/m³, mais « à ne pas dépasser plus de vingt-cinq
+  jours par année civile en moyenne calculée sur trois ans ». Trois décomptes différents
+  derrière deux chiffres : ne jamais les mêler dans une figure, ni dans une phrase.
 - **La moyenne glissante sur 8 heures n'est servie par aucune des deux sources.** Ni le
-  flux temps réel, ni l'API Geod'air, qui s'arrête aux moyennes horaires, aux maximums
-  horaires journaliers, aux moyennes journalières et annuelles. Elle se recalcule dans
-  `prepare` — donc elle se verrouille par un test, sous peine d'annoncer un chiffre
-  « réglementaire » qui ne correspond à aucun décompte officiel.
+  flux temps réel, ni l'API Geod'air, qui s'arrête aux moyennes horaires. Elle est donc
+  recalculée dans `prepare` — **fait le 01/08/2026**, et la règle n'y est pas déduite mais
+  recopiée du guide du producteur : LCSQA/Ineris, *Guide Calcul des statistiques relatives
+  à la Qualité de l'Air*, Ineris-219621-2801775-v1.0 (mars 2024), § 5.3.3 et 5.3.4.
+  Moyenne des heures **valides** parmi l'heure et les sept précédentes, divisée par leur
+  nombre et non par 8 ; valide à partir de 6 heures ; maximum journalier valide à partir
+  de 18 moyennes sur 24. Le verrou est le **tableau 26 du guide** — deux journées d'ozone
+  déjà calculées par le producteur — rejoué à l'identique dans `tests/test_ozone_8h.py`.
+  Il a servi tout de suite : il a établi qu'une moyenne glissante existe à **chaque heure
+  du jour**, y compris aux heures dont la mesure propre est invalide (le guide en donne
+  l'exemple à 13 h). Ne les calculer qu'aux heures mesurées faisait tomber son décompte de
+  13 à 11, sous les 18 requis — des journées parfaitement opposables auraient été rejetées.
+  Deux pièges de plus, tenus par le même fichier : le guide étiquette ses heures à la FIN
+  (01 h → 24 h) là où le flux LCSQA les étiquette au DÉBUT (00 h → 23 h), et la fenêtre
+  doit porter sur le TEMPS et non sur les lignes, sans quoi trois heures manquantes la
+  font remonter jusqu'au matin.
+- **Le calcul glissant impose un axe UTC sur l'air**, ajouté le 01/08/2026, symétrique de
+  celui de la météo. Sur l'étiquette locale, une fenêtre de 8 heures se raccourcit en mars
+  et compte double en octobre. Le jour d'attribution, lui, reste **local** : c'est la
+  journée vécue qui a un sens, pas le découpage UTC.
 - **Les deux sources ne sont pas à la même heure.** Météo-France publie en UTC, le flux
   LCSQA en heure légale française. Ce n'est pas une supposition : les deux dimanches de
   changement d'heure comptent 24 heures dans le fichier météo, quand l'heure légale en
@@ -105,6 +126,15 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
   s'arrête aux petites heures du jour de publication, si bien qu'une « journée » de
   quatre heures fausserait n'importe quel maximum journalier. Le croisement porte donc
   sur la dernière journée complète commune aux deux sources.
+- **Ce « commun » n'existait pas, et a été construit le 01/08/2026.** Les deux producteurs
+  ne publient pas au même rythme : le flux d'air offrait J-1 quand la dernière journée
+  météo complète était J-2, si bien que les deux Parquet **sortis du même run n'avaient
+  aucune journée en partage** — zéro, structurellement, et non par accident de calendrier.
+  Le flux LCSQA est donc passé de `date_url: hier` à `avant-hier`, ce qui les aligne (1
+  journée commune au lieu de 0, vérifié). Un jour de fraîcheur en moins ne coûte rien face
+  à une dataviz de référence arrêtée en 2023 ; ne jamais pouvoir croiser, si. La garde
+  qui refusera une jointure vide reste due, au moment d'écrire le croisement : un
+  producteur en retard ramènerait le commun à zéro sans prévenir.
 - **Aucun poste météo ne se trouve à Venaco.** Les plus proches sont Vivario (8 km,
   773 m) et Corte (9 km, 350 m, contre 600 m à Venaco) : le thermomètre n'est pas au
   pied de l'analyseur, et l'écart d'altitude se paie en degrés. Ajaccio et Bastia n'ont
