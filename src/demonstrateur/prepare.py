@@ -467,18 +467,25 @@ APPARIEMENT_AIR_METEO = {
     # une ressemblance de bâti, mais l'abri contre le vent de mer — la seule chose que les
     # 2,6 °C mesurés désignent.
     "FR41001": "20004014",  # AJACCIO CANETTO   <- AJACCIO-MILELLI_SAPC (86 m, 1,88 km)
-    # Confina 2 : 41,9467 N / 8,7970 E, 79,5 m (IGN ; 90 m relevés — l'écart est normal sur
-    # un versant, où quelques dizaines de mètres de côté valent dix mètres de dénivelé, là où
-    # le replat des Milelli concorde à 50 cm près). Raisonnement INVERSE de celui du Canetto :
-    # ici l'altitude départage franchement (-4 m vers les Milelli contre -85 m vers Campo
-    # dell'Oro) tandis que la distance dit l'inverse (6,36 km contre 3,21 km). L'altitude
-    # l'emporte, parce que 85 m ne sont pas qu'un demi-degré de gradient : c'est le passage
-    # d'un versant au-dessus de la ville à une plaine littorale ventilée. Réserve assumée —
-    # Confina regarde vers la vallée de la Gravona, et si ce versant reçoit ses écoulements
-    # d'air froid nocturnes, son régime tiendrait davantage de la plaine. Rien dans les
-    # données disponibles ne tranche ce point.
-    "FR41063": "20004014",  # AJACCIO CONFINA 2 <- AJACCIO-MILELLI_SAPC (86 m, 6,36 km)
-    # Bastia — cf. le piège ci-dessus : deux stations en ville, une dans la plaine.
+    # Confina 2 : 41,943329 N / 8,804377 E, 58,65 m. Elle NE va PAS aux Milelli — c'est
+    # l'inverse du Canetto, et pour exactement le même critère.
+    # Deux relevés successifs ont existé, distants de 720 m et de 31 m d'altitude ; c'est
+    # l'IGN qui a tranché, en concordant au centimètre avec le second (58,65 = 58,65) là où
+    # il s'écartait de 10,5 m du premier. Sur ce point vérifié, l'altitude cesse de
+    # départager : 27 m d'écart vers les Milelli contre 54 m vers Campo dell'Oro, soit 0,16
+    # et 0,32 °C de gradient — 0,16 °C entre les deux options, quand les deux postes sont
+    # distants de 2,6 °C sur les maxima d'été. Restent la distance, qui désigne nettement
+    # Campo dell'Oro (2,98 km contre 6,93), et l'exposition, qui va dans le même sens :
+    # Confina domine la plaine de la Gravona où l'aéroport est installé, tandis que les
+    # Milelli sont de l'autre côté de la ville, sur le versant qui fait face au golfe.
+    # (Une version antérieure retenait les Milelli, sur la foi d'une altitude de 90 m qui
+    # s'est révélée être celle d'un autre point.)
+    "FR41063": "20004002",  # AJACCIO CONFINA 2 <- AJACCIO (Campo dell'Oro, 5 m, 2,98 km)
+    # Bastia — cf. le piège ci-dessus. Les deux postes sont distants de 18,5 km à vol
+    # d'oiseau (davantage par la route) : « BASTIA » (20148001) est à Poretta, sur la
+    # commune de LUCCIANA (INSEE 2B148, CP 20290) ; Bastia ville est « BASTIA_SAPC »
+    # (20033015, INSEE 2B033, CP 20200). Deux stations urbaines à la ville, celle de la
+    # plaine de la Marana au poste de la plaine.
     "FR41002": "20033015",  # BASTIA GIRAUD     <- BASTIA_SAPC (Bastia ville, 26 m)
     "FR41017": "20033015",  # BASTIA MONTESORO  <- BASTIA_SAPC (Bastia ville, 26 m)
     "FR41004": "20148001",  # BASTIA LA MARANA  <- BASTIA (Lucciana/Poretta, 10 m, plaine)

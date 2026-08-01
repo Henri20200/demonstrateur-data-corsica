@@ -533,23 +533,32 @@ def test_2022_creux_hydraulique_et_pic_thermique(con):
 
 
 @besoin_meteo
-def test_ajaccio_va_aux_milelli_et_pas_a_campo_dell_oro(con):
-    """Second choix contre-intuitif de l'appariement (01/08/2026).
+def test_les_deux_stations_d_ajaccio_ne_partagent_pas_leur_poste(con):
+    """Les deux stations d'Ajaccio vont à des postes DIFFÉRENTS, et c'est délibéré.
 
-    Campo dell'Oro est le poste synoptique de référence d'Ajaccio et il est plus proche du
-    Canetto en ALTITUDE (-30 m contre +51 m). Il est pourtant écarté : à 4,84 km contre
-    1,88 km, et surtout parce que l'écart de 2,6 °C entre les maxima d'été des deux postes
-    ne s'explique pas par le relief (~0,3 °C de gradient) mais par l'exposition — une aire
-    aéroportuaire ventilée par la brise de golfe contre un versant urbain.
+    Elles sont distantes de 5,6 km et ne partagent pas leur environnement. Le Canetto
+    (33,3 m, en ville) va aux Milelli ; Confina 2 (58,65 m, dominant la plaine de la
+    Gravona) va à Campo dell'Oro.
 
-    Le test vérifie aussi que Campo dell'Oro EXISTE : son écartement doit rester un choix.
+    Un même critère produit ces deux choix opposés, et c'est ce que le test protège : dans
+    les deux cas l'écart d'altitude reste sous ~0,3 °C de gradient, donc l'altitude ne
+    départage pas — ce sont la distance et l'exposition qui décident, et elles pointent
+    dans des directions contraires selon la station. Uniformiser les deux « par cohérence »
+    serait précisément l'erreur : c'est la cohérence du CRITÈRE qui compte, pas celle du
+    résultat.
     """
     milelli, campo = "20004014", "20004002"
     assert APPARIEMENT_AIR_METEO["FR41001"] == milelli, (
-        "AJACCIO CANETTO doit aller aux Milelli (cf. la justification dans prepare.py)"
+        "AJACCIO CANETTO doit aller aux Milelli (1,88 km, contre 4,84 pour Campo dell'Oro)"
+    )
+    assert APPARIEMENT_AIR_METEO["FR41063"] == campo, (
+        "AJACCIO CONFINA 2 doit aller à Campo dell'Oro (2,98 km, contre 6,93 pour Milelli)"
+    )
+    assert APPARIEMENT_AIR_METEO["FR41001"] != APPARIEMENT_AIR_METEO["FR41063"], (
+        "les deux stations d'Ajaccio sont à 5,6 km l'une de l'autre : rien n'impose "
+        "qu'elles partagent un thermomètre"
     )
     dispo = {
         r[0] for r in con.execute(f"SELECT DISTINCT num_poste FROM '{METEO.as_posix()}'").fetchall()
     }
-    assert campo in dispo, "Campo dell'Oro doit être disponible — son écartement est délibéré"
-    assert campo not in APPARIEMENT_AIR_METEO.values()
+    assert {milelli, campo} <= dispo, "les deux postes doivent exister dans la météo"

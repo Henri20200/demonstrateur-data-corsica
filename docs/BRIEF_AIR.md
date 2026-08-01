@@ -188,15 +188,21 @@ citable en prose (bilans, billets d'épisode) comme n'importe quelle source docu
   des Milelli**, douze hectares d'oliveraie et d'arboretum sur un replat, et non en ville —
   mais l'abri contre le vent de mer, seule chose que les 2,6 °C mesurés désignent. Même leçon
   qu'à Venaco : ce qui compte est le régime, pas la proximité métrique.
-- **Confina 2 relève du raisonnement inverse, et garde une réserve.** À 41,9467 N / 8,7970 E
-  et 79,5 m (IGN), elle est deux fois plus près de Campo dell'Oro (3,21 km contre 6,36) mais
-  à quatre mètres de l'altitude des Milelli, contre quatre-vingt-cinq de celle de Campo
-  dell'Oro. Ici l'altitude *départage*, là où elle ne départageait pas au Canetto : 85 m ne
-  sont pas qu'un demi-degré de gradient, c'est le passage d'un versant dominant la ville à
-  une plaine littorale ventilée. Les Milelli l'emportent donc — avec une réserve écrite :
-  Confina regarde vers la vallée de la Gravona, et si ce versant en reçoit les écoulements
-  d'air froid nocturnes, son régime tiendrait davantage de la plaine. Aucune donnée
-  disponible ne tranche ce point.
+- **Confina 2 va à Campo dell'Oro — le même critère, le résultat inverse.** À 41,943329 N /
+  8,804377 E et **58,65 m**, elle est plus de deux fois plus près de Campo dell'Oro (2,98 km
+  contre 6,93) et l'altitude ne la départage pas davantage que le Canetto : 27 m d'écart d'un
+  côté, 54 m de l'autre, soit 0,16 et 0,32 °C de gradient — un sixième de degré entre les deux
+  options, quand les postes eux-mêmes sont distants de 2,6 °C. Restent la distance et
+  l'exposition, qui pointent ensemble vers l'aéroport : Confina domine la plaine de la Gravona
+  où il est installé, tandis que les Milelli sont de l'autre côté de la ville, sur le versant
+  qui fait face au golfe. **Les deux stations d'Ajaccio ne partagent donc pas leur poste**, et
+  c'est voulu — elles sont à 5,6 km l'une de l'autre. C'est la cohérence du *critère* qui
+  compte, pas celle du résultat.
+- **Ce choix a d'abord été pris à l'envers**, sur la foi d'un premier relevé donnant 90 m.
+  Deux relevés successifs existaient, distants de 720 m et de 31 m d'altitude ; le modèle
+  altimétrique de l'IGN a tranché en concordant **au centimètre** avec le second (58,65 m)
+  quand il s'écartait de 10,5 m du premier. Une altitude fausse de trente mètres suffisait à
+  inverser la décision — de quoi mesurer ce que vaut, ici, une coordonnée vérifiée.
 - **Le poste appelé « BASTIA » n'est pas à Bastia.** Les codes commune portés par
   `num_poste` le disent : 20148 = 2B148 = Lucciana, c'est l'aéroport de Poretta, dans la
   plaine de la Marana ; Bastia ville, c'est « BASTIA_SAPC », 20033 = 2B033. Les deux
