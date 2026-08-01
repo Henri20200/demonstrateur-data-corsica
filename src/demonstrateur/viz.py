@@ -30,8 +30,18 @@ PALETTE = {
     "hydro":     "#7CA593",  # sauge — grande hydraulique
     "thermique": "#1B2238",  # bleu-nuit — thermique (fossile)
     "imports":   "#5B5566",  # violet-gris — interconnexions
-    "accent":    "#A23D2A",  # terracotta — repère / emphase
+    "accent":    "#A23D2A",  # terracotta — repère / emphase, et l'OZONE du sujet air
+    "azote":     "#2E6E9E",  # bleu — le NO2, antagoniste de l'ozone (titre 3 de l'air)
 }
+
+# Couple catégoriel du sujet air, VALIDÉ au script (mode light, surface #FCFCFB) :
+# bande de clarté, plancher de chroma, séparation CVD ΔE 17,9 (deutan) et 23,0 en vision
+# normale, contraste ≥ 3:1. Le bleu-nuit « thermique » de l'étude électricité a été essayé
+# d'abord et REFUSÉ pour cet emploi : trop sombre et trop désaturé, il échoue au plancher de
+# chroma et « lit comme du gris » dès qu'il sert de série à part entière plutôt que de
+# couleur sémantique du fossile.
+AIR_OZONE = PALETTE["accent"]
+AIR_AZOTE = PALETTE["azote"]
 
 SANS = "system-ui, -apple-system, 'Segoe UI', sans-serif"
 
