@@ -1062,3 +1062,35 @@ def test_la_pression_sur_le_seuil_croit_avec_le_parc(con):
         f"heures au-dessus du seuil : {tot} h en 2019-2021 contre {recent} h en 2022-2024 "
         "— le visuel montre une pression croissante ; si elle s'inverse, il est à refaire"
     )
+
+
+@besoin_serie
+def test_le_total_affiche_compte_des_journees_et_non_des_couples(con):
+    """Le chiffre mis en avant par A1 est un nombre de JOURNÉES du calendrier.
+
+    Une journée chargée fait dépasser plusieurs stations à la fois : additionner les
+    barres donne un total de couples journée-station (173), très supérieur au nombre de
+    journées réellement concernées (106). Publier le premier en disant « journées »
+    laisserait entendre qu'il y a eu 173 jours de dépassement sur la période. Le test
+    tient l'écart entre les deux : s'il disparaissait, c'est que le calcul a glissé.
+    """
+    couples, journees = con.execute(
+        f"""SELECT count(*) FILTER (WHERE mda8 > 120),
+                   count(DISTINCT CASE WHEN mda8 > 120 THEN date_locale END)
+            FROM '{MDA8.as_posix()}'
+            WHERE valide AND influence = 'Fond'
+              AND extract('month' FROM date_locale) IN (6, 7, 8)
+              AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025"""
+    ).fetchone()
+    assert journees < couples, (
+        f"{journees} journées pour {couples} couples journée-station : les deux devraient "
+        "différer (plusieurs stations dépassent le même jour). Si elles se rejoignent, "
+        "vérifier le périmètre avant de publier le total comme un nombre de journées"
+    )
+    from demonstrateur.figures_air import fig_a1_depassements_sans_alerte
+
+    textes = [a.text for a in fig_a1_depassements_sans_alerte().layout.annotations]
+    assert any(f"{journees} journées" in t for t in textes), (
+        f"A1 doit afficher les {journees} journées distinctes, jamais les {couples} "
+        "couples journée-station"
+    )

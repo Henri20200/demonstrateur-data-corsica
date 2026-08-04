@@ -32,9 +32,12 @@ SERIE = (DATA_PROCESSED / "air_serie.parquet").as_posix()
 MDA8 = (DATA_PROCESSED / "air_o3_mda8.parquet").as_posix()
 CROISE = (DATA_PROCESSED / "air_temperature_jour.parquet").as_posix()
 
-SRC_AIR = ("Agence européenne pour l'environnement — mesures Qualitair Corse, "
-           "rapportées par le LCSQA/Ineris")
-SRC_AIR_METEO = (SRC_AIR + " ; températures Météo-France")
+# Mention courte : « rapportées par le LCSQA/Ineris » en toutes lettres portait la
+# première ligne du pied au-delà de la largeur de la page, où elle se faisait rogner.
+SRC_AIR = "Agence européenne pour l'environnement — mesures Qualitair Corse (LCSQA/Ineris)"
+# Coupure EXPLICITE avant la seconde source : le pied de figure ne replie pas le texte
+# (annotation Plotly), et la mention cumulée dépassait la largeur en iframe étroite.
+SRC_AIR_METEO = (SRC_AIR + "<br>Températures : Météo-France")
 
 # Seuils réglementaires (art. R221-1 du code de l'environnement, vérifié le 01/08/2026).
 # Ils ne comptent PAS la même chose et ne se mêlent jamais dans une même lecture :
@@ -45,7 +48,21 @@ SEUIL_INFORMATION = 180  # µg/m³, moyenne horaire
 
 ETES = "extract('month' FROM date_locale) IN (6, 7, 8)"
 ANNEES = "extract('year' FROM date_locale) BETWEEN 2020 AND 2025"
-PERIMETRE = "Étés 2020-2025 (juin-août), stations de fond, journées réglementairement valides."
+# Périmètre dit en langue courante (04/08/2026) : « stations de fond, journées
+# réglementairement valides » est exact mais illisible pour qui n'est pas du métier — or
+# cette ligne est la SEULE que tous les lecteurs voient, sur les cinq figures. Renvoyer
+# le non-initié au mini-dictionnaire, en bas de page, revient à parier qu'il ira le lire :
+# la ligne doit se suffire. Le détail réglementaire vit dans la note méthodologique.
+PERIMETRE = ("Six étés de mesures — 2020 à 2025, de juin à août — sur les stations de "
+             "l'île installées loin des routes.")
+
+# Titre d'axe : 17 px contre 19 au template. Long et centré sur la hauteur du tracé, un
+# titre vertical monte jusque dans le sous-titre de la figure.
+AXE = dict(family=SANS, size=17)
+
+# A2 porte un titre d'axe horizontal ET une note de trois lignes : son pied descend plus
+# bas que le défaut, pour que le graphique et le texte ne se touchent pas.
+PIED_A2 = -105
 
 
 def _con():
@@ -54,6 +71,33 @@ def _con():
 
 def _sous_titre(ligne: str) -> str:
     return f"{ligne}<br>{PERIMETRE}"
+
+
+# Sous-titres et notes DÉFINIS UNE FOIS et consommés à la fois par `main()` (fichiers
+# individuels) et par `page_air` (page assemblée). Ils étaient recopiés dans les deux
+# modules : toute correction n'était appliquée que d'un côté, et les deux versions d'une
+# même figure se mettaient à raconter des choses différentes.
+ST_A1 = _sous_titre(
+    f"Objectif de qualité : {OBJECTIF_QUALITE} µg/m³ sur 8 heures. "
+    f"Information du public : {SEUIL_INFORMATION} µg/m³ sur une heure.")
+ST_A2 = _sous_titre(
+    "La température est celle du poste météo le plus proche de chaque station.")
+# Note tenue en lignes COURTES (< 90 signes) : le pied de figure est une annotation
+# Plotly, qui ne replie pas le texte — une ligne trop longue se fait rogner à droite
+# dans la page, plus étroite que le fichier isolé.
+NOTE_A2 = ("Les journées chaudes portent plus d'ozone. Pourquoi il plafonne ensuite, "
+           "ces mesures ne le disent pas :<br>chaleur, fort soleil et air immobile vont "
+           "ensemble, et rien ici ne permet de les séparer.<br>Au-delà de 35 °C, c'est "
+           "aussi la tranche qui compte le moins de journées mesurées.")
+ST_A3 = _sous_titre(
+    "Cinq stations mesurant les deux polluants.<br>Chaque courbe est ramenée à son "
+    "propre maximum : on compare des heures, pas des concentrations.")
+ST_A4 = _sous_titre(
+    "En part des journées mesurées, et non en nombre de jours — "
+    "une station de campagne, quatre de ville.")
+ST_A5 = _sous_titre("Moyenne de chaque heure de la journée.")
+NOTE_A5 = ("Le creux du petit matin est aussi le maximum de dioxyde d'azote : l'air y est "
+           "moins chargé en ozone, pas plus pur.")
 
 
 # --- A1 : « on dépasse les jours où personne n'alerte » -----------------------
@@ -78,7 +122,16 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
         FROM j JOIN h USING (date_locale, station)
         GROUP BY 1 ORDER BY 2
     """).df()
-    total = int(df["depassements"].sum())
+    # Le total affiché compte des JOURNÉES DISTINCTES, jamais la somme des barres : une
+    # journée chargée déclenche plusieurs stations à la fois, et additionner les colonnes
+    # donnerait 173 « journées » là où le calendrier n'en compte que 106 — un lecteur
+    # comprendrait qu'il y a eu 173 jours de dépassement sur la période. Les barres, elles,
+    # comptent bien des journées PAR STATION : chacune est juste dans son périmètre.
+    journees, mesurees = con.execute(f"""
+        SELECT count(DISTINCT CASE WHEN mda8 > {OBJECTIF_QUALITE} THEN date_locale END),
+               count(DISTINCT date_locale)
+        FROM '{MDA8}' WHERE valide AND {ETES} AND {ANNEES} AND influence = 'Fond'
+    """).fetchone()
     alertes = int(df["alertes"].sum())
     if alertes:
         raise ValueError(
@@ -86,9 +139,13 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
             "affirme qu'aucune n'alerte. À réécrire avant de publier."
         )
 
+    # Mêmes libellés qu'en A4 (casse de phrase, milieu précisé) : les deux figures se
+    # suivent dans la page, et une station ne peut pas s'y appeler de deux façons.
+    libelles = [f"{s.title()} <i>({'campagne' if s == 'VENACO' else 'ville'})</i>"
+                for s in df["station"]]
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=df["depassements"], y=df["station"], orientation="h",
+        x=df["depassements"], y=libelles, orientation="h",
         marker=dict(color=AIR_OZONE, line=dict(color=PALETTE["surface"], width=2)),
         text=[str(v) for v in df["depassements"]], textposition="outside",
         textfont=dict(family=SANS, size=17, color=PALETTE["ink"]),
@@ -99,8 +156,8 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
         # Encadré ancré au COIN BAS DROIT et tenu court : les deux stations d'Ajaccio ont
         # des barres si brèves que la zone est libre, mais un texte large y redescendrait
         # quand même sur elles. Trois lignes courtes plutôt que deux longues.
-        text=(f"<b>{total} journées</b> au-dessus<br>de l'objectif de qualité.<br>"
-              f"<b>Aucune</b> n'a alerté."),
+        text=(f"<b>{journees} journées d'été sur {mesurees}</b><br>où au moins une station "
+              "dépasse<br>l'objectif. <b>Aucune</b> n'a alerté."),
         xref="paper", yref="paper", x=0.99, y=0.04, xanchor="right", yanchor="bottom",
         showarrow=False, align="right",
         font=dict(family=SANS, size=18, color=PALETTE["ink"]),
@@ -108,7 +165,9 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     )
     fig.update_layout(
         title=dict(text="Six étés de dépassements, et pas une seule alerte"),
-        xaxis=dict(title=f"Journées au-dessus de {OBJECTIF_QUALITE} µg/m³"),
+        xaxis=dict(title=dict(text=f"Journées où CETTE station dépasse "
+                                   f"{OBJECTIF_QUALITE} µg/m³ (six étés cumulés)",
+                              font=AXE)),
         yaxis=dict(title=""),
         margin=dict(t=170, b=170, l=250, r=90),
         height=560,
@@ -120,9 +179,12 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
 def fig_a2_ozone_et_chaleur() -> go.Figure:
     """Ozone moyen par tranche de température, avec l'effectif de chaque tranche.
 
-    Forme : barres verticales sur des tranches ordonnées — la variable de découpage est
-    continue, la lecture attendue est « ça monte, puis ça ne monte plus ». Une courbe
-    laisserait croire à une progression lisse entre deux tranches où rien n'est mesuré.
+    Forme : des POINTS, pas des barres (refonte du 04/08/2026). L'écart à montrer est de
+    9 µg/m³ sur des valeurs de 90 à 99 : des barres imposent une base à zéro, et sur une
+    échelle de 0 à 120 les quatre tranches paraissaient identiques — la figure démentait
+    son propre titre. Un point ne porte pas de surface proportionnelle : il n'engage donc
+    pas la base zéro, l'axe peut se resserrer sans tromper, et la montée puis le plafond
+    se voient enfin. Les points ne sont pas reliés : entre deux tranches, rien n'est mesuré.
 
     L'effectif est écrit sous chaque tranche : la dernière ne compte qu'une fraction des
     journées des autres, et un lecteur doit pouvoir en tenir compte sans aller le chercher.
@@ -146,36 +208,55 @@ def fig_a2_ozone_et_chaleur() -> go.Figure:
         )
     couleurs = [AIR_OZONE if i <= i_max else PALETTE["muted"] for i in range(len(df))]
 
+    # Repère horizontal sur la tranche la plus fraîche : il donne à l'œil le « départ »
+    # que la base zéro ne fournit plus, et rend l'écart mesurable sans le calculer.
+    base = float(df.loc[0, "ozone"])
     fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=df["tranche"], y=df["ozone"],
-        marker=dict(color=couleurs, line=dict(color=PALETTE["surface"], width=2)),
-        text=[f"{v:.0f}" for v in df["ozone"]], textposition="outside",
+    fig.add_hline(y=base, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
+    # UNE seule étiquette par point (04/08/2026) : la valeur et l'écart à la tranche
+    # fraîche tiennent ensemble, « 99 (+9) ». En deux textes superposés, la figure portait
+    # huit étiquettes sur quatre points, plus les effectifs sous l'axe — illisible. L'unité
+    # n'est écrite qu'une fois, sur le premier point : au-delà, elle se répète pour rien.
+    etiquettes = []
+    for i, v in enumerate(df["ozone"]):
+        val = f"{v:.0f} µg/m³" if i == 0 else f"{v:.0f}"
+        etiquettes.append(val if i == 0 else f"{val} (+{v - base:.0f})")
+    fig.add_trace(go.Scatter(
+        x=df["tranche"], y=df["ozone"], mode="markers+text",
+        marker=dict(color=couleurs, size=26,
+                    line=dict(color=PALETTE["surface"], width=2)),
+        text=etiquettes, textposition="top center",
         textfont=dict(family=SANS, size=18, color=PALETTE["ink"]),
+        cliponaxis=False,
         customdata=df["jours"],
         hovertemplate="%{x}<br>%{y:.1f} µg/m³ en moyenne<br>"
-                      "%{customdata} journées<extra></extra>",
+                      "sur %{customdata} journées mesurées<extra></extra>",
     ))
-    for i, r in df.iterrows():
-        fig.add_annotation(
-            x=r["tranche"], y=0, yshift=-34, text=f"{int(r['jours'])} j",
-            showarrow=False, font=dict(family=SANS, size=15, color=PALETTE["ink_soft"]),
-        )
     fig.add_annotation(
         x=df.loc[len(df) - 1, "tranche"], y=float(df.loc[len(df) - 1, "ozone"]),
-        # Flèche OBLIQUE (ax non nul) : à la verticale, elle traversait l'étiquette de
-        # valeur posée au-dessus de la barre.
         text="au-delà, l'ozone<br>ne monte plus", showarrow=True, arrowhead=0,
-        arrowcolor=PALETTE["ink_soft"], ax=-78, ay=-58,
+        # Annotation SOUS le point : au-dessus, quelle que soit l'inclinaison, la flèche
+        # traversait l'étiquette de valeur. En dessous, la zone est vide.
+        arrowcolor=PALETTE["ink_soft"], ax=0, ay=72,
         font=dict(family=SANS, size=16, color=PALETTE["ink"]),
     )
+    # Axe resserré autour des valeurs observées — légitime avec des points, jamais avec
+    # des barres. Amplitude forcée à au moins 20 µg/m³ pour qu'un écart réel de 9 ne
+    # devienne pas, à l'inverse, un précipice.
+    bas, haut = float(df["ozone"].min()), float(df["ozone"].max())
+    marge = max((20 - (haut - bas)) / 2, 3)
     fig.update_layout(
         title=dict(text="Plus il fait chaud, plus l'air est chargé — jusqu'à 35 °C"),
-        xaxis=dict(title="Température maximale de la journée"),
-        yaxis=dict(title="Ozone, maximum journalier moyen (µg/m³)",
-                   range=[0, float(df["ozone"].max()) * 1.25]),
-        margin=dict(t=170, b=200, l=140, r=70),
-        height=600,
+        # Titre d'axe court, et posé loin de l'axe : il servait de séparation entre le
+        # graphique et le pied de page, les trois se touchaient.
+        xaxis=dict(title=dict(text="Température maximale de la journée", font=AXE,
+                              standoff=32)),
+        yaxis=dict(title=dict(text="Ozone (µg/m³)", font=AXE),
+                   range=[bas - marge, haut + marge]),
+        # Bande basse généreuse : le graphique se termine franchement avant que le texte
+        # de bas de figure ne commence (cf. pied_decalage_px à l'export).
+        margin=dict(t=170, b=250, l=120, r=70),
+        height=640,
     )
     return fig
 
@@ -222,12 +303,17 @@ def fig_a3_ozone_contre_azote() -> go.Figure:
         )
     fig.update_layout(
         title=dict(text="L'heure de pointe n'est pas l'heure de l'ozone"),
-        xaxis=dict(title="Heure locale", dtick=3, ticksuffix=" h"),
-        yaxis=dict(title="Part du maximum de chaque polluant (%)",
+        xaxis=dict(title=dict(text="Heure locale", font=AXE), dtick=3, ticksuffix=" h"),
+        # Titre court : le sous-titre dit déjà de quel maximum il s'agit.
+        yaxis=dict(title=dict(text="Part du maximum", font=AXE),
                    ticksuffix=" %", range=[0, 118]),
-        legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
-        margin=dict(t=230, b=170, l=140, r=60),
-        height=620,
+        # Séparation légende / propos d'introduction : c'est la BANDE HAUTE qu'on
+        # élargit, pas la légende qu'on remonte — la remonter la rapprochait du
+        # sous-titre au lieu de l'en éloigner. Elle reste collée au tracé, et c'est le
+        # tracé qui descend ; la hauteur suit pour ne pas comprimer les courbes.
+        legend=dict(orientation="h", y=1.03, yanchor="bottom", x=0),
+        margin=dict(t=310, b=170, l=140, r=60),
+        height=700,
     )
     return fig
 
@@ -266,13 +352,19 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
             "plus. À réécrire avant de publier."
         )
     couleurs = [AIR_OZONE if s == rurale else PALETTE["muted"] for s in df["station"]]
-    libelles = [f"{s} <i>(rurale)</i>" if s == rurale else s for s in df["station"]]
+    # Explicitation (04/08/2026) : chaque station dit à quel milieu elle appartient, et
+    # non la seule rurale — sans quoi le lecteur doit deviner que les quatre autres sont
+    # urbaines. Casse de phrase plutôt que capitales de fichier : ce sont des lieux.
+    libelles = [f"{s.title()} <i>({'campagne' if s == rurale else 'ville'})</i>"
+                for s in df["station"]]
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=df["taux"], y=libelles, orientation="h",
         marker=dict(color=couleurs, line=dict(color=PALETTE["surface"], width=2)),
-        text=[f"{v:.0f}" for v in df["taux"]], textposition="outside",
+        # L'unité est portée par chaque étiquette : « 15 » seul se lit comme un nombre
+        # de jours, ce que la figure ne montre justement pas.
+        text=[f"{v:.0f} %" for v in df["taux"]], textposition="outside",
         textfont=dict(family=SANS, size=17, color=PALETTE["ink"]),
         customdata=df["jours"],
         hovertemplate="%{y}<br>%{x:.1f} % des journées au-dessus de "
@@ -280,20 +372,28 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
                       "<br>sur %{customdata} journées mesurées<extra></extra>",
     ))
     fig.add_annotation(
-        text=(f"La seule station rurale de l'île<br>dépasse plus souvent que<br>"
-              f"<b>{devancees} des {len(urbaines)} stations urbaines</b>."),
+        # L'explication avancée est celle que la figure précédente établit sur nos propres
+        # mesures (le pic de NO2 coïncide avec le creux d'ozone) — pas un mécanisme importé.
+        text=(f"Venaco, seule station de campagne de l'île,<br>dépasse plus souvent que "
+              f"<b>{devancees} des {len(urbaines)} stations<br>de ville</b> : en ville, "
+              "les gaz d'échappement<br>détruisent une partie de l'ozone."),
         xref="paper", yref="paper", x=0.99, y=0.04, xanchor="right", yanchor="bottom",
         showarrow=False, align="right",
-        font=dict(family=SANS, size=18, color=PALETTE["ink"]),
+        font=dict(family=SANS, size=17, color=PALETTE["ink"]),
         bgcolor=PALETTE["page"], borderpad=12,
     )
     fig.update_layout(
         title=dict(text="La campagne n'est pas l'endroit où l'air est le plus pur"),
-        xaxis=dict(title="Part des journées d'été au-dessus de l'objectif de qualité",
-                   ticksuffix=" %"),
+        xaxis=dict(title=dict(text=f"Part des journées d'été où l'ozone dépasse "
+                                   f"l'objectif de qualité ({OBJECTIF_QUALITE} µg/m³)",
+                              font=AXE),
+                   ticksuffix=" %",
+                   # Air à droite : l'étiquette de la barre la plus longue est posée
+                   # hors barre et se faisait rogner au bord du tracé.
+                   range=[0, float(df["taux"].max()) * 1.14]),
         yaxis=dict(title=""),
-        margin=dict(t=170, b=170, l=280, r=90),
-        height=560,
+        margin=dict(t=170, b=190, l=300, r=90),
+        height=580,
     )
     return fig
 
@@ -349,8 +449,8 @@ def fig_a5_creneau_a_eviter() -> go.Figure:
     )
     fig.update_layout(
         title=dict(text="L'été, l'air est le plus chargé de 11 h à 18 h"),
-        xaxis=dict(title="Heure locale", dtick=3, ticksuffix=" h"),
-        yaxis=dict(title="Ozone, moyenne horaire (µg/m³)"),
+        xaxis=dict(title=dict(text="Heure locale", font=AXE), dtick=3, ticksuffix=" h"),
+        yaxis=dict(title=dict(text="Ozone (µg/m³)", font=AXE)),
         margin=dict(t=200, b=170, l=140, r=60),
         height=600,
     )
@@ -362,38 +462,17 @@ def main() -> int:
     d_air = date_collecte("aee_o3_venaco_continu")
     d_meteo = date_collecte("meteo_horaire_corse")
 
-    export_html(
-        fig_a1_depassements_sans_alerte(), "a1_depassements_sans_alerte", SRC_AIR, d_air,
-        sous_titre=_sous_titre(
-            "L'objectif de qualité pour la santé vaut 120 µg/m³ en maximum journalier "
-            "sur 8 heures ; l'information du public se déclenche à 180 µg/m³ en moyenne horaire."),
-    )
-    export_html(
-        fig_a2_ozone_et_chaleur(), "a2_ozone_et_chaleur", SRC_AIR_METEO, d_meteo,
-        sous_titre=_sous_titre(
-            "Températures du poste météo apparié à chaque station — ce n'est pas la même "
-            "mesure au même endroit."),
-        note="Les journées chaudes portent plus d'ozone ; chaleur, ensoleillement et air "
-             "stagnant vont de pair, et ces mesures ne les démêlent pas.",
-    )
-    export_html(
-        fig_a3_ozone_contre_azote(), "a3_ozone_contre_azote", SRC_AIR, d_air,
-        sous_titre=_sous_titre(
-            "Cinq stations mesurant les deux polluants. Chaque courbe est ramenée à son "
-            "propre maximum : la figure compare des heures, pas des concentrations."),
-    )
-    export_html(
-        fig_a4_campagne_contre_ville(), "a4_campagne_contre_ville", SRC_AIR, d_air,
-        sous_titre=_sous_titre(
-            "En part des journées mesurées, et non en nombre de jours : une station rurale "
-            "contre quatre urbaines."),
-    )
-    export_html(
-        fig_a5_creneau_a_eviter(), "a5_creneau_a_eviter", SRC_AIR, d_air,
-        sous_titre=_sous_titre("Moyenne de chaque heure de la journée."),
-        note="Le creux du petit matin est aussi le maximum de dioxyde d'azote : l'air y est "
-             "moins chargé en ozone, pas plus pur.",
-    )
+    export_html(fig_a1_depassements_sans_alerte(), "a1_depassements_sans_alerte",
+                SRC_AIR, d_air, sous_titre=ST_A1)
+    export_html(fig_a2_ozone_et_chaleur(), "a2_ozone_et_chaleur",
+                SRC_AIR_METEO, d_meteo, sous_titre=ST_A2, note=NOTE_A2,
+                pied_decalage_px=PIED_A2)
+    export_html(fig_a3_ozone_contre_azote(), "a3_ozone_contre_azote",
+                SRC_AIR, d_air, sous_titre=ST_A3)
+    export_html(fig_a4_campagne_contre_ville(), "a4_campagne_contre_ville",
+                SRC_AIR, d_air, sous_titre=ST_A4)
+    export_html(fig_a5_creneau_a_eviter(), "a5_creneau_a_eviter",
+                SRC_AIR, d_air, sous_titre=ST_A5, note=NOTE_A5)
     return 0
 
 
