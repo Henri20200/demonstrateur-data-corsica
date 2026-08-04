@@ -111,6 +111,11 @@ jobs:
       - name: Page de l'étude
         run: python -m demonstrateur.compile_etude
 
+      # En dernier des producteurs : la page d'entrée affiche la date de compilation et
+      # le compteur d'actualisations, qui ne sont justes qu'une fois tout le reste écrit.
+      - name: Page d'entrée
+        run: python -m demonstrateur.accueil
+
       # Garde-fou avant publication : si un verrou de résultat casse (données EDF
       # révisées, changement de version de lib…), on ne committe rien et le run alerte.
       - name: Verrous de résultats
