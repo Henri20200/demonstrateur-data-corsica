@@ -611,6 +611,74 @@ def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
     return fig, annees[-1], h_fin - h_deb
 
 
+# --- Titre 9 : « moins d'eau, plus de thermique » -----------------------------
+# la cause « sécheresse » est ATTRIBUÉE (A. Orsini, docs/SOURCES_LOCALES.md fiche 2),
+# pas affirmée — aucune mesure de pluie ici, et les barrages de montagne intègrent
+# plusieurs mois de stock.
+def fig_t9_hydro_secheresse() -> go.Figure:
+    con = _con()
+    df = con.execute(
+        f"""SELECT extract(year from date_heure)::INTEGER AS annee,
+              100.0*sum(hydraulique_mw)/sum(production_totale_mw) AS hydro,
+              100.0*sum(thermique_mw)/sum(production_totale_mw)   AS thermique
+            FROM '{COURBE}' WHERE extract(year from date_heure) BETWEEN 2019 AND 2024
+            GROUP BY 1 ORDER BY 1"""
+    ).df()
+    # Invariant qui fonde le titre : d'une année à l'autre, part hydraulique et part
+    # thermique varient à l'OPPOSÉ (anticorrélation forte). Vérifié sur la donnée avant
+    # de figer le message ; sinon le récit « moins d'eau = plus de moteurs » tombe.
+    r = float(df["hydro"].corr(df["thermique"]))
+    if r > -0.8:
+        raise ValueError(
+            f"T9 : corrélation hydro/thermique = {r:+.2f} (attendu forte négative) — titre à revoir."
+        )
+    an_sec = int(df.loc[df["hydro"].idxmin(), "annee"])   # année la plus pauvre en hydraulique
+    an_ther = int(df.loc[df["thermique"].idxmax(), "annee"])  # ... et la plus riche en moteurs
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df["annee"], y=df["thermique"], name="Thermique", mode="lines+markers+text",
+        line=dict(color=PALETTE["thermique"], width=2.8), marker=dict(size=8),
+        text=[f"{v:.0f} %" for v in df["thermique"]], textposition="top center",
+        textfont=dict(family=SANS, size=15, color=PALETTE["thermique"]),
+        hovertemplate="Thermique %{x} : %{y:.0f} %<extra></extra>",
+    ))
+    fig.add_trace(go.Scatter(
+        x=df["annee"], y=df["hydro"], name="Grande hydraulique", mode="lines+markers+text",
+        line=dict(color=PALETTE["hydro"], width=2.8), marker=dict(size=8),
+        text=[f"{v:.0f} %" for v in df["hydro"]], textposition="bottom center",
+        textfont=dict(family=SANS, size=15, color=PALETTE["hydro"]),
+        hovertemplate="Grande hydraulique %{x} : %{y:.0f} %<extra></extra>",
+    ))
+    # Repère sur l'année la plus pauvre en hydraulique : le creux d'eau répond au pic de
+    # moteurs. Étiquette au-dessus de la pile (yref haut), pas sur les tracés. Elle se
+    # termine sur « le thermique au plus haut », juste au-dessus de l'étiquette 48 % du
+    # tracé thermique : ce nombre a ainsi son bon antécédent, et personne ne le rapporte
+    # à l'hydraulique. Le libellé double n'a de sens que si les deux extrêmes tombent la
+    # MÊME année (l'anticorrélation incarnée) ; sinon on retombe sur le seul creux d'eau.
+    txt = (f"<b>{an_sec} · l'eau au plus bas, le thermique au plus haut</b>"
+           if an_sec == an_ther else f"<b>{an_sec} · hydraulique au plus bas</b>")
+    fig.add_vline(x=an_sec, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
+    fig.add_annotation(
+        x=an_sec, y=57, text=txt,
+        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
+        font=dict(family=SANS, size=16, color=PALETTE["accent"]),
+    )
+    fig.update_layout(
+        title=dict(text="Moins d'eau, plus de thermique"),
+        xaxis=dict(title="Année", dtick=1),
+        yaxis=dict(title="Part du mix (%)", range=[0, 60], ticksuffix=" %"),
+        legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
+        # Le pied est long (note en deux temps → 8 lignes une fois replié) : la bande
+        # basse doit l'accueillir en entier, sinon le viewport de la figure rogne la fin
+        # — invisible tant qu'on développe sur écran large. Aligné sur T5/T6, qui portent
+        # des notes de même longueur (b >= 250).
+        margin=dict(t=180, b=300, l=116, r=56),
+        height=760,
+    )
+    return fig
+
+
 def main() -> int:
     # Garde de publication (AUD-01) : aucune figure ne se dessine depuis une sortie
     # altérée — chaque Parquet est re-vérifié contre la lignée de build AVANT tout
@@ -690,6 +758,13 @@ def main() -> int:
              "conformité d'une installation. Moyennes horaires contre un seuil instantané "
              "— les dépassements réels sont plus nombreux.<br>" + NOTE_ESTIME,
         pied_decalage_px=-130)
+
+    export_html(fig_t9_hydro_secheresse(), "t9_hydro_secheresse", SRC_HIST, d_hist,
+                sous_titre="Part dans le mix électrique, année par année — Corse, 2019-2024.",
+                note="La part hydraulique varie du simple à près du double selon les années ; le "
+                     "thermique prend le relais (elles varient à l'opposé, corrélation −0,95)."
+                     "<br>Le lien avec la sécheresse est une hypothèse extérieure, pas une mesure "
+                     "de ce graphique. " + NOTE_ESTIME)
 
     if Path(SARD).exists():
         export_html(fig_t6_corse_sardaigne(), "t6_corse_sardaigne",

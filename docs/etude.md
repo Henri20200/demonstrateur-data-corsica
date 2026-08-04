@@ -87,13 +87,18 @@ seul document, chacun s'arrête où il veut.
 ## 3. Ce que disent les données
 
 Une île n'est pas un système fermé. Avant de regarder de quoi le courant corse est
-fait au fil des heures, il faut dire d'où il arrive.
+fait au fil des heures, il faut dire d'où il arrive, et sur quel périmètre on compte.
 
-{{visuel:cadrage_dependance}}
+{{visuel:t7_dependance_perimetres}}
 
-Ce quart-là passe par les câbles sous-marins, depuis l'Italie via la Sardaigne. Le
-reste sort d'installations posées sur l'île. Ce qu'elles brûlent, en revanche, vient
-souvent d'ailleurs aussi — les chapitres qui suivent démêlent les deux.
+Les deux barres ne mesurent pas la même chose, et c'est précisément le sujet. La
+première couvre toute l'énergie consommée sur l'île, carburants des transports et
+chauffage compris ; c'est d'elle que vient le taux de dépendance le plus souvent
+cité. La seconde ne retient que l'électricité, la seule dont parle ce document. La
+dépendance y est plus faible, sans devenir faible pour autant. Une part arrive par
+les câbles sous-marins, depuis l'Italie via la Sardaigne. Le reste sort
+d'installations posées sur l'île, mais ce qu'elles brûlent vient souvent d'ailleurs
+aussi, et les chapitres qui suivent démêlent les deux.
 
 ### Maintenant
 
@@ -360,7 +365,7 @@ produit elle-même sort de ses barrages. Rapportée à tout le courant appelé, 
 compris — le périmètre du graphique ci-dessous —, cette part tombe entre 12 % et
 22 % selon les années.
 
-{{visuel:t7_hydro_secheresse}}
+{{visuel:t9_hydro_secheresse}}
 
 Les deux courbes varient à l'opposé, presque point pour point : quand l'eau manque,
 les moteurs prennent le relais. 2022, l'année la plus pauvre en hydraulique de la
