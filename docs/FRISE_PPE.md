@@ -45,17 +45,21 @@ la PPE elle-même**, donc par ce décret.
 
 Les lignes en italique ne sont pas des actes mais des **échéances** fixées par les textes.
 Leur intérêt est de se lire au milieu des actes : on voit alors passer une date-cible sans
-qu'aucun acte ne lui corresponde.
+qu'aucun acte ne lui corresponde. La première ligne remonte avant la période, à 2009 : elle
+est nécessaire pour situer le dossier du Vazzio, dont le retard précède la programmation.
 
 | Date | Acte | Auteur | Portée | Source |
 |---|---|---|---|---|
+| *2009* | *Programmation des investissements : le renouvellement du Vazzio jugé « indispensable » pour 2012* | — | *non réalisé* | rapport de PPE |
 | 25/06/2015 | Délibération préalable | Assemblée de Corse | Première saisine sur le projet | rapport de PPE |
 | 17/08/2015 | Loi n° 2015-992, art. 203 II | Parlement | Institue une PPE distincte pour la Corse | texte lu |
 | 29-30/10/2015 | Rapport n° 2015/O2/233 | Conseil exécutif → Assemblée | Projet soumis en session | texte lu |
 | **18/12/2015** | **Décret n° 2015-1697** | Premier ministre | **Adopte la PPE** (2016-2018 / 2019-2023) | Légifrance |
+| fin 2015 | Constat que le gazoduc GALSI n'est « définitivement plus dans l'actualité » | — | Le schéma de repli (terminal flottant + gazoduc Cyrénée) est retenu | rapport de PPE |
 | *2018* | *Échéance : seuil de déconnexion à 35 %* | — | *atteinte* | art. 4 du décret |
 | 25/06/2018 | Ouverture de la révision | État / Collectivité | Lance le processus | page DREAL Corse |
 | juin-juillet 2018 | Concertation préalable du public | État / Collectivité | Consultation | DREAL, doc AUE |
+| juillet 2019 | Déplacement du Premier ministre en Corse : prudence exprimée sur le gazoduc | État | Le schéma gazier reste sans décision | presse — *à confirmer* |
 | 13/12/2019 | Décret modificatif | Premier ministre | Première révision | Légifrance |
 | avril 2021 | Adoption du projet de révision | Assemblée de Corse | Vote — **jamais suivi d'un décret** | AUE |
 | *2023* | *Échéance : seuil porté à 45 %* | — | ***non atteinte*** | art. 4 du décret |
@@ -63,6 +67,7 @@ qu'aucun acte ne lui corresponde.
 | 30/03/2023 | Délibération : révision simplifiée, et choix des bioliquides pour le Ricanto | Assemblée de Corse | Arrête la technologie | AUE, communiqué ministère |
 | **30/06/2023** | **Décret n° 2023-554** | Premier ministre | **Révision simplifiée** — relève les objectifs de puissance, ne touche pas au seuil | Légifrance |
 | 02/07/2023 | Publication au *Journal officiel* | — | Entrée en vigueur | communiqué ministère |
+| septembre 2023 | Rapport final du garant, concertation continue (Ricanto) | CNDP | Clôt la concertation sur le projet | CNDP |
 | hiver 2024 | Arrêté préfectoral d'exploitation (Ricanto) | Préfet | Autorise l'exploitation | presse — *à confirmer* |
 | 04/04/2024 | Délibération n° 2024-67 (taux, Ricanto) | CRE | Rémunération du projet | CRE |
 | été 2024 | Arrêté tarifaire encore attendu | État | Signalé comme risque pour le calendrier | presse — *à confirmer* |
@@ -92,12 +97,56 @@ L'arrêt définitif du Vazzio était fixé à fin 2023. L'ouverture du chantier 
 date de novembre 2024, pour une mise en service en 2028 : **onze mois séparent l'échéance de
 l'arrêt du premier coup de pioche**, et cinq ans la séparent de la mise en service.
 
+## Ce que les textes donnent à comprendre du retard
+
+Une question revient forcément : comment une centrale au fioul lourd dont l'arrêt était fixé
+à fin 2023 peut-elle produire jusqu'en 2028 ? Les textes permettent d'en reconstituer la
+chaîne. Ils ne permettent pas d'en désigner l'origine — la distinction posée en tête du
+document vaut ici plus qu'ailleurs.
+
+**Le retard précède la programmation.** Le rapport de PPE de 2015 dresse le bilan du plan
+énergétique 2005-2025 et y inscrit « Renouvellement de la Centrale électrique du Vazzio :
+**Non réalisé** ». Il rappelle que la programmation des investissements de 2009 jugeait ce
+renouvellement « indispensable » pour 2012. Quand la PPE fixe l'arrêt à fin 2023, elle acte
+donc un remplacement déjà attendu depuis plus de dix ans.
+
+**La cause tient au combustible, et elle est écrite dans le texte officiel.** La centrale de
+remplacement était conçue comme un cycle combiné **gaz**. Le rapport précise qu'elle
+fonctionnerait « au fioul domestique **en attendant l'arrivée du gaz naturel** ». Cette
+arrivée supposait une infrastructure : le gazoduc GALSI, que le même rapport déclare
+« définitivement plus dans l'actualité », puis un schéma de repli — terminal flottant de
+stockage et regazéification au large de Lucciana, relié par un gazoduc terrestre (Cyrénée).
+Ce schéma n'a pas abouti. En juillet 2019, lors d'un déplacement en Corse, le Premier
+ministre exprime publiquement sa prudence sur le gazoduc.
+
+**Le changement de combustible relance les procédures.** En mars 2023, la Collectivité,
+en concertation avec l'État et le ministère, retient les **bioliquides**. Un combustible
+différent implique un dossier différent : concertation sous l'égide de la Commission
+nationale du débat public, dont le garant rend son rapport final en septembre 2023 ;
+autorisation environnementale ; puis fixation du taux de rémunération par la CRE
+en avril 2024. La première pierre est posée en novembre de la même année, pour une mise en
+service en 2028.
+
+La chaîne se laisse donc lire : une centrale pensée pour un gaz qui n'est pas venu, une
+infrastructure gazière restée sans issue, un changement de technologie, et le recommencement
+des procédures qu'il impose.
+
+**Ce que ces éléments ne disent pas.** Pourquoi GALSI puis le schéma de repli n'ont pas
+abouti relève de décisions industrielles et d'arbitrages qui sortent du périmètre de ce
+travail et de ses sources. On peut établir que le gaz n'est pas arrivé, et à quelles dates ce
+constat a été fait ; ni pourquoi, ni du fait de qui.
+
 ## À vérifier avant publication
 
-Trois lignes reposent sur la presse et non sur un acte consulté : l'arrêté préfectoral
-d'exploitation de l'hiver 2024, l'arrêté tarifaire signalé comme manquant à l'été 2024, et
-les jalons de chantier de 2026. Elles sont marquées *à confirmer* dans la frise et doivent
-être remplacées par leur source primaire — ou retirées.
+Quatre lignes reposent sur la presse et non sur un acte consulté : le déplacement du Premier
+ministre de juillet 2019, l'arrêté préfectoral d'exploitation de l'hiver 2024, l'arrêté
+tarifaire signalé comme manquant à l'été 2024, et les jalons de chantier de 2026. Elles sont
+marquées *à confirmer* dans la frise et doivent être remplacées par leur source primaire —
+ou retirées.
+
+Le noyau de l'explication du retard, lui, tient au **rapport de PPE de 2015** : bilan
+« non réalisé », fonctionnement « en attendant l'arrivée du gaz naturel », GALSI « plus dans
+l'actualité ». C'est le meilleur cas de figure — la source est primaire et officielle.
 
 Le reste du dossier Ricanto relève de l'actualité, pas du constat clos : dates et avancement
 sont à revérifier juste avant toute mise en ligne.
