@@ -27,6 +27,7 @@ insee = [
 
 [project.scripts]
 fetch-data = "demonstrateur.fetch:main"
+compile-etude = "demonstrateur.compile_etude:main"
 
 [build-system]
 requires = ["hatchling"]

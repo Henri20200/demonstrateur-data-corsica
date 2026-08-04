@@ -24,6 +24,15 @@ data/processed/*
 audit/
 exercices/
 
+# Matériel de travail, hors livrable : rapports d'audit, pages web enregistrées,
+# PDF de contexte (droit d'auteur). Les faits qu'on en tire sont fichés, sourcés et
+# versionnés dans docs/SOURCES_LOCALES.md — pas les originaux.
+audit/
+
+# Exercices pédagogiques dérivés du dépôt : hors livrable, et leurs chiffres sont
+# ceux d'un audit daté — aucun test ne les verrouille, ils dériveraient en silence.
+exercices/
+
 # Divers
 .DS_Store
 *.log
