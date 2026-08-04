@@ -29,10 +29,15 @@ la PPE de Corse est **distincte de la PPE nationale** et **co-élaborée** par l
 la Collectivité et le représentant de l'État. Elle est adoptée par décret, après délibération
 de l'Assemblée de Corse valant avis.
 
-- Décret n° 2015-1697 du **18 décembre 2015**, modifié par décret du **13 décembre 2019**.
+- Décret n° 2015-1697 du **18 décembre 2015**, modifié le **13 décembre 2019**, puis par le
+  **décret n° 2023-554 du 30 juin 2023** (JO du 2 juillet 2023).
 - Périodes : **2016-2018 / 2019-2023**, puis **2019-2023 / 2024-2028** pour la révision.
-- La révision a été adoptée par l'Assemblée de Corse en **avril 2021**. En avril 2023, la
-  presse spécialisée la décrivait encore comme attendue.
+- La révision complète a été adoptée par l'Assemblée de Corse en **avril 2021**. Ce qui a
+  effectivement été publié est une **révision simplifiée**, adoptée par l'Assemblée le
+  30 mars 2023 et prise par le décret du 30 juin 2023 : elle relève les objectifs de
+  puissance et ouvre la centrale du Ricanto aux bioliquides, mais ne réécrit pas la
+  programmation d'ensemble. **Le décret de 2015 reste le texte de base**, et ses échéances
+  restent 2018 et 2023.
 
 **2028 n'est donc pas une date de révision : c'est le terme de la période en cours.** La
 programmation de l'après-2028 se prépare pendant sa concertation — soit, au vu du cycle
@@ -62,19 +67,44 @@ se recopie, elle ne se déduit pas** — même règle que la moyenne 8 h de l'oz
 | ENR intermittentes **+38 %** : PV sans stockage +20 MW, solaire thermodynamique +12 MW, éolien +12 MW | puissance installée | 2023 | registre EDF |
 | Vazzio : dérogation de 18 000 h entre 2020 et 2023, puis « l'installation devra être mise définitivement à l'arrêt » | thermique | 2023 | hors pipeline — fait à sourcer |
 
+Cibles **relevées** par le décret du 30 juin 2023 (art. 1er), en puissance additionnelle
+**depuis 2015** — à confronter au registre EDF, et non aux cibles de 2015 qu'elles remplacent :
+
+| Filière | Cible 2015 | Cible 2023 |
+|---|---|---|
+| Solaire photovoltaïque au sol | +20 MW (sans stockage) | **+100 MW** |
+| Solaire photovoltaïque en toiture > 500 kW | — | **+10 MW** |
+| Éolien | +12 MW (sans stockage) | **+32 MW** |
+| Petite hydroélectricité | +12 MW | +12 MW |
+| Biomasse et biodéchets | +7 MW | +7 MW |
+
+Le décret ouvre par ailleurs la centrale du Ricanto aux bioliquides (art. 2), prévoit que
+l'électrification des ports d'Ajaccio et de Bastia « *peut être directe ou recourir à
+l'hydrogène* » (art. 3), et fixe la fin des réseaux GPL au **31 décembre 2038**.
+
 ### Le point qui porte le sujet — et il est déjà établi
 
 La PPE prévoyait de relever le seuil de déconnexion **à 45 % en 2023**. Il ne l'a pas été :
 le seuil applicable reste **35 %**, et c'est lui qui produit l'écrêtement visible en T5.
 
-Ce constat ne repose pas sur une lecture unique. `figures.py` le tenait déjà de la **Lettre
-OREGES 2021, p. 8**, avec son fondement réglementaire — l'**arrêté du 23 avril 2008 modifié**,
-qui autorise le gestionnaire à déconnecter les installations intermittentes sans stockage dès
-30 % de la puissance transitant sur le réseau, la Corse bénéficiant d'un seuil relevé à 35 %.
-La lecture du **rapport de PPE lui-même** (« *un accroissement progressif du seuil de
-déconnexion à 35 % en 2018 et 45 % en 2023* ») le **confirme indépendamment, au document
-primaire**. Deux sources, deux producteurs, même trajectoire annoncée — et une échéance
-passée sans effet.
+Ce constat ne repose pas sur une lecture unique. Trois sources, dont le texte qui fait foi :
+
+1. `figures.py` le tenait déjà de la **Lettre OREGES 2021, p. 8**, avec son fondement
+   réglementaire — l'**arrêté du 23 avril 2008 modifié**, qui autorise le gestionnaire à
+   déconnecter les installations intermittentes sans stockage dès 30 % de la puissance
+   transitant sur le réseau, la Corse bénéficiant d'un seuil relevé à 35 %.
+2. Le **rapport de PPE à l'Assemblée** annonce « *un accroissement progressif du seuil de
+   déconnexion à 35 % en 2018 et 45 % en 2023* ».
+3. Surtout, l'**article 4 du décret n° 2015-1697, dans sa version consolidée en vigueur**
+   (dernière modification : 3 juillet 2023) : « *En Corse, le seuil de déconnexion des
+   installations de production mettant en œuvre de l'énergie fatale à caractère aléatoire
+   mentionné à l'article L. 141-9 du code de l'énergie est fixé à 35 % en 2018.* » Les 45 %
+   y restent un objectif pour 2023, jamais un seuil applicable.
+
+**Le fait le plus net tient à une date.** La révision de juin 2023 est intervenue l'année
+même de l'échéance des 45 %. Elle a relevé les objectifs de puissance — le photovoltaïque au
+sol passe de +20 à +100 MW — mais **elle n'a pas touché au seuil de déconnexion**. Le
+plafond qui produit l'écrêtement de T5 est donc, à ce jour, celui fixé pour 2018.
 
 C'est le même geste que le contrôle croisé OREGES sur T7, et il vaut la même chose : un
 lecteur institutionnel ne peut pas renvoyer le chiffre à une interprétation maison.
@@ -85,12 +115,17 @@ montre.
 
 ## Ce qu'il faut vérifier avant de figer
 
-1. **La révision 2024-2028 a-t-elle été publiée par décret ?** Non confirmé. Une source
-   secondaire évoque une signature attendue à mi-2025 et une cible d'environ 62 % d'ENR dans
-   l'électricité en 2028 — **ne pas reprendre ces chiffres** tant qu'ils ne sont pas lus dans
-   le document lui-même.
-2. **L'arrêt du Vazzio** : effectif ou non, et son remplacement (cycle combiné d'environ
-   250 MW en région ajaccienne). Fait local, donc sourcé à la rédaction, jamais de mémoire.
+*Vérifié le 04/08/2026 et clos : la révision a bien été publiée, mais sous forme simplifiée
+(décret n° 2023-554 du 30 juin 2023). Aucune programmation propre à 2024-2028 n'a été prise :
+le décret de 2015 reste le texte de base, avec ses échéances 2018 et 2023. La cible
+d'environ 62 % d'ENR électriques en 2028, vue en source secondaire, ne figure dans aucun des
+textes lus — **ne pas la reprendre**.*
+
+1. **L'arrêt du Vazzio** : effectif ou non. Son remplacement a changé de nature en cours de
+   route — la PPE de 2015 prévoyait un cycle combiné d'environ 250 MW au fioul domestique
+   « *en attendant l'arrivée du gaz naturel* » ; le décret de 2023 ouvre la centrale du
+   Ricanto aux **bioliquides**. Ce glissement mérite d'être daté et sourcé : c'est un fait
+   local, donc jamais écrit de mémoire.
 
 ## Test du prompt
 
@@ -121,5 +156,11 @@ l'objectif une fois celui-ci tenu.
   <https://www.corse.developpement-durable.gouv.fr/programmation-pluriannuelle-de-l-energie-ppe-r621.html?lang=fr>
 - Révision de la PPE pour la Corse (2019-2023 / 2024-2028), AUE —
   <https://www.aue.corsica/Revision-de-la-Programmation-Pluriannuelle-de-l-Energie-pour-la-Corse-2019-2023-2024-2028_a272.html>
+- Décret n° 2015-1697 du 18 décembre 2015 relatif à la PPE de Corse, **version consolidée**
+  (art. 4 : seuil de déconnexion) — <https://www.legifrance.gouv.fr/loda/id/JORFTEXT000031645870>
+- Décret n° 2023-554 du 30 juin 2023 portant modification du décret n° 2015-1697 —
+  <https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000047774402>
+- Publication de la révision simplifiée de la PPE pour la Corse, communiqué du ministère —
+  <https://www.ecologie.gouv.fr/presse/publication-revision-simplifiee-programmation-pluriannuelle-lenergie-corse>
 - Arrêté du 23 avril 2008 modifié (seuil de déconnexion des ENR variables) et Lettre OREGES
   2021, p. 8 — déjà cités dans `figures.py`, en tête de `fig_t8_seuil_deconnexion`.
