@@ -37,7 +37,6 @@ def _blocs() -> list[tuple[str, str, str]]:
     """
     d_air = date_collecte("aee_o3_venaco_continu")
     d_meteo = date_collecte("meteo_horaire_corse")
-    p = fa._sous_titre  # périmètre commun, écrit sur chaque figure
 
     return [
         (
@@ -48,9 +47,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             "a1",
             preparer_figure(
                 fa.fig_a1_depassements_sans_alerte(), fa.SRC_AIR, d_air,
-                sous_titre=p("L'objectif de qualité pour la santé vaut 120 µg/m³ en maximum "
-                             "journalier sur 8 heures ; l'information du public se déclenche "
-                             "à 180 µg/m³ en moyenne horaire."),
+                sous_titre=fa.ST_A1,
             ),
         ),
         (
@@ -60,10 +57,8 @@ def _blocs() -> list[tuple[str, str, str]]:
             "a2",
             preparer_figure(
                 fa.fig_a2_ozone_et_chaleur(), fa.SRC_AIR_METEO, d_meteo,
-                sous_titre=p("Températures du poste météo apparié à chaque station — ce n'est "
-                             "pas la même mesure au même endroit."),
-                note="Les journées chaudes portent plus d'ozone ; chaleur, ensoleillement et "
-                     "air stagnant vont de pair, et ces mesures ne les démêlent pas.",
+                sous_titre=fa.ST_A2, note=fa.NOTE_A2,
+                pied_decalage_px=fa.PIED_A2,
             ),
         ),
         (
@@ -72,9 +67,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             "a3",
             preparer_figure(
                 fa.fig_a3_ozone_contre_azote(), fa.SRC_AIR, d_air,
-                sous_titre=p("Cinq stations mesurant les deux polluants. Chaque courbe est "
-                             "ramenée à son propre maximum : la figure compare des heures, "
-                             "pas des concentrations."),
+                sous_titre=fa.ST_A3,
             ),
         ),
         (
@@ -83,8 +76,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             "a4",
             preparer_figure(
                 fa.fig_a4_campagne_contre_ville(), fa.SRC_AIR, d_air,
-                sous_titre=p("En part des journées mesurées, et non en nombre de jours : une "
-                             "station rurale contre quatre urbaines."),
+                sous_titre=fa.ST_A4,
             ),
         ),
         (
@@ -92,12 +84,63 @@ def _blocs() -> list[tuple[str, str, str]]:
             "a5",
             preparer_figure(
                 fa.fig_a5_creneau_a_eviter(), fa.SRC_AIR, d_air,
-                sous_titre=p("Moyenne de chaque heure de la journée."),
-                note="Le creux du petit matin est aussi le maximum de dioxyde d'azote : l'air "
-                     "y est moins chargé en ozone, pas plus pur.",
+                sous_titre=fa.ST_A5, note=fa.NOTE_A5,
             ),
         ),
     ]
+
+
+# Mini-dictionnaire : la page s'adresse d'abord à des habitants, pas à des spécialistes.
+# Chaque entrée se lit sans en avoir lu une autre, et aucune définition n'emploie un mot
+# qu'il faudrait aller chercher ailleurs — une définition qui suppose le vocabulaire
+# qu'elle est censée donner ne sert à rien. Les chiffres réglementaires viennent des
+# constantes de `figures_air`, jamais recopiés à la main.
+MOTS = [
+    ("Ozone",
+     "Un gaz qui pique les bronches. Personne ne l'émet : il se fabrique tout seul dans "
+     "l'air, quand le soleil tape sur les gaz d'échappement et les vapeurs d'essence. "
+     "C'est pour ça qu'il apparaît l'été, l'après-midi, et qu'il est le seul polluant "
+     "que le beau temps favorise."),
+    ("Dioxyde d'azote",
+     "Un gaz qui sort, lui, directement des pots d'échappement. Il suit donc la "
+     "circulation : beaucoup aux heures de pointe, peu la nuit. Curiosité utile — là où "
+     "il y en a beaucoup, il détruit une partie de l'ozone."),
+    ("µg/m³ (microgramme par mètre cube)",
+     "L'unité qui dit combien de gaz on trouve dans l'air. Un microgramme, c'est un "
+     "millionième de gramme ; un mètre cube, c'est un cube d'un mètre de côté, à peu "
+     "près l'air d'une cabine de douche. Autant dire de très petites quantités — qui "
+     "comptent quand même pour les poumons."),
+    ("Objectif de qualité",
+     f"Le niveau à ne pas dépasser pour protéger la santé : {fa.OBJECTIF_QUALITE} µg/m³ "
+     "d'ozone, mesuré sur les huit heures les plus chargées de la journée. Ce n'est pas "
+     "une interdiction, c'est une cible. On peut la dépasser sans que personne ne soit "
+     "prévenu — c'est précisément le sujet de cette page."),
+    ("Seuil d'information",
+     f"Le niveau, bien plus haut ({fa.SEUIL_INFORMATION} µg/m³ sur une heure), à partir "
+     "duquel les autorités préviennent la population et conseillent d'éviter l'effort. "
+     "En Corse, il n'est presque jamais atteint."),
+    ("Station de fond",
+     "Un appareil de mesure placé loin d'une route ou d'une usine, pour mesurer l'air "
+     "que tout le monde respire — et non celui d'un carrefour précis. Toutes les mesures "
+     "de cette page viennent de stations de ce type."),
+    ("Journée valide",
+     "Une journée où l'appareil a suffisamment mesuré pour que le chiffre compte "
+     "vraiment. Les journées trop incomplètes sont écartées plutôt que rafistolées."),
+]
+
+
+def _glossaire() -> str:
+    entrees = "".join(
+        f"<div class='mot'><dt>{terme}</dt><dd>{texte}</dd></div>"
+        for terme, texte in MOTS
+    )
+    return (
+        "<section class='lexique'>"
+        "<h2>Les mots, en clair</h2>"
+        "<p>Sept termes reviennent dans cette page. Aucun n'est compliqué une fois dit "
+        "simplement.</p>"
+        f"<dl>{entrees}</dl></section>"
+    )
 
 
 def _html(blocs, collecte: str) -> str:
@@ -132,6 +175,16 @@ def _html(blocs, collecte: str) -> str:
   .cle {{ max-width:44em; margin:1rem 0 0; padding:.9rem 1.1rem;
           background:{PALETTE["surface"]}; border-left:4px solid {PALETTE["accent"]};
           border-radius:0 4px 4px 0; }}
+  .lexique {{ margin-top:3.2rem; padding-top:1.6rem;
+              border-top:1px solid {PALETTE["rule"]}; }}
+  .lexique h2 {{ font-size:1.35rem; margin:0 0 .3rem; }}
+  .lexique dl {{ margin:1.2rem 0 0; }}
+  /* Deux colonnes quand la place existe, une seule sur téléphone — les définitions
+     restent courtes, donc aucune ne se coupe en colonne étroite. */
+  .lexique dl {{ display:grid; gap:1.1rem 2.2rem;
+                 grid-template-columns:repeat(auto-fit, minmax(19rem, 1fr)); }}
+  .lexique dt {{ font-weight:600; margin:0 0 .15rem; }}
+  .lexique dd {{ margin:0; color:{PALETTE["ink_soft"]}; }}
   footer {{ margin-top:3rem; padding-top:1.2rem; border-top:1px solid {PALETTE["rule"]};
             max-width:44em; font-size:15.5px; color:{PALETTE["ink_soft"]}; }}
   footer a {{ color:{PALETTE["accent"]}; }}
@@ -145,6 +198,8 @@ qu'il est absent. Six étés de mesures, sur les six stations de l'île.</p>
 <p class="chapeau">Données collectées le {collecte}.</p>
 
 {"".join(corps)}
+
+{_glossaire()}
 
 <footer>
 <p>Mesures : Qualitair Corse, via l'Agence européenne pour l'environnement (CC-BY 4.0) et le
