@@ -104,6 +104,15 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
 - **Ne jamais committer `data/raw/` ou `data/processed/`** (sauf `_manifest.json`). Tout se
   régénère depuis `sources.yaml`.
 - **Chaque visuel cite sa source et sa date** — via `viz.export_html`, pas à la main.
+- **Le cron est seul propriétaire d'`outputs/`.** Régénérer en local pour VÉRIFIER une figure
+  est normal ; committer le résultat ne l'est pas. Une même figure sérialisée sous Windows
+  écrit ses accents en clair là où le runner Linux les échappe en `\uXXXX` (plotly 6.9.0 des
+  deux côtés — c'est l'environnement, pas la version). Committer une régénération locale
+  fabrique donc un diff sur des fichiers dont le contenu n'a pas bougé, que le cron
+  rebasculera au run suivant. Or « le rafraîchissement planifié ne committe que ce qui a
+  réellement changé » est une propriété qu'on met en avant : ces diffs fantômes la
+  décrédibilisent. Ce qui se committe à la main, c'est le CODE de la figure ; sa sortie
+  arrive au prochain run.
 - **La traçabilité est vérifiée, pas seulement déclarée** : `fetch` re-contrôle chaque source
   figée à chaque run, `prepare` refuse un brut non certifié et écrit la lignée (`_build.json`),
   les figures datent d'après cette lignée. L'empreinte d'une source qui réestampille son
