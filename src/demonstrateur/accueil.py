@@ -136,7 +136,7 @@ def _sujets() -> str:
     return "".join(blocs)
 
 
-def _html(genere_le: str, commit: str, groupes, n_sources: int, n_prod: int,
+def _html(genere_le: str, groupes, n_sources: int, n_prod: int,
           actualisations: int | None) -> str:
     compteur = (
         f" · {actualisations}<sup>e</sup> actualisation" if actualisations else ""
@@ -149,7 +149,11 @@ def _html(genere_le: str, commit: str, groupes, n_sources: int, n_prod: int,
   :root {{ color-scheme: light; }}
   body {{ margin:0; padding:3rem 1.2rem 4rem; background:{PALETTE["page"]};
           color:{PALETTE["ink"]}; font-family:{SANS}; font-size:17px; line-height:1.62; }}
-  main {{ max-width:62rem; margin:0 auto; }}
+  /* 48rem, et non les 62rem de la page de l'air : celle-ci porte des figures larges, pas
+     celle-ci. Au-delà, les filets de séparation courent bien plus loin que le texte et la
+     page paraît bancale à droite — un vide qui se lit comme un manque, pas comme du calme.
+     Le seul élément large est le tableau des sources, qui défile dans sa propre boîte. */
+  main {{ max-width:48rem; margin:0 auto; }}
   h1 {{ font-size:2rem; line-height:1.2; margin:0 0 .5rem; max-width:22em; }}
   .chapeau {{ font-size:1.1rem; color:{PALETTE["ink_soft"]}; max-width:44em; margin:0 0 1.6rem; }}
   .cachet {{ display:inline-block; padding:.55rem .9rem; background:{PALETTE["surface"]};
@@ -160,7 +164,11 @@ def _html(genere_le: str, commit: str, groupes, n_sources: int, n_prod: int,
   article h2 {{ font-size:1.45rem; margin:0 0 .35rem; }}
   article p {{ max-width:44em; margin:0 0 .3rem; }}
   a {{ color:{PALETTE["accent"]}; text-underline-offset:3px; }}
-  h2 a {{ color:{PALETTE["ink"]}; }}
+  /* Un titre de sujet EST un lien, mais il doit se lire comme un titre : souligné, il
+     prend l'allure d'un lien de navigateur par défaut — la seule chose qui faisait
+     « pas fini » sur cette page. Le soulignement revient au survol, où il sert. */
+  h2 a {{ color:{PALETTE["ink"]}; text-decoration:none; }}
+  h2 a:hover {{ text-decoration:underline; text-decoration-thickness:1px; }}
   .annexes {{ font-size:15.5px; }}
   .preuve {{ margin:3.2rem 0 0; padding-top:1.6rem; border-top:1px solid {PALETTE["rule"]}; }}
   .preuve h2 {{ font-size:1.45rem; margin:0 0 .6rem; }}
@@ -176,8 +184,12 @@ def _html(genere_le: str, commit: str, groupes, n_sources: int, n_prod: int,
   th {{ font-weight:600; color:{PALETTE["ink_soft"]}; }}
   .emp {{ font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }}
   .defile {{ overflow-x:auto; }}
+  /* La largeur se limite sur les PARAGRAPHES, pas sur le pied : bornée sur le bloc, elle
+     raccourcissait aussi son filet, qui s'arrêtait avant tous les autres. Un trait plus
+     court que ses voisins se remarque sans qu'on sache dire pourquoi. */
   footer {{ margin-top:3.4rem; padding-top:1.2rem; border-top:1px solid {PALETTE["rule"]};
-            max-width:44em; font-size:15.5px; color:{PALETTE["ink_soft"]}; }}
+            font-size:15.5px; color:{PALETTE["ink_soft"]}; }}
+  footer p {{ max-width:44em; }}
   footer a {{ color:{PALETTE["accent"]}; }}
 </style></head><body><main>
 
@@ -217,7 +229,6 @@ appelée ailleurs, aucun appel réseau au chargement.</li>
 <p>Données réutilisées sous la licence de leur producteur, indiquée source par source
 ci-dessus. Ces organismes ne sont pas associés à ce travail et n'en ont pas validé les
 conclusions.</p>
-<p>Compilé depuis le commit <span class="emp">{_txt(commit[:10])}</span>.</p>
 </footer>
 
 </main>
@@ -263,8 +274,7 @@ def main() -> int:
     # Git normalise au commit, mais le cron ne doit committer QUE ce qui a changé — mieux
     # vaut que le fichier soit identique dès l'écriture (cf. la règle dans CLAUDE.md).
     dest.write_text(
-        _html(build["genere_le"], build["commit"], groupes, n_sources, n_prod,
-              _actualisations()),
+        _html(build["genere_le"], groupes, n_sources, n_prod, _actualisations()),
         encoding="utf-8", newline="\n",
     )
     print(f"[ok] {dest}")
