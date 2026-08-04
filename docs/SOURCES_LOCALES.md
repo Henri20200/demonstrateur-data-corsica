@@ -318,9 +318,10 @@ le pilotage de la demande (INSITE, heures creuses de la fiche 6) et l'autoconsom
 un sens concret au conseil « consommer au bon moment ». Prudence : projets = pistes au
 conditionnel, jamais présentés comme acquis.
 
-## Pièces à confirmer — moisson du 23-28/07/2026
+## Faits en attente de leur pièce primaire
 
-Complète le tableau de chasse (clos le 20/07) pour l'angle tarifs/PPE rouvert le 23/07.
+Rien de ce tableau ne s'écrit dans l'étude tant que la pièce n'est pas au dossier.
+Il complète la liste plus bas, pour l'angle tarifs et programmation rouvert le 23/07/2026.
 
 | Fait à trancher | Pièce attendue |
 | --- | --- |
@@ -329,12 +330,17 @@ Complète le tableau de chasse (clos le 20/07) pour l'angle tarifs/PPE rouvert l
 | Révision PPE votée par l'Assemblée de Corse (avril 2021) | décret de promulgation, s'il existe (Légifrance / AUE) — dit si une PPE 2024-2028 est en vigueur |
 | Périmètre des parts ENR affichées par EDF | distinguer mix électrique vs consommation finale d'énergie avant toute citation (fiche 8) |
 
-## Radar — éléments d'un résumé IA NON SOURCÉ (reçu le 20/07/2026)
+## Ce qu'une IA a suggéré, et qui n'est pas entré dans l'étude
 
-**Règle : rien de cette liste n'entre dans `etude.md` sans pièce primaire.** Le résumé
-sert de radar, pas de source — démonstration : il donne le Ricanto « en 2028 » quand
-l'article daté (fiche 1) dit « avant fin 2027 ». Trois versions circulent déjà
-(2027 sourcé / 2028 IA / « inauguré » Wikipédia) : seule la pièce primaire tranche.
+Un résumé produit par une IA généraliste, reçu le 20/07/2026, a servi de **radar** — une
+liste d'endroits où chercher — et jamais de source. **Règle : rien de ce qui suit n'entre
+dans `etude.md` sans pièce primaire.**
+
+Pourquoi cette règle plutôt qu'une relecture attentive : le même résumé donnait la
+centrale du Ricanto « en 2028 » là où l'article daté de la fiche 1 dit « avant fin 2027 ».
+Trois versions de cette date circulaient alors — 2027 sourcé, 2028 suggéré, « inauguré »
+sur Wikipédia — et seule la pièce primaire tranche. Une erreur de ce genre est plausible,
+bien écrite, et invisible à la relecture ; elle ne se détecte qu'en remontant à la source.
 - « EDF surveille l'été 2026, barrages presque pleins » → chercher communiqué/bilan
   prévisionnel EDF Corse 2026.
 - STEP « 44 MW d'ici 2030 » → à vérifier dans le communiqué EDF du 25/11/2024 (fiche 3) —
@@ -348,10 +354,10 @@ l'article daté (fiche 1) dit « avant fin 2027 ». Trois versions circulent dé
 - Facture électronique sept. 2026 : obligation **nationale**, hors sujet — exemple type
   du remplissage IA.
 
-## Tableau de chasse — COLLECTE CLOSE le 20/07/2026
+## Faits optionnels, recherche close le 20/07/2026
 
-**Décision (recentrage utilisateur) : la banque suffit pour écrire tout le document.
-Plus de chasse active — les items ci-dessous sont OPTIONNELS, aucun n'est bloquant.**
+**La banque ci-dessus suffit à écrire tout le document. Les faits qui suivent sont
+optionnels, aucun n'est bloquant, et la recherche active s'est arrêtée là.**
 Seules exceptions, au moment voulu : les références exactes (journal + date) des
 fiches 1-2 à la rédaction de la section 4, et le statut au Parlement à re-vérifier
 juste avant la mise en ligne de septembre. Proportion éditoriale rappelée : ~80 % du
