@@ -45,6 +45,11 @@ AIR_AZOTE = PALETTE["azote"]
 
 SANS = "system-ui, -apple-system, 'Segoe UI', sans-serif"
 
+# Retrait du pied de figure par rapport au bord gauche de la figure (px). Le pied ne suit
+# pas la marge gauche du tracé : sinon une figure à libellés longs le repousserait vers
+# la droite, où il déborde. Cf. `preparer_figure`.
+PIED_BORD_PX = 20
+
 # Rampe séquentielle « or solaire » (magnitude, heatmap T5) : clarté monotone,
 # pas >= 0.06, teinte unique — validée (validateur dataviz, mode ordinal). Le bout
 # clair reste volontairement proche de la surface (un zéro doit se lire « rien ») :
@@ -157,9 +162,20 @@ def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
     pied = f"Source : {source}{sep}— données collectées le {collecte}"
     if note:
         pied += f"<br>{note}"
+    # Le pied s'aligne sur le bord GAUCHE DE LA FIGURE, pas sur celui de la zone de tracé.
+    # `xref="paper"` place x=0 au début du tracé : une figure à large marge gauche (barres
+    # horizontales, dont les libellés de stations occupent 300 px) poussait donc sa source
+    # d'autant vers la droite, où elle se faisait rogner. Plotly n'accepte pas
+    # `xref="container"` sur une annotation ; le décalage se fait donc en pixels, depuis
+    # la marge déjà fixée par la figure — une valeur en pixels, donc stable quelle que
+    # soit la largeur d'affichage, contrairement à une fraction de zone de tracé.
+    marge_gauche = fig.layout.margin.l
+    if marge_gauche is None:
+        marge_gauche = template().layout.margin.l
     fig.add_annotation(
         text=pied,
         xref="paper", yref="paper", x=0, y=0, yanchor="top", yshift=pied_decalage_px,
+        xshift=-(marge_gauche - PIED_BORD_PX),
         showarrow=False, align="left", xanchor="left",
         # 16px + ink_soft : plancher relevé (22/07) + contraste WCAG AA (muted échouait).
         font=dict(family=SANS, size=16, color=PALETTE["ink_soft"]),

@@ -525,6 +525,11 @@ def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
 SEUIL_NATIONAL = 30
 SEUIL_CORSE = 35
 SEUIL_VISE = 45
+# Le relèvement à 45 % était visé POUR 2023 par le projet de PPE (Lettre OREGES 2021,
+# p. 8). Il n'est pas entré en vigueur : le seuil applicable reste 35 %. La figure le dit,
+# sinon « seuil visé » laisserait croire à une échéance encore devant nous — alors que la
+# Corse dépasse déjà, et depuis des années, un seuil qui n'existe pas encore.
+ANNEE_VISEE = 2023
 
 
 def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
@@ -558,8 +563,9 @@ def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
     # de 30 % (dont la Corse est déjà dérogataire) est dit en sous-titre — une 3e ligne
     # n'ajouterait qu'un pas de rampe au contraste insuffisant (1,68:1, validateur).
     series = [
-        ("sup_vise", f"Au-dessus de {SEUIL_VISE} % (seuil visé par la PPE)", "#6A4616"),
-        ("sup_corse", f"Au-dessus de {SEUIL_CORSE} % (seuil corse en vigueur)",
+        ("sup_vise", f"Au-dessus de {SEUIL_VISE} % — seuil visé pour {ANNEE_VISEE}, "
+                     "jamais entré en vigueur", "#6A4616"),
+        ("sup_corse", f"Au-dessus de {SEUIL_CORSE} % — seuil corse en vigueur",
          PALETTE["solaire"]),
     ]
     def milliers(v: int) -> str:  # séparateur de milliers français
@@ -575,10 +581,14 @@ def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
                         line=dict(width=2, color=PALETTE["surface"])),
             hovertemplate="%{x} — " + libelle + " : %{y} h<extra></extra>",
         ))
-        # Étiquette directe sur le dernier point : l'identité ne tient pas à la légende.
-        fig.add_annotation(x=annees[-1], y=vals[-1], text=f"{milliers(vals[-1])} h",
-                           showarrow=False, xanchor="left", xshift=14,
-                           font=dict(family=SANS, size=17, color=couleur))
+        # Étiquette sur CHAQUE point, en ANNOTATION et non en `text` de trace : seule
+        # l'annotation donne un décalage en pixels, constant quelle que soit l'échelle.
+        # Avec `textposition`, l'étiquette du point à 11 h se collait au millésime de
+        # l'axe. Toutes au-dessus : les deux séries restent séparées de plusieurs
+        # centaines d'heures, elles ne peuvent pas se rencontrer.
+        for x, v in zip(annees, vals):
+            fig.add_annotation(x=x, y=v, text=milliers(v), showarrow=False, yshift=30,
+                               font=dict(family=SANS, size=16, color=couleur))
 
     h_fin = int(df["sup_corse"].iloc[-1])
     h_deb = int(df["sup_corse"].iloc[0])
@@ -586,10 +596,17 @@ def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
         title=dict(text=f"{milliers(h_fin)} heures par an au-dessus du seuil qui permet "
                         "de débrancher le solaire"),
         xaxis=dict(title=dict(text=""), dtick=1, tickformat="d"),
-        yaxis=dict(title=dict(text="heures dans l'année"), rangemode="tozero"),
-        legend=dict(orientation="h", y=-0.14, yanchor="top", x=0, traceorder="reversed"),
-        margin=dict(t=150, b=250, l=116, r=110),
-        height=640,
+        # Graduations imposées : en laissant Plotly choisir, une graduation apparaissait
+        # tout en haut de l'axe et venait chevaucher le sous-titre. Le haut de l'échelle
+        # est calé JUSTE au-dessus de la dernière graduation utile, avec de quoi loger
+        # l'étiquette du point le plus haut — calculé, jamais en dur.
+        yaxis=dict(title=dict(text="heures dans l'année"), rangemode="tozero",
+                   tickmode="array",
+                   tickvals=list(range(0, int(df["sup_corse"].max()), 500)),
+                   range=[0, float(df["sup_corse"].max()) * 1.14]),
+        legend=dict(orientation="h", y=-0.16, yanchor="top", x=0, traceorder="reversed"),
+        margin=dict(t=180, b=270, l=116, r=60),
+        height=680,
     )
     return fig, annees[-1], h_fin - h_deb
 
@@ -649,9 +666,9 @@ def main() -> int:
         "OREGES de Corse / AUE (Lettre 2021, données 2020) & EDF — Open Data Groupe EDF",
         d_hist,
         sous_titre="Deux périmètres emboîtés, deux bases différentes — ils ne se comparent "
-                   "pas de tête.<br>En haut : consommation d'énergie primaire 2020 (605 ktep, "
-                   "tous usages). En bas : électricité servie en Corse,<br>production locale "
-                   "et imports par câble, 2019-2024.",
+                   "pas de tête.<br>En haut : toute l'énergie consommée en 2020, chauffage et "
+                   "carburants compris — 605 ktep,<br>soit 605 000 tonnes d'équivalent pétrole. "
+                   "En bas : l'électricité servie en Corse, 2019-2024.",
         note="Les 86,1 % de l'OREGES couvrent toute l'énergie — carburants et chauffage "
              "compris.<br>Contrôle croisé 2020 : OREGES 36 % / 29,8 % (thermique / "
              "liaisons) ; nos données EDF, 36,0 % / 29,8 %.<br>" + NOTE_ESTIME,
@@ -665,7 +682,9 @@ def main() -> int:
                    f"Au-delà de ce seuil (arrêté du 23 avril 2008 : {SEUIL_NATIONAL} % "
                    f"ailleurs, {SEUIL_CORSE} % en Corse), le gestionnaire de réseau peut "
                    "débrancher<br>une installation sans stockage — « dernier arrivé, "
-                   "premier déconnecté ».",
+                   f"premier déconnecté ». Le relèvement à {SEUIL_VISE} %, visé pour "
+                   f"{ANNEE_VISEE},<br>n'est jamais entré en vigueur : la Corse le "
+                   "dépassait déjà avant l'échéance.",
         note="Nos données EDF ne séparent pas les installations AVEC stockage, exclues du "
              "calcul réglementaire : la courbe dit la pression sur le seuil,<br>pas la "
              "conformité d'une installation. Moyennes horaires contre un seuil instantané "
