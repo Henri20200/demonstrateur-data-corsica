@@ -928,3 +928,137 @@ def test_l_heure_la_plus_propre_en_ozone_est_la_pire_en_no2(con):
         f"creux d'ozone à {pics['O3']} h, pic de NO2 à {pics['NO2']} h — la coïncidence "
         "fonde la réserve du titre n° 5 ; si elle disparaît, la réserve est à réécrire"
     )
+
+
+# --- Titre 7 : la dépendance, deux périmètres qu'on ne compare pas de tête -----
+def test_les_postes_oreges_forment_bien_cent_pour_cent():
+    """La décomposition recopiée de la Lettre OREGES 2021 (p. 4) est complète et cohérente.
+
+    Ces cinq postes ne sont pas calculés : ils sont RECOPIÉS d'une publication de l'AUE
+    (énergie primaire 2020, 605 ktep). Le test tient les deux propriétés qui rendent la
+    recopie vérifiable : la somme fait 100 % du mix primaire, et les deux postes venus de
+    l'extérieur reconstituent EXACTEMENT le taux de dépendance de 86,1 % annoncé par le
+    producteur. Une faute de saisie dans un poste casse l'une ou l'autre.
+    """
+    from demonstrateur.figures import OREGES_2020, OREGES_CARBURANTS, OREGES_DEPENDANCE
+
+    assert sum(OREGES_2020.values()) == pytest.approx(100.0, abs=0.05), (
+        f"les postes OREGES somment à {sum(OREGES_2020.values()):.2f} % — recopie incomplète"
+    )
+    importe = OREGES_2020["petrole"] + OREGES_2020["liaisons"]
+    assert importe == pytest.approx(OREGES_DEPENDANCE, abs=0.05), (
+        f"pétrole + liaisons = {importe:.2f} %, or l'OREGES publie un taux de dépendance "
+        f"de {OREGES_DEPENDANCE} % — les deux doivent coïncider, c'est la même quantité"
+    )
+    assert OREGES_CARBURANTS < OREGES_2020["petrole"], (
+        "les carburants des transports sont un SOUS-poste des produits pétroliers"
+    )
+
+
+@besoin_courbe
+def test_la_dependance_electrique_est_bien_en_deca_du_taux_energetique(con):
+    """Le fait du titre n° 7, né d'une affirmation de presse à vérifier.
+
+    « La Corse dépend à 85 % du pétrole importé et de l'Italie pour son approvisionnement
+    ÉLECTRIQUE » (Corse-Matin, 04/08/2026). Le chiffre existe mais porte sur toute
+    l'énergie primaire (86,1 %, OREGES) : sur la seule électricité, thermique + imports
+    restent nettement en deçà. Si cet écart se refermait, le titre serait à réécrire.
+    """
+    from demonstrateur.figures import OREGES_DEPENDANCE
+
+    th, im = con.execute(
+        f"""SELECT 100.0*sum(thermique_mw)/sum(production_totale_mw),
+                   100.0*sum(importations_mw)/sum(production_totale_mw)
+            FROM '{COURBE.as_posix()}'"""
+    ).fetchone()
+    importe = th + im
+    assert 66.0 <= importe <= 70.0, (
+        f"part de l'électricité venue de l'extérieur : {importe:.1f} % "
+        f"(thermique {th:.1f} + imports {im:.1f}) — hors de la fourchette publiée (~67,8 %)"
+    )
+    assert OREGES_DEPENDANCE - importe > 15.0, (
+        f"l'écart entre les deux périmètres n'est plus que de "
+        f"{OREGES_DEPENDANCE - importe:.1f} points — le titre n° 7 repose sur cet écart"
+    )
+
+
+@besoin_courbe
+def test_le_controle_croise_2020_recolle_a_la_publication_de_l_oreges(con):
+    """Notre pipeline et le producteur régional disent la même chose sur la même année.
+
+    L'OREGES publie, pour 2020 : 36 % de thermique et 29,8 % de liaisons électriques.
+    C'est le contrôle croisé le plus fort dont dispose l'étude — une source officielle,
+    indépendante de notre chaîne, sur exactement le même périmètre. Il est affiché en note
+    du visuel : s'il se met à diverger, la note ment.
+    """
+    th, im = con.execute(
+        f"""SELECT 100.0*sum(thermique_mw)/sum(production_totale_mw),
+                   100.0*sum(importations_mw)/sum(production_totale_mw)
+            FROM '{COURBE.as_posix()}'
+            WHERE extract('year' FROM timezone('Europe/Paris', date_heure)) = 2020"""
+    ).fetchone()
+    assert th == pytest.approx(36.0, abs=0.5), (
+        f"thermique 2020 = {th:.1f} %, l'OREGES publie 36 % — écart trop grand pour "
+        "que le contrôle croisé affiché en note du visuel tienne"
+    )
+    assert im == pytest.approx(29.8, abs=0.5), (
+        f"liaisons 2020 = {im:.1f} %, l'OREGES publie 29,8 %"
+    )
+
+
+# --- Titre 8 : le seuil de déconnexion est déjà franchi, de plus en plus ------
+@besoin_courbe
+def test_le_seuil_de_deconnexion_est_deja_largement_franchi(con):
+    """Le fait du titre n° 8 : le plafond n'est pas devant la Corse, il est derrière.
+
+    Le seuil de l'arrêté du 23 avril 2008 (30 % ailleurs, 35 % en Corse) est un DROIT de
+    débrancher, pas un mur : la part intermittente peut le dépasser, et elle le fait plus
+    de mille heures par an. Même le seuil visé par la PPE (45 %) est déjà franchi des
+    centaines d'heures. Si ce n'était plus vrai, le visuel raconterait l'inverse.
+    """
+    from demonstrateur.figures import SEUIL_CORSE, SEUIL_VISE
+
+    part = """100.0*(greatest(photovoltaique_mw,0)+greatest(eolien_mw,0))
+               /production_totale_mw"""
+    corse, vise = con.execute(
+        f"""SELECT sum(CASE WHEN {part} > {SEUIL_CORSE} THEN 1 ELSE 0 END),
+                   sum(CASE WHEN {part} > {SEUIL_VISE}  THEN 1 ELSE 0 END)
+            FROM '{COURBE.as_posix()}'
+            WHERE extract('year' FROM timezone('Europe/Paris', date_heure)) = 2024"""
+    ).fetchone()
+    assert corse > 1000, (
+        f"2024 : {corse} h au-dessus du seuil corse de {SEUIL_CORSE} % — le titre annonce "
+        "plus de mille heures par an"
+    )
+    assert vise > 100, (
+        f"2024 : {vise} h au-dessus du seuil visé de {SEUIL_VISE} % — le visuel affirme "
+        "que même le seuil futur est déjà franchi des centaines d'heures"
+    )
+
+
+@besoin_courbe
+def test_la_pression_sur_le_seuil_croit_avec_le_parc(con):
+    """La pente du visuel : la contrainte se resserre, elle ne se desserre pas.
+
+    Comparaison en deux moitiés (2019-2021 contre 2022-2024) plutôt qu'année contre
+    année : une seule année sèche ou venteuse ne doit pas faire basculer le constat.
+    """
+    from demonstrateur.figures import SEUIL_CORSE
+
+    part = """100.0*(greatest(photovoltaique_mw,0)+greatest(eolien_mw,0))
+               /production_totale_mw"""
+    tot, recent = con.execute(
+        f"""WITH h AS (
+              SELECT extract('year' FROM timezone('Europe/Paris', date_heure)) AS annee,
+                     {part} AS p
+              FROM '{COURBE.as_posix()}')
+            SELECT sum(CASE WHEN p > {SEUIL_CORSE} AND annee BETWEEN 2019 AND 2021
+                            THEN 1 ELSE 0 END),
+                   sum(CASE WHEN p > {SEUIL_CORSE} AND annee BETWEEN 2022 AND 2024
+                            THEN 1 ELSE 0 END)
+            FROM h"""
+    ).fetchone()
+    assert recent > tot, (
+        f"heures au-dessus du seuil : {tot} h en 2019-2021 contre {recent} h en 2022-2024 "
+        "— le visuel montre une pression croissante ; si elle s'inverse, il est à refaire"
+    )

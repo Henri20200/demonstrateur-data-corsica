@@ -396,6 +396,204 @@ def fig_t6_corse_sardaigne() -> go.Figure:
     return fig
 
 
+# --- Titre 7 : « 86 % de dépendance, mais pas pour l'électricité » ------------
+# Chiffres RECOPIÉS de la Lettre de l'OREGES de Corse, édition 2021 (AUE), p. 4 :
+# consommation d'énergie PRIMAIRE 2020, 605 ktep (7 039 GWh), tous usages confondus
+# — carburants des transports et chauffage compris, pas seulement l'électricité.
+# https://www.aue.corsica/L-OREGES-publie-sa-Lettre-d-information-annuelle-pour-2021_a510.html
+# On ne les déduit pas de nos Parquet : ce périmètre (énergie primaire) n'est pas
+# celui de nos sources EDF (électricité). Une part publiée par son producteur se
+# recopie, comme la moyenne 8 h de l'ozone se recopie du guide LCSQA.
+# Verrouillés par tests/test_resultats.py (somme des postes = 100 %, total importé
+# = le taux de dépendance annoncé de 86,1 %).
+OREGES_2020 = {
+    "petrole": 76.8,       # carburants transports 39,9 + centrales 29,1 + GPL/fioul 7,8
+    "liaisons": 9.3,       # électricité importée par les câbles (Italie, Sardaigne)
+    "grande_hydro": 6.2,
+    "autres_enr": 4.33,    # petite hydro 0,88 + éolien 0,16 + biogaz 0,09
+                           # + solaire thermique 0,30 + bois 1,8 + aérothermie 1,1
+    "solaire": 3.4,        # photovoltaïque
+}
+OREGES_CARBURANTS = 39.9   # le poste qui creuse l'écart : 0 kWh d'électricité
+OREGES_DEPENDANCE = 86.1   # taux de dépendance énergétique publié (2020)
+
+
+def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
+    """Barres 100 % empilées : la dépendance corse sur deux périmètres emboîtés.
+
+    Née d'une affirmation publique (Corse-Matin, 04/08/2026, pétition Acquasole) :
+    « la Corse dépend aujourd'hui à 85 % du pétrole importé et de l'Italie pour son
+    approvisionnement ÉLECTRIQUE ». Le chiffre existe — c'est le taux de dépendance
+    de l'OREGES (86,1 % en 2020) — mais il porte sur TOUTE l'énergie primaire. Sur
+    l'électricité seule, nos données EDF donnent 67,8 %. Contrôle croisé : pour 2020,
+    l'OREGES publie thermique 36 % / liaisons 29,8 %, nos Parquet donnent 36,0 / 29,8.
+
+    Deux populations différentes réunies sur une figure — c'est ici le SUJET, donc
+    chaque barre écrit son périmètre et sa base ; elles ne se comparent pas de tête.
+    Renvoie la figure et la part importée de l'électricité (contrôlée à l'export).
+    """
+    con = _con()
+    e = con.execute(f"""
+      WITH b AS (
+        SELECT sum(production_totale_mw) tot, sum(thermique_mw) th,
+               sum(importations_mw) im, sum(hydraulique_mw) hy,
+               sum(photovoltaique_mw) so,
+               sum(coalesce(micro_hydraulique_mw,0)+eolien_mw+bioenergies_mw) au
+        FROM '{COURBE}')
+      SELECT 100.0*th/tot petrole, 100.0*im/tot liaisons, 100.0*hy/tot grande_hydro,
+             100.0*au/tot autres_enr, 100.0*so/tot solaire
+      FROM b""").df().iloc[0]
+    elec = {c: float(e[c]) for c in OREGES_2020}
+    importe_elec = elec["petrole"] + elec["liaisons"]
+
+    # Ordre d'empilement VALIDÉ (validateur dataviz, mode light, surface #FCFCFB) :
+    # or solaire et sauge hydro séparés par le vert forêt, sinon la paire or↔sauge
+    # tombe à ΔE 14,4 en vision normale — sous le plancher de 15. Dans cet ordre, la
+    # pire adjacence est or↔vert forêt : ΔE 18,8 normal, 11,9 protan. Les deux postes
+    # importés partagent la logique de couleur du reste de l'étude (bleu-nuit = fossile,
+    # violet-gris = câbles) ; l'identité ne repose jamais sur la couleur seule, chaque
+    # segment porte son nom en clair.
+    postes = [
+        ("petrole",      "Produits pétroliers importés", PALETTE["thermique"]),
+        ("liaisons",     "Électricité importée (câbles)", PALETTE["imports"]),
+        ("grande_hydro", "Grande hydraulique",           PALETTE["hydro"]),
+        ("autres_enr",   "Autres renouvelables locaux",  PALETTE["renouv"]),
+        ("solaire",      "Solaire",                      PALETTE["solaire"]),
+    ]
+    barres = ["Toute l'énergie consommée<br>(OREGES, 2020)",
+              "L'électricité seule<br>(EDF, 2019-2024)"]
+
+    # Décimale française — ce sont les seuls chiffres à décimale des visuels (ailleurs
+    # des entiers) : sans cela, un « 76.8 % » voisinerait le « 39,9 % » du même segment.
+    def pct(v: float) -> str:
+        return f"{v:.1f} %".replace(".", ",")
+
+    fig = go.Figure()
+    for cle, libelle, couleur in postes:
+        vals = [OREGES_2020[cle], elec[cle]]
+        # Étiquette directe au-delà de ~5 % : en deçà, le texte au plancher 16 px ne
+        # tient pas dans le segment (le tooltip prend le relais).
+        textes = [pct(v) if v >= 5 else "" for v in vals]
+        # Le poste qui explique TOUT l'écart entre les deux barres se dit dans le
+        # segment lui-même (il est assez large) plutôt qu'en annotation flottante :
+        # une étiquette posée par-dessus les barres retombe en encre sombre sur fond
+        # sombre dès que la figure change de hauteur.
+        if cle == "petrole":
+            textes[0] = (f"{pct(OREGES_2020['petrole'])}<br>dont {pct(OREGES_CARBURANTS)} de "
+                         "carburants des transports — zéro kilowattheure")
+        fig.add_trace(go.Bar(
+            y=barres, x=vals, name=libelle, orientation="h",
+            marker=dict(color=couleur, line=dict(width=2, color=PALETTE["surface"])),
+            text=textes, textposition="inside", insidetextanchor="middle",
+            textfont=dict(family=SANS, size=16, color="#FFFFFF"),
+            hovertext=[pct(v) for v in vals],
+            hovertemplate="%{y}<br>" + libelle + " : %{hovertext}<extra></extra>",
+        ))
+
+    # Frontière « extérieur | île » et son total, AU-DESSUS de la barre : les barres
+    # sont volontairement fines (bargap) pour que cette bande reste libre.
+    for i, val in enumerate([OREGES_DEPENDANCE, importe_elec]):
+        fig.add_shape(type="line", x0=val, x1=val, y0=i - 0.30, y1=i + 0.30,
+                      line=dict(color=PALETTE["ink"], width=2))
+        fig.add_annotation(
+            x=val, y=i, yshift=52, text=f"{pct(val)} vient de l'extérieur ▾",
+            showarrow=False, xanchor="right", xshift=-4,
+            font=dict(family=SANS, size=17, color=PALETTE["ink"]))
+
+    fig.update_layout(
+        title=dict(text="Dépendance corse : 86 % de l'énergie, 68 % de l'électricité"),
+        barmode="stack", bargap=0.52,
+        # Axe X masqué : les segments portent leur %, les deux barres font 100 %.
+        xaxis=dict(range=[0, 100], showgrid=False, showticklabels=False,
+                   ticks="", showline=False, zeroline=False),
+        yaxis=dict(showgrid=False, ticks="", autorange="reversed"),
+        legend=dict(orientation="h", y=-0.16, yanchor="top", x=0, traceorder="normal"),
+        margin=dict(t=150, b=250, l=250, r=56),
+        height=660,
+    )
+    return fig, importe_elec
+
+
+# --- Titre 8 : le plafond n'est pas devant la Corse, il est derrière elle -----
+# Référentiel (cherché, pas déduit) : arrêté du 23 avril 2008 modifié — le gestionnaire
+# de réseau PEUT déconnecter les installations intermittentes SANS STOCKAGE dès que la
+# somme des puissances qu'elles injectent atteint 30 % de la puissance transitant sur le
+# réseau (« dernier arrivé, premier déconnecté »). La Corse bénéficie d'un seuil relevé
+# à 35 %, que le projet de PPE vise à porter à 45 % (Lettre OREGES 2021, p. 8).
+# Ce n'est donc pas un mur physique mais un DROIT de débrancher : la part réelle peut
+# le dépasser, et c'est précisément ce que montre ce visuel.
+SEUIL_NATIONAL = 30
+SEUIL_CORSE = 35
+SEUIL_VISE = 45
+
+
+def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
+    """Heures par an où le solaire et l'éolien corses dépassent les seuils de déconnexion.
+
+    Le fait que le plafond explique : la Corse ne s'approche pas de son seuil, elle vit
+    largement au-dessus, et de plus en plus — le seuil visé pour la décennie (45 %) est
+    lui aussi déjà franchi des centaines d'heures par an. Toute nouvelle installation
+    sans stockage se raccorde donc sous menace de déconnexion, ce qui déplace la question
+    du gisement (le soleil ne manque pas) vers le stockage.
+
+    RÉSERVE portée sur la figure : nos données EDF ne distinguent pas les installations
+    avec stockage — exclues du calcul réglementaire — de celles sans ; la part tracée
+    agrège tout le parc. Elle dit l'ordre de grandeur de la pression sur le seuil, pas
+    la conformité d'une installation. Renvoie (figure, dernière année, heures > seuil corse).
+    """
+    con = _con()
+    df = con.execute(f"""
+      WITH h AS (
+        SELECT extract('year' FROM timezone('Europe/Paris', date_heure)) AS annee,
+               100.0*(greatest(photovoltaique_mw,0)+greatest(eolien_mw,0))
+                    /production_totale_mw AS part
+        FROM '{COURBE}')
+      SELECT annee,
+             sum(CASE WHEN part > {SEUIL_CORSE} THEN 1 ELSE 0 END) AS sup_corse,
+             sum(CASE WHEN part > {SEUIL_VISE}  THEN 1 ELSE 0 END) AS sup_vise
+      FROM h WHERE annee BETWEEN 2019 AND 2024 GROUP BY 1 ORDER BY 1""").df()
+    annees = [int(a) for a in df["annee"]]
+
+    # Deux seuils suffisent : celui EN VIGUEUR en Corse et celui VISÉ. Le seuil national
+    # de 30 % (dont la Corse est déjà dérogataire) est dit en sous-titre — une 3e ligne
+    # n'ajouterait qu'un pas de rampe au contraste insuffisant (1,68:1, validateur).
+    series = [
+        ("sup_vise", f"Au-dessus de {SEUIL_VISE} % (seuil visé par la PPE)", "#6A4616"),
+        ("sup_corse", f"Au-dessus de {SEUIL_CORSE} % (seuil corse en vigueur)",
+         PALETTE["solaire"]),
+    ]
+    def milliers(v: int) -> str:  # séparateur de milliers français
+        return f"{v:,}".replace(",", " ")
+
+    fig = go.Figure()
+    for cle, libelle, couleur in series:
+        vals = [int(v) for v in df[cle]]
+        fig.add_trace(go.Scatter(
+            x=annees, y=vals, name=libelle, mode="lines+markers",
+            line=dict(color=couleur, width=3),
+            marker=dict(size=10, color=couleur,
+                        line=dict(width=2, color=PALETTE["surface"])),
+            hovertemplate="%{x} — " + libelle + " : %{y} h<extra></extra>",
+        ))
+        # Étiquette directe sur le dernier point : l'identité ne tient pas à la légende.
+        fig.add_annotation(x=annees[-1], y=vals[-1], text=f"{milliers(vals[-1])} h",
+                           showarrow=False, xanchor="left", xshift=14,
+                           font=dict(family=SANS, size=17, color=couleur))
+
+    h_fin = int(df["sup_corse"].iloc[-1])
+    h_deb = int(df["sup_corse"].iloc[0])
+    fig.update_layout(
+        title=dict(text=f"{milliers(h_fin)} heures par an au-dessus du seuil qui permet "
+                        "de débrancher le solaire"),
+        xaxis=dict(title=dict(text=""), dtick=1, tickformat="d"),
+        yaxis=dict(title=dict(text="heures dans l'année"), rangemode="tozero"),
+        legend=dict(orientation="h", y=-0.14, yanchor="top", x=0, traceorder="reversed"),
+        margin=dict(t=150, b=250, l=116, r=110),
+        height=640,
+    )
+    return fig, annees[-1], h_fin - h_deb
+
+
 def main() -> int:
     # Garde de publication (AUD-01) : aucune figure ne se dessine depuis une sortie
     # altérée — chaque Parquet est re-vérifié contre la lignée de build AVANT tout
@@ -445,6 +643,35 @@ def main() -> int:
                 note="81 % des heures de bridage ont lieu de mars à juin. Même au pire mois "
                      "(mai 2020 : 141 h),<br>90,5 % de la production ENR intermittente a été "
                      "acceptée — l'écrêtement borne une durée, pas l'énergie perdue du réseau.")
+    fig7, importe_elec = fig_t7_dependance_perimetres()
+    export_html(
+        fig7, "t7_dependance_perimetres",
+        "OREGES de Corse / AUE (Lettre 2021, données 2020) & EDF — Open Data Groupe EDF",
+        d_hist,
+        sous_titre="Deux périmètres emboîtés, deux bases différentes — ils ne se comparent "
+                   "pas de tête.<br>En haut : consommation d'énergie primaire 2020 (605 ktep, "
+                   "tous usages). En bas : électricité servie en Corse,<br>production locale "
+                   "et imports par câble, 2019-2024.",
+        note="Les 86,1 % de l'OREGES couvrent toute l'énergie — carburants et chauffage "
+             "compris.<br>Contrôle croisé 2020 : OREGES 36 % / 29,8 % (thermique / "
+             "liaisons) ; nos données EDF, 36,0 % / 29,8 %.<br>" + NOTE_ESTIME,
+        pied_decalage_px=-130)
+
+    fig8, an8, hausse8 = fig_t8_seuil_deconnexion()
+    export_html(
+        fig8, "t8_seuil_deconnexion", SRC_HIST, d_hist,
+        sous_titre=f"Heures où le solaire et l'éolien dépassent {SEUIL_CORSE} % puis "
+                   f"{SEUIL_VISE} % de la puissance appelée — Corse, 2019-2024.<br>"
+                   f"Au-delà de ce seuil (arrêté du 23 avril 2008 : {SEUIL_NATIONAL} % "
+                   f"ailleurs, {SEUIL_CORSE} % en Corse), le gestionnaire de réseau peut "
+                   "débrancher<br>une installation sans stockage — « dernier arrivé, "
+                   "premier déconnecté ».",
+        note="Nos données EDF ne séparent pas les installations AVEC stockage, exclues du "
+             "calcul réglementaire : la courbe dit la pression sur le seuil,<br>pas la "
+             "conformité d'une installation. Moyennes horaires contre un seuil instantané "
+             "— les dépassements réels sont plus nombreux.<br>" + NOTE_ESTIME,
+        pied_decalage_px=-130)
+
     if Path(SARD).exists():
         export_html(fig_t6_corse_sardaigne(), "t6_corse_sardaigne",
                     "EDF (Corse) & ENTSO-E / Terna (Sardaigne)",
@@ -458,9 +685,13 @@ def main() -> int:
                          "fois plus d'éolien. La Corse compense par la grande hydraulique et les "
                          "câbles. Corse estimée à partir de 2021.",
                     pied_decalage_px=-170)
-        print("\n7 visuels exportés dans outputs/")
+        print("\n9 visuels exportés dans outputs/")
     else:
-        print("\n6 visuels exportés dans outputs/ (t6 Sardaigne sauté — parquet ENTSO-E absent)")
+        print("\n8 visuels exportés dans outputs/ (t6 Sardaigne sauté — parquet ENTSO-E absent)")
+    print(f"[i] t7 — part de l'électricité venue de l'extérieur : {importe_elec:.1f} % "
+          f"(fossile + câbles), contre {OREGES_DEPENDANCE} % sur toute l'énergie.")
+    print(f"[i] t8 — heures au-dessus du seuil corse de {SEUIL_CORSE} % : +{hausse8} h/an "
+          f"entre 2019 et {an8}.")
     return code
 
 
