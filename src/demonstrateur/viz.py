@@ -30,10 +30,25 @@ PALETTE = {
     "hydro":     "#7CA593",  # sauge — grande hydraulique
     "thermique": "#1B2238",  # bleu-nuit — thermique (fossile)
     "imports":   "#5B5566",  # violet-gris — interconnexions
-    "accent":    "#A23D2A",  # terracotta — repère / emphase
+    "accent":    "#A23D2A",  # terracotta — repère / emphase, et l'OZONE du sujet air
+    "azote":     "#2E6E9E",  # bleu — le NO2, antagoniste de l'ozone (titre 3 de l'air)
 }
 
+# Couple catégoriel du sujet air, VALIDÉ au script (mode light, surface #FCFCFB) :
+# bande de clarté, plancher de chroma, séparation CVD ΔE 17,9 (deutan) et 23,0 en vision
+# normale, contraste ≥ 3:1. Le bleu-nuit « thermique » de l'étude électricité a été essayé
+# d'abord et REFUSÉ pour cet emploi : trop sombre et trop désaturé, il échoue au plancher de
+# chroma et « lit comme du gris » dès qu'il sert de série à part entière plutôt que de
+# couleur sémantique du fossile.
+AIR_OZONE = PALETTE["accent"]
+AIR_AZOTE = PALETTE["azote"]
+
 SANS = "system-ui, -apple-system, 'Segoe UI', sans-serif"
+
+# Retrait du pied de figure par rapport au bord gauche de la figure (px). Le pied ne suit
+# pas la marge gauche du tracé : sinon une figure à libellés longs le repousserait vers
+# la droite, où il déborde. Cf. `preparer_figure`.
+PIED_BORD_PX = 20
 
 # Rampe séquentielle « or solaire » (magnitude, heatmap T5) : clarté monotone,
 # pas >= 0.06, teinte unique — validée (validateur dataviz, mode ordinal). Le bout
@@ -115,6 +130,27 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
                 l'est pas). Le défaut (-85) passe sous ticks + titre d'axe ; à creuser
                 quand une légende occupe la bande basse (cf. T6)
     """
+    preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px)
+    dest = OUTPUTS / f"{name}.html"
+    # "directory" : pas de CDN (le visuel se charge sans réseau tiers) ni de JS
+    # embarqué par fichier (~4,5 Mo x5) — une seule copie partagée dans outputs/.
+    # div_id fixe : sans lui, Plotly tire un UUID à chaque export et deux runs sur les
+    # mêmes données produisent des fichiers différents — or la planification ne committe
+    # que ce qui a réellement changé.
+    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name)
+    print(f"[ok] {dest}")
+    return str(dest)
+
+
+def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
+                    note: str = "", pied_decalage_px: int = -85):
+    """Applique le template et incruste la mention de source obligatoire. Renvoie `fig`.
+
+    Extraite d'`export_html` pour que la page d'assemblage obtienne EXACTEMENT les mêmes
+    figures que les fichiers individuels : le sourçage est câblé une seule fois, et une
+    figure ne peut pas se retrouver publiée sans sa mention parce qu'elle a pris un autre
+    chemin de sortie.
+    """
     fig.update_layout(template=template())
     if sous_titre:
         # Commentaire = sous-titre NATIF (un seul bloc avec le titre) : contrairement à
@@ -126,19 +162,22 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     pied = f"Source : {source}{sep}— données collectées le {collecte}"
     if note:
         pied += f"<br>{note}"
+    # Le pied s'aligne sur le bord GAUCHE DE LA FIGURE, pas sur celui de la zone de tracé.
+    # `xref="paper"` place x=0 au début du tracé : une figure à large marge gauche (barres
+    # horizontales, dont les libellés de stations occupent 300 px) poussait donc sa source
+    # d'autant vers la droite, où elle se faisait rogner. Plotly n'accepte pas
+    # `xref="container"` sur une annotation ; le décalage se fait donc en pixels, depuis
+    # la marge déjà fixée par la figure — une valeur en pixels, donc stable quelle que
+    # soit la largeur d'affichage, contrairement à une fraction de zone de tracé.
+    marge_gauche = fig.layout.margin.l
+    if marge_gauche is None:
+        marge_gauche = template().layout.margin.l
     fig.add_annotation(
         text=pied,
         xref="paper", yref="paper", x=0, y=0, yanchor="top", yshift=pied_decalage_px,
+        xshift=-(marge_gauche - PIED_BORD_PX),
         showarrow=False, align="left", xanchor="left",
         # 16px + ink_soft : plancher relevé (22/07) + contraste WCAG AA (muted échouait).
         font=dict(family=SANS, size=16, color=PALETTE["ink_soft"]),
     )
-    dest = OUTPUTS / f"{name}.html"
-    # "directory" : pas de CDN (le visuel se charge sans réseau tiers) ni de JS
-    # embarqué par fichier (~4,5 Mo x5) — une seule copie partagée dans outputs/.
-    # div_id fixe : sans lui, Plotly tire un UUID à chaque export et deux runs sur les
-    # mêmes données produisent des fichiers différents — or la planification ne committe
-    # que ce qui a réellement changé.
-    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name)
-    print(f"[ok] {dest}")
-    return str(dest)
+    return fig

@@ -14,8 +14,24 @@
 #   filename           : nom du fichier local dans data/raw/
 #   licence            : licence de réutilisation (à citer dans chaque visuel)
 #   producteur         : organisme producteur
+#   entetes            : en-têtes HTTP envoyés avec la requête, `nom: valeur`. Les
+#                        valeurs acceptent `${NOM}` comme l'url — tous les producteurs
+#                        ne mettent pas leur jeton dans l'url (Geod'air attend un
+#                        `apikey:`). Même régime que l'url : expansion au seul moment
+#                        du téléchargement, valeur masquée dans tout message, et le
+#                        manifeste n'enregistre que le gabarit — il dit QUE la source
+#                        est authentifiée et par quelle variable, jamais le jeton.
+#                        Un en-tête déclaré ne franchit JAMAIS une redirection qui
+#                        change d'hôte (sinon le jeton partirait chez le tiers).
+#                        Un test refuse tout en-tête d'authentification écrit en dur.
 #   glissant           : true = jeu à fenêtre glissante, re-téléchargé à CHAQUE
 #                        run (le cache n'est jamais un succès pour un jeu périssable)
+#   date_url           : hier | aujourdhui — résout les jetons {AAAA}/{MM}/{JJ} de
+#                        l'url pour les producteurs qui publient UN FICHIER PAR JOUR
+#                        sans url stable (LCSQA). Contrairement à un secret, la date
+#                        résolue EST écrite dans le manifeste : savoir quelle journée
+#                        a été certifiée fait partie de la traçabilité. « hier » =
+#                        journée close, donc 24 h complètes.
 #   notes              : contexte, points à vérifier
 #
 # Champs de VALIDATION (fetch.py refuse d'enregistrer une donnée qui ne
@@ -192,3 +208,354 @@ sources:
     format: xml
     racine_attendue: GL_MarketDocument
     empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
+
+  # --- Qualité de l'air : concentrations horaires de polluants réglementés ---
+  # Flux « temps réel » national du LCSQA (format E2, celui du rapportage européen).
+  # Aucune url stable : un fichier PAR JOUR, d'où les jetons {AAAA}/{MM}/{JJ} et
+  # date_url. Archivé depuis 2021 sur le bucket, publié le jour même.
+  # Périmètre corse (relevé le 30/07/2026) : 6 stations mesurent l'ozone — Ajaccio
+  # Canetto, Ajaccio Confina 2, Bastia Giraud, Bastia Montesoro, Bastia La Marana,
+  # Venaco (seule rurale de l'île). Les 2 stations trafic n'en mesurent pas.
+  # Cf. docs/BRIEF_AIR.md pour la question fermée et les garde-fous.
+  lcsqa_temps_reel:
+    url: "https://files.data.gouv.fr/ineris/lcsqa/concentrations-de-polluants-atmospheriques-reglementes/temps-reel/{AAAA}/FR_E2_{AAAA}-{MM}-{JJ}.csv"
+    filename: "lcsqa_temps_reel.csv"
+    licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
+    producteur: "LCSQA / Ineris — mesures des AASQA (Qualitair Corse pour l'île)"
+    glissant: true      # une journée nouvelle chaque jour : le cache serait un faux succès
+    # « avant-hier » et non « hier » : ALIGNEMENT sur Météo-France, pas prudence. Le
+    # fichier météo est réécrit au petit matin, sa dernière journée est tronquée et prepare
+    # la coupe — sa dernière journée complète est J-2 quand le LCSQA publie déjà J-1. À
+    # « hier », les deux sources n'ont jamais une journée en commun (vérifié le 01/08/2026 :
+    # air au 31/07, météo au 30/07, sortis du MÊME run) et le croisement ozone x chaleur
+    # promis par le BRIEF devenait impossible sur la donnée fraîche. Un jour de fraîcheur
+    # en moins ne coûte rien ; ne jamais pouvoir croiser, si.
+    date_url: avant-hier
+    format: csv
+    delimiter: ";"
+    colonnes_attendues: [Zas, nom site, Polluant, valeur, validité]
+    notes: >
+      Fichier NATIONAL (~12,7 Mo/jour, ~48 000 lignes), la Corse en représente ~1 % :
+      le filtrage se fait en aval, dans prepare — on empreinte l'octet reçu, jamais un
+      dérivé. Valeurs en µg/m³, moyennes horaires BRUTES et NON VALIDÉES : la colonne
+      « validité » peut être négative (vu le 30/07/2026 sur Bastia Giraud) et doit être
+      filtrée avant tout calcul. L'historique validé viendra de Geod'air (API à clé),
+      source figée distincte — cf. docs/BRIEF_AIR.md.
+
+  # --- Températures horaires corses (Météo-France) : le croisement du BRIEF air ---
+  # PIÈGE DE PÉRIMÈTRE, vérifié le 01/08/2026 : pour ce jeu, Météo-France ne connaît
+  # NI 2A NI 2B — l'île entière est publiée sous le département « 20 » (aucune ressource
+  # H_2A_/H_2B_ dans le catalogue ; 57 postes sous H_20_). Un seul fichier, pas deux.
+  # Le découpage du producteur épouse notre politique de fraîcheur à la lettre :
+  #   H_20_latest-2025-2026.csv.gz    deux dernières années, réécrit chaque jour -> glissant
+  #   H_20_previous-2020-2024.csv.gz  historique clos (82 Mo)                    -> figé
+  # Le « previous » n'est PAS déclaré : il n'a de sens qu'en face de l'historique Geod'air,
+  # dont ni la profondeur ni la date d'arrivée ne sont tranchées. Le jour venu, une entrée
+  # figée de plus suffit — même url, même format.
+  # ATTENTION : l'url porte ses millésimes. « latest-2025-2026 » deviendra
+  # « latest-2026-2027 » au changement d'année ; aucun jeton {AAAA} ne sait écrire une
+  # paire d'années. À corriger à la main en janvier 2027 — l'échec sera bruyant (404).
+  # --- Températures horaires corses, tranche CLOSE 2020-2024 ---
+  # Déclarée le 01/08/2026, quand l'historique d'ozone est arrivé : jusque-là ces 82 Mo
+  # n'auraient été lus par personne, et leur empreinte re-vérifiée à chaque run pour rien.
+  # Le brief l'avait prévu ainsi — « le jour venu, c'est une entrée figée de plus, même url,
+  # même format ». Vérifiée sur pièce le 01/08/2026 : 81,9 Mo, 206 colonnes, première ligne
+  # AJACCIO au 01/01/2020 à 00 h. Elle se raccorde sans trou au fichier glissant, qui
+  # reprend au 01/01/2025 — le producteur découpe exactement là où la profondeur a été
+  # tranchée. FIGÉE : tranche close, jamais réécrite, donc jamais retéléchargée.
+  meteo_horaire_corse_2020_2024:
+    url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_previous-2020-2024.csv.gz"
+    filename: "meteo_horaire_corse_2020_2024.csv.gz"
+    licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
+    producteur: "Météo-France — données climatologiques de base, horaires (département 20)"
+    format: csv.gz
+    delimiter: ";"
+    colonnes_attendues: [NUM_POSTE, NOM_USUEL, AAAAMMJJHH, T, QT]
+    notes: >
+      Tranche close 2020-2024, pendant figé du fichier glissant. Mêmes colonnes, même
+      fuseau UTC, mêmes codes qualité QT. Sa dernière journée n'est PAS tronquée
+      (contrairement au glissant) : le fichier ne sera plus jamais réécrit.
+
+  meteo_horaire_corse:
+    url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz"
+    filename: "meteo_horaire_corse.csv.gz"
+    licence: "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence"
+    producteur: "Météo-France — données climatologiques de base, horaires (département 20)"
+    glissant: true      # réécrit quotidiennement : sans re-téléchargement, hier n'y est pas
+    format: csv.gz
+    delimiter: ";"
+    colonnes_attendues: [NUM_POSTE, NOM_USUEL, AAAAMMJJHH, T, QT]
+    notes: >
+      ~27 Mo, 57 postes, ~755 000 lignes horaires depuis le 01/01/2025. T = température
+      sous abri instantanée (°C et 1/10) ; AAAAMMJJHH est en UTC, comme les sources EDF.
+      GARDE-FOU, la DERNIÈRE journée du fichier est TRONQUÉE : rafraîchi vers 05 h 47 UTC,
+      il s'arrête aux petites heures du jour de publication (relevé le 01/08/2026 : dernière
+      heure = 2026-07-31 03 h UTC). Une « journée » de 4 heures fausserait tout maximum
+      journalier — la dernière date se coupe dans prepare, et le croisement avec le LCSQA
+      (date_url: hier) porte sur la dernière journée COMPLÈTE commune aux deux sources,
+      jamais sur la date la plus récente de l'une d'elles.
+      QT est le code qualité, et il se filtre avant tout calcul, exactement comme la
+      « validité » du LCSQA : 0 = protégée (validée par le climatologue), 1 = validée,
+      9 = filtrée (contrôles de premier niveau), 2 = DOUTEUSE en cours de vérification.
+      Relevé le 01/08/2026 : 735 053 heures en 1 et 17 440 en 9, aucune en 2 — le filtre
+      reste dû, une valeur pouvant être remise en doute au fil des révisions.
+      PIÈGE DE NOMMAGE : le poste « BASTIA » (20148001) n'est PAS à Bastia — 20148 = 2B148
+      = Lucciana, c'est l'aéroport de Poretta, dans la plaine de la Marana. Bastia ville,
+      c'est « BASTIA_SAPC » (20033015, 2B033). Le code commune que porte NUM_POSTE tranche
+      là où le nom trompe : les deux postes sont distants de 18,5 km. Postes retenus face aux
+      6 stations d'ozone : AJACCIO-MILELLI_SAPC (20004014) pour le Canetto, à 1,88 km, et non
+      Campo dell'Oro (20004002) 2,5 fois plus loin ; mais Campo dell'Oro pour CONFINA 2, qui
+      en est 2 fois plus près et domine la plaine de la Gravona — les deux stations d'Ajaccio
+      sont à 5,6 km l'une de l'autre et ne partagent pas leur poste ; BASTIA_SAPC pour les deux
+      stations urbaines de Bastia, BASTIA/Poretta pour celle de la Marana ; VIVARIO_SAPC (20354008)
+      pour Venaco, qui n'a aucun poste sur sa commune — et NON Corte, pourtant plus proche
+      en distance comme en altitude, dont la cuvette encaissée creuse l'amplitude diurne.
+      L'appariement complet et ses raisons sont dans `prepare.APPARIEMENT_AIR_METEO` ; il
+      s'écrit sur la figure : ce n'est pas la même mesure au même endroit.
+      Le fichier porte ~200 colonnes (vent, pression, nébulosité…) ; GLO (rayonnement
+      global, J/cm²) est le seul autre champ tentant pour l'ozone — hors BRIEF, à ne pas
+      ouvrir sans décision.
+
+  # ============================================================================
+  # OZONE — Agence européenne pour l'environnement (AEE), un Parquet par station
+  # ============================================================================
+  # Bascule actée le 01/08/2026 : l'AEE sert la MÊME donnée que Geod'air, sans clé.
+  # Le namespace des fichiers le dit — FR.LCSQA-INERIS.AQ : ce sont les mesures de
+  # Qualitair Corse, rapportées par le LCSQA, telles que la France les transmet à
+  # l'Europe. Deux jeux se raccordent bout à bout, distingués par le conteneur :
+  #   airquality-p-e1a/  jeu E1a, données VALIDÉES, 2013 -> 01/01/2025      -> figé
+  #   airquality-p/      jeu E2a, flux continu, 2025 -> ce matin            -> glissant
+  # La colonne `Verification` porte la frontière DANS la donnée (1 = vérifié,
+  # 2 = préliminaire, 3 = non vérifié) : les deux régimes du livrable n'ont pas à
+  # être reconstitués, le producteur les déclare ligne à ligne.
+  #
+  # FUSEAU : UTC+1 FIXE, horodatage en FIN de période — l'inverse du flux LCSQA, qui
+  # étiquette le début. Établi sur pièce, pas supposé : le décalage entre les deux
+  # sources vaut +1 h en été COMME en hiver (écart max 0,00 µg/m³ sur les journées
+  # communes du 30/07/2026 et du 15/01/2025). Un décalage de fuseau aurait varié d'une
+  # saison à l'autre ; un décalage d'étiquetage, non. La conversion se fait dans prepare.
+  #
+  # URL déterministe : SPO-<code station>_<code polluant>.parquet, 7 = ozone. Les codes
+  # station sont ceux de STATIONS_AIR (prepare.py), issus du référentiel du producteur.
+  # Léger : ~230 Ko pour 19 mois de flux continu, ~1,5 Mo pour douze ans de validé.
+
+  aee_o3_ajaccio_canetto_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41001_7.parquet"
+    filename: "aee_o3_ajaccio_canetto_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "AJACCIO CANETTO — ozone, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_o3_ajaccio_canetto_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41001_7.parquet"
+    filename: "aee_o3_ajaccio_canetto_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "AJACCIO CANETTO — ozone, 01/01/2025 -> ce matin, non vérifié."
+
+  aee_o3_ajaccio_confina2_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_7.parquet"
+    filename: "aee_o3_ajaccio_confina2_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "AJACCIO CONFINA 2 — ozone, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_o3_ajaccio_confina2_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41063_7.parquet"
+    filename: "aee_o3_ajaccio_confina2_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "AJACCIO CONFINA 2 — ozone, 01/01/2025 -> ce matin, non vérifié."
+
+  aee_o3_bastia_giraud_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_7.parquet"
+    filename: "aee_o3_bastia_giraud_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "BASTIA GIRAUD — ozone, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_o3_bastia_giraud_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41002_7.parquet"
+    filename: "aee_o3_bastia_giraud_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "BASTIA GIRAUD — ozone, 01/01/2025 -> ce matin, non vérifié."
+
+  aee_o3_bastia_montesoro_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_7.parquet"
+    filename: "aee_o3_bastia_montesoro_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "BASTIA MONTESORO — ozone, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_o3_bastia_montesoro_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41017_7.parquet"
+    filename: "aee_o3_bastia_montesoro_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "BASTIA MONTESORO — ozone, 01/01/2025 -> ce matin, non vérifié."
+
+  aee_o3_bastia_marana_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_7.parquet"
+    filename: "aee_o3_bastia_marana_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "BASTIA LA MARANA — ozone, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_o3_bastia_marana_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41004_7.parquet"
+    filename: "aee_o3_bastia_marana_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "BASTIA LA MARANA — ozone, 01/01/2025 -> ce matin, non vérifié."
+
+  aee_o3_venaco_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41024_7.parquet"
+    filename: "aee_o3_venaco_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "VENACO — ozone, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_o3_venaco_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41024_7.parquet"
+    filename: "aee_o3_venaco_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "VENACO — ozone, 01/01/2025 -> ce matin, non vérifié."
+
+  # ============================================================================
+  # DIOXYDE D'AZOTE — AEE, mêmes conteneurs, code polluant 8
+  # ============================================================================
+  # Sert le titre n° 3 du BRIEF (« le pic n'est pas à l'heure de pointe ») : l'heure
+  # du maximum d'ozone contre celle du maximum de NO2, À STATION CONSTANTE. D'où ces
+  # CINQ stations et non six — Venaco a mesuré le NO2 par le passé (le jeu validé en
+  # porte), mais ne le mesure plus aujourd'hui. Comparer deux polluants au même endroit
+  # exige qu'ils y soient tous deux mesurés : la station rurale sort du titre n° 3, et
+  # n'a de toute façon pas d'heure de pointe à opposer.
+  # Tout le reste est identique à l'ozone : conteneurs, fuseau (UTC+1 fixe, fin de
+  # période), raccord des deux jeux, colonne Verification.
+
+  aee_no2_ajaccio_canetto_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41001_8.parquet"
+    filename: "aee_no2_ajaccio_canetto_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "AJACCIO CANETTO — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_no2_ajaccio_canetto_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41001_8.parquet"
+    filename: "aee_no2_ajaccio_canetto_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "AJACCIO CANETTO — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."
+
+  aee_no2_ajaccio_confina2_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_8.parquet"
+    filename: "aee_no2_ajaccio_confina2_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "AJACCIO CONFINA 2 — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_no2_ajaccio_confina2_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41063_8.parquet"
+    filename: "aee_no2_ajaccio_confina2_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "AJACCIO CONFINA 2 — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."
+
+  aee_no2_bastia_giraud_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_8.parquet"
+    filename: "aee_no2_bastia_giraud_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "BASTIA GIRAUD — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_no2_bastia_giraud_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41002_8.parquet"
+    filename: "aee_no2_bastia_giraud_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "BASTIA GIRAUD — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."
+
+  aee_no2_bastia_montesoro_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_8.parquet"
+    filename: "aee_no2_bastia_montesoro_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "BASTIA MONTESORO — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_no2_bastia_montesoro_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41017_8.parquet"
+    filename: "aee_no2_bastia_montesoro_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "BASTIA MONTESORO — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."
+
+  aee_no2_bastia_marana_valide:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_8.parquet"
+    filename: "aee_no2_bastia_marana_valide.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    notes: "BASTIA LA MARANA — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+
+  aee_no2_bastia_marana_continu:
+    url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41004_8.parquet"
+    filename: "aee_no2_bastia_marana_continu.parquet"
+    licence: "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris"
+    producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
+    format: parquet
+    colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
+    glissant: true
+    notes: "BASTIA LA MARANA — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."

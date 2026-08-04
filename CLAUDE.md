@@ -45,6 +45,12 @@ calcule son empreinte SHA-256 (canonique quand une source réestampille une enve
 volatile à chaque requête, cf. `empreinte_ignore_xml`) et écrit **`data/raw/_manifest.json`**. Une `url` peut
 référencer une variable d'environnement `${NOM}` (jeton d'API, ex. `${ENTSOE_TOKEN}`) :
 expansion au téléchargement uniquement, jamais de secret dans le manifeste ni les logs.
+Le même `${NOM}` vaut pour les **en-têtes HTTP** déclarés dans `entetes:` (jeton porté
+hors de l'url, ex. l'`apikey:` de Geod'air) : le manifeste n'enregistre que le gabarit, et
+un en-tête déclaré ne franchit jamais une redirection qui change d'hôte — httpx retire
+`Authorization` de lui-même, pas un en-tête maison. Ces trois sorties possibles d'un
+secret (log, manifeste, réseau) sont tenues par `tests/test_secrets.py`, pas par la
+vigilance.
 Formats validés : `csv`, `csv.gz`, `json`/`geojson` (`cle_attendue`), `xml`
 (`racine_attendue` — une API en erreur peut renvoyer HTTP 200 avec un document d'erreur,
 qu'il ne faut jamais empreinter comme donnée). Ce manifeste est
@@ -61,7 +67,13 @@ les échecs n'interrompent pas les autres sources (retour code 1 en fin de run).
 
 **`prepare.py`** → DuckDB lit les `.csv.gz` directement (sans tout charger en mémoire) et
 produit des Parquet dans `data/processed/`. Ajouter une transformation = une fonction ici,
-appelée depuis `main()`. Avant toute lecture, chaque brut est **vérifié contre son empreinte**
+appelée depuis `main()`. **Une statistique réglementaire ne se déduit pas, elle se recopie
+depuis le guide de son producteur, et se verrouille sur l'exemple chiffré de ce guide** :
+la moyenne glissante 8 h de l'ozone suit le § 5.3.3 du guide LCSQA/Ineris, et
+`tests/test_ozone_8h.py` rejoue son tableau 26 — c'est lui qui a corrigé le calcul, pas
+une relecture. Une sortie qui dérive d'une autre sortie (`air_o3_mda8.parquet`) lit son
+amont dans le dossier de `dest`, donc le **staging** : `data/processed` contiendrait
+encore le run précédent. Avant toute lecture, chaque brut est **vérifié contre son empreinte**
 de manifeste (un Parquet ne dérive jamais d'une donnée non certifiée) ; la construction se fait
 en **staging puis bascule d'un bloc** — pas de sortie publiée à moitié. `prepare` écrit
 **`data/processed/_build.json`** : la lignée qui relie chaque sortie à ses sources, à sa propre

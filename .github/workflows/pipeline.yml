@@ -1,6 +1,11 @@
 # Rafraîchissement planifié du pipeline : fetch → prepare → figures → verrous → commit.
 # Garde frais le mix temps réel (T1 « en ce moment » avertit > 24 h et bloque > 48 h) :
 # seuls outputs/ et data/raw/_manifest.json — déjà versionnés — sont commités.
+#
+# DEUX SUJETS, DEUX JEUX DE VISUELS. Toute sortie du livrable doit être régénérée ici :
+# une figure produite à la main sur un poste finit par diverger de la donnée, et le run
+# suivant l'écraserait ou la laisserait vieillir en silence. D'où les étapes « air »,
+# ajoutées le 01/08/2026 — elles manquaient, et rien ne l'aurait signalé.
 # Ne tourne que depuis la branche par défaut (règle GitHub pour les crons).
 
 name: pipeline
@@ -22,7 +27,10 @@ concurrency:
 jobs:
   rafraichir:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # 25 min : le premier run après l'arrivée du sujet air télécharge ~90 Mo de plus
+    # (tranche météo close 2020-2024, et les Parquet de l'AEE). Les runs suivants les
+    # retrouvent dans le cache — sauf éviction, cf. la note sur le volume ci-dessous.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
 
@@ -39,11 +47,23 @@ jobs:
       # Les sources figées ne sont ainsi pas re-téléchargées, et si le rafraîchissement
       # du temps réel échoue, fetch conserve le relevé précédent (au lieu de repartir
       # de zéro et de faire échouer prepare).
+      # CLÉ INDEXÉE SUR sources.yaml, et non sur l'identifiant de run (corrigé le
+      # 01/08/2026). Avec `github.run_id`, chaque passage écrivait une entrée NEUVE : depuis
+      # le sujet air, data/raw approche 150 Mo, soit 600 Mo de cache par jour à raison de
+      # quatre runs — le quota de 10 Go se remplissait en deux semaines, puis l'éviction
+      # forçait un retéléchargement complet. Indexée sur le contenu de sources.yaml, une
+      # seule entrée existe par version du fichier ; elle n'est réécrite que le jour où une
+      # source est ajoutée ou modifiée, et `restore-keys` récupère alors la précédente pour
+      # ne télécharger que la nouveauté.
+      # Contrepartie assumée : les jeux GLISSANTS que le cache conserve restent ceux du
+      # premier run. Sans conséquence — ils sont rafraîchis à chaque passage par
+      # définition, et s'ils ne l'étaient pas, la garde de fraîcheur de T1 le dirait
+      # (avertissement au-delà de 24 h, blocage au-delà de 48 h). À surveiller si la durée des runs dérive.
       - name: Restaurer data/raw des runs précédents
         uses: actions/cache@v4
         with:
           path: data/raw
-          key: data-raw-${{ github.run_id }}
+          key: data-raw-${{ hashFiles('sources.yaml') }}
           restore-keys: data-raw-
 
       # Le cache ne transporte que la DONNÉE : _manifest.json, lui, est versionné et
@@ -68,12 +88,22 @@ jobs:
       - name: Préparation (Parquet)
         run: python -m demonstrateur.prepare
 
-      - name: Figures
+      - name: Figures — électricité
         id: figures
         # Code 1 = relevé > 48 h : le visuel T1 dégradé (affichage suspendu) doit être
         # publié quand même — c'est lui qui dit la vérité au lecteur.
         continue-on-error: true
         run: python -m demonstrateur.figures
+
+      # Pas de continue-on-error ici, à la différence de l'étape électricité : celle-ci
+      # tolère un code 1 parce qu'un T1 « affichage suspendu » DOIT être publié. Les
+      # figures de l'air, elles, refusent de se dessiner quand leur titre devient faux
+      # (une garde par figure) — c'est précisément le cas où il ne faut RIEN publier.
+      - name: Figures — air, note et page assemblée
+        run: |
+          python -m demonstrateur.figures_air
+          python -m demonstrateur.note_air
+          python -m demonstrateur.page_air
 
       # Garde-fou avant publication : si un verrou de résultat casse (données EDF
       # révisées, changement de version de lib…), on ne committe rien et le run alerte.

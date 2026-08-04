@@ -30,6 +30,20 @@ avec `${NOM}` (ex. jeton d'API ENTSO-E). L'expansion n'a lieu qu'au moment du
 téléchargement : le manifeste et les messages d'erreur ne contiennent JAMAIS la
 valeur du secret (seulement le gabarit `${NOM}`). Variable absente ou vide =
 échec de la source, sans interrompre les autres.
+
+Le même `${NOM}` vaut pour les **en-têtes HTTP**, déclarés dans `entetes:` — tous
+les producteurs ne mettent pas leur jeton dans l'url (Geod'air attend un `apikey:`).
+Un en-tête n'est pas moins secret parce qu'il ne se voit pas dans une url : il suit
+exactement le même régime, expansion tardive et masquage de la valeur partout. Le
+manifeste enregistre le NOM de l'en-tête et le gabarit — savoir qu'une source est
+entrée sous authentification fait partie de sa traçabilité, connaître le jeton non.
+
+Sources publiées par jour : certains producteurs (LCSQA) n'exposent aucune url
+stable, seulement un fichier par journée. L'url peut alors porter les jetons
+`{AAAA}`, `{MM}`, `{JJ}`, résolus par `date_url: hier | aujourdhui`. À l'inverse
+d'un secret, la date résolue EST écrite dans le manifeste : savoir quelle journée
+a été certifiée est le cœur de la traçabilité. `hier` est le choix sûr pour un
+fichier qui se remplit au fil des heures — il garantit 24 h complètes.
 """
 
 from __future__ import annotations
@@ -41,7 +55,7 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ET
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import httpx
@@ -52,6 +66,17 @@ from .provenance import empreinte
 
 _HTML_TYPES = {"text/html", "application/xhtml+xml"}
 _VAR_ENV_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
+# Accolades SIMPLES, distinctes du `${NOM}` des secrets : les deux syntaxes ne peuvent
+# pas se confondre, et un `%` d'url encodée (%2F) n'est jamais interprété au passage.
+_JETON_DATE_RE = re.compile(r"\{(AAAA|MM|JJ)\}")
+_MAX_REDIRECTIONS = 10
+# Journée visée par `date_url`, en jours de recul. « avant-hier » n'est pas un excès de
+# prudence : il ALIGNE deux producteurs qui ne publient pas au même rythme. Le fichier
+# météo est réécrit au petit matin et sa dernière journée, tronquée, est coupée par
+# prepare — sa dernière journée complète est donc J-2 quand le flux d'air offre J-1. À
+# « hier », les deux sources ne partagent JAMAIS une journée, et le croisement promis par
+# le BRIEF (l'ozone et la chaleur du même jour) est hors d'atteinte. Cf. docs/BRIEF_AIR.md.
+_DECALAGE_JOUR = {"avant-hier": 2, "hier": 1, "aujourdhui": 0}
 
 
 def _load_manifest() -> dict:
@@ -92,6 +117,65 @@ def _expanser_env(url: str) -> tuple[str, list[str]]:
     return _VAR_ENV_RE.sub(_rempl, url), secrets
 
 
+def _expanser_entetes(entetes: dict | None) -> tuple[dict[str, str], list[str]]:
+    """Expanse les `${NOM}` des valeurs d'en-têtes HTTP, comme pour une url.
+
+    Renvoie (en-têtes prêts pour httpx, valeurs de secrets injectées — à masquer
+    dans tout message). Une déclaration mal formée (autre chose qu'un dictionnaire,
+    valeur non textuelle) est une erreur de configuration, pas un en-tête à deviner :
+    envoyer un jeton tronqué obtiendrait un 401 dont la cause serait introuvable.
+    """
+    if not entetes:
+        return {}, []
+    if not isinstance(entetes, dict):
+        raise ValueError(
+            f"entetes doit être un dictionnaire nom: valeur (reçu {type(entetes).__name__})"
+        )
+    prets: dict[str, str] = {}
+    secrets: list[str] = []
+    for nom, valeur in entetes.items():
+        if not isinstance(valeur, str):
+            raise ValueError(
+                f"en-tête {nom!r} : valeur textuelle attendue (reçu {type(valeur).__name__}) — "
+                "un jeton se déclare entre guillemets dans sources.yaml"
+            )
+        valeur_reelle, trouves = _expanser_env(valeur)
+        prets[str(nom)] = valeur_reelle
+        secrets.extend(trouves)
+    return prets, secrets
+
+
+def _expanser_date(url: str, quand: str | None) -> str:
+    """Remplace les jetons `{AAAA}`/`{MM}`/`{JJ}` d'une url par la date demandée.
+
+    `quand` vaut « aujourdhui » (fichier encore en cours de remplissage), « hier »
+    (journée close, donc complète) ou « avant-hier » (journée close ET déjà publiée par
+    les producteurs plus lents — cf. `_DECALAGE_JOUR`). Les deux déclarations doivent
+    être cohérentes : un `date_url` sans jeton dans l'url, ou l'inverse, est une erreur
+    de configuration — pas un silence qui téléchargerait la mauvaise chose.
+    """
+    porte_jetons = bool(_JETON_DATE_RE.search(url))
+    if not porte_jetons and not quand:
+        return url
+    if not porte_jetons:
+        raise ValueError(
+            f"date_url={quand!r} déclaré mais l'url ne porte aucun jeton "
+            "{AAAA}/{MM}/{JJ} — déclaration incohérente"
+        )
+    if quand is None:
+        raise ValueError(
+            "l'url porte des jetons {AAAA}/{MM}/{JJ} mais date_url n'est pas déclaré "
+            "(attendu : hier | aujourdhui)"
+        )
+    if quand not in _DECALAGE_JOUR:
+        raise ValueError(
+            f"date_url={quand!r} inconnu — attendu : {' | '.join(_DECALAGE_JOUR)}"
+        )
+    jour = date.today() - timedelta(days=_DECALAGE_JOUR[quand])
+    valeurs = {"AAAA": f"{jour.year:04d}", "MM": f"{jour.month:02d}", "JJ": f"{jour.day:02d}"}
+    return _JETON_DATE_RE.sub(lambda m: valeurs[m.group(1)], url)
+
+
 def _masquer(texte: str, secrets: list[str]) -> str:
     """Neutralise tout secret dans un message d'erreur (httpx cite l'url complète).
 
@@ -109,20 +193,45 @@ def _masquer(texte: str, secrets: list[str]) -> str:
     return texte
 
 
-def _download(url: str, dest: Path) -> str:
+def _download(url: str, dest: Path, entetes: dict[str, str] | None = None) -> str:
     """Télécharge url vers dest en streaming. Retourne le content-type du serveur.
 
     L'empreinte n'est plus calculée ici : elle l'est par provenance.empreinte APRÈS
     validation, car pour certaines sources (ENTSO-E) elle porte sur une forme canonique
     du fichier et non sur les octets bruts reçus.
+
+    `entetes` porte les en-têtes déjà expansés (cf. _expanser_entetes). Ils ne sont
+    jamais journalisés ici : c'est l'appelant qui masque, avec la liste des secrets.
+
+    Les redirections sont suivies à la main, et non par `follow_redirects`, pour une
+    raison de sécurité : httpx retire de lui-même l'en-tête `Authorization` quand
+    l'origine change, mais pas un en-tête maison comme `apikey:`. Un producteur qui
+    renvoie vers un stockage tiers livrerait le jeton à ce tiers — fuite silencieuse,
+    aucun message d'erreur. Ici, un en-tête déclaré ne franchit jamais un changement
+    d'hôte ; le permalien data.gouv de l'écrêtement EDF, lui, continue de rediriger
+    sans rien à perdre, faute d'en-tête.
     """
-    with httpx.stream("GET", url, follow_redirects=True, timeout=180.0) as r:
-        r.raise_for_status()
-        content_type = r.headers.get("content-type", "")
-        with open(dest, "wb") as f:
-            for chunk in r.iter_bytes():
-                f.write(chunk)
-    return content_type
+    origine = httpx.URL(url).netloc
+    courant = url
+    with httpx.Client(timeout=180.0, follow_redirects=False) as client:
+        for _ in range(_MAX_REDIRECTIONS):
+            porte_secret = bool(entetes) and httpx.URL(courant).netloc == origine
+            with client.stream("GET", courant, headers=entetes if porte_secret else None) as r:
+                if r.is_redirect:
+                    courant = str(httpx.URL(courant).join(r.headers["location"]))
+                    continue
+                if r.status_code // 100 == 3:
+                    raise ValueError(
+                        f"redirection HTTP {r.status_code} sans en-tête Location — "
+                        "réponse inexploitable"
+                    )
+                r.raise_for_status()
+                content_type = r.headers.get("content-type", "")
+                with open(dest, "wb") as f:
+                    for chunk in r.iter_bytes():
+                        f.write(chunk)
+                return content_type
+    raise ValueError(f"plus de {_MAX_REDIRECTIONS} redirections — boucle probable")
 
 
 def _sync_declaratif(entry: dict, meta: dict) -> list[str]:
@@ -142,6 +251,15 @@ def _sync_declaratif(entry: dict, meta: dict) -> list[str]:
     if entry.get("format") != fmt:
         entry["format"] = fmt
         modifies.append("format")
+    # Les en-têtes suivent la déclaration comme le reste : une source figée dont le
+    # producteur change de nom d'en-tête ne doit pas garder l'ancien au manifeste.
+    entetes = _gabarit_entetes(meta)
+    if entetes != (entry.get("entetes") or {}):
+        if entetes:
+            entry["entetes"] = entetes
+        else:
+            entry.pop("entetes", None)
+        modifies.append("entetes")
     return modifies
 
 
@@ -150,10 +268,20 @@ def _format(meta: dict) -> str:
     if meta.get("format"):
         return str(meta["format"]).lower()
     nom = meta["filename"].lower()
-    for ext in ("csv.gz", "geojson", "json", "xml", "csv"):
+    for ext in ("csv.gz", "geojson", "json", "xml", "csv", "parquet"):
         if nom.endswith("." + ext):
             return ext
     return ""
+
+
+def _gabarit_entetes(meta: dict) -> dict[str, str]:
+    """En-têtes TELS QUE DÉCLARÉS dans sources.yaml — `${NOM}` non expansé.
+
+    C'est cette forme, et elle seule, qui a le droit d'entrer dans le manifeste
+    versionné : elle dit qu'une source exige une authentification, et par quelle
+    variable d'environnement elle passe, sans jamais dire le jeton.
+    """
+    return {str(nom): str(valeur) for nom, valeur in (meta.get("entetes") or {}).items()}
 
 
 def _entree_certifiee(already: dict, meta: dict, dest: Path, sha: str,
@@ -177,6 +305,11 @@ def _entree_certifiee(already: dict, meta: dict, dest: Path, sha: str,
         "content_type": content_type or already.get("content_type", ""),
         "sha256": sha,
     }
+    # En-têtes : le GABARIT, jamais la valeur expansée — meta porte la déclaration de
+    # sources.yaml, l'expansion vit dans une variable locale de main() qui meurt avec elle.
+    entetes = _gabarit_entetes(meta)
+    if entetes:
+        entree["entetes"] = entetes
     ignore = meta.get("empreinte_ignore_xml")
     if ignore:
         entree["empreinte_ignore_xml"] = list(ignore)
@@ -220,7 +353,9 @@ def _valider(dest: Path, meta: dict, content_type: str) -> None:
     if fmt in {"csv", "csv.gz"}:
         entete = _entete_csv(dest, gz=(fmt == "csv.gz"))
         delim = meta.get("delimiter", ",")
-        cols = [c.strip() for c in entete.split(delim)]
+        # .strip('"') : les producteurs qui citent leurs en-têtes ("Polluant";"valeur",
+        # cas du flux E2) ne doivent pas obliger à déclarer les guillemets dans sources.yaml.
+        cols = [c.strip().strip('"') for c in entete.split(delim)]
         if len(cols) < 2:
             raise ValueError(
                 f"en-tête non tabulaire avec le délimiteur {delim!r} : {entete[:80]!r}"
@@ -236,6 +371,41 @@ def _valider(dest: Path, meta: dict, content_type: str) -> None:
         cle = meta.get("cle_attendue")
         if cle and (not isinstance(obj, dict) or cle not in obj):
             raise ValueError(f"clé racine {cle!r} absente du JSON")
+    elif fmt == "parquet":
+        # Un fichier Parquet s'ouvre ET se referme par le nombre magique « PAR1 » : le
+        # contrôle coûte huit octets et attrape aussi bien une page d'erreur qu'un
+        # téléchargement tronqué, cas qu'un simple contrôle de taille laisserait passer.
+        if dest.stat().st_size < 8:
+            raise ValueError(f"fichier Parquet trop court ({dest.stat().st_size} octets)")
+        with open(dest, "rb") as f:
+            tete = f.read(4)
+            f.seek(-4, 2)
+            pied = f.read(4)
+        if tete != b"PAR1" or pied != b"PAR1":
+            raise ValueError(
+                f"nombre magique Parquet absent (début {tete!r}, fin {pied!r}) — "
+                "réponse d'erreur ou fichier tronqué"
+            )
+        attendues = meta.get("colonnes_attendues", [])
+        if attendues:
+            # DuckDB lit le seul schéma, sans charger les données : il est déjà une
+            # dépendance du projet, autant s'en servir plutôt que décoder le pied Thrift.
+            import duckdb
+
+            # `read_parquet(...)` explicite, et non `FROM '...'` : la validation porte sur
+            # le fichier de travail `.parquet.part`, dont DuckDB ne reconnaîtrait pas
+            # l'extension pour choisir son lecteur.
+            cols = [
+                r[0]
+                for r in duckdb.connect()
+                .execute(f"DESCRIBE SELECT * FROM read_parquet('{dest.as_posix()}')")
+                .fetchall()
+            ]
+            manquantes = [c for c in attendues if c not in cols]
+            if manquantes:
+                raise ValueError(
+                    f"colonnes attendues absentes du Parquet {manquantes} — trouvé {cols[:8]}…"
+                )
     elif fmt == "xml":
         # Piège ENTSO-E : une requête en erreur (jeton, pas de données, période)
         # renvoie HTTP 200 + un `Acknowledgement_MarketDocument` — jamais l'empreinter
@@ -287,6 +457,15 @@ def main(argv: list[str] | None = None) -> int:
     failures = []
 
     for source_id, meta in sources.items():
+        # Date résolue AVANT tout le reste : contrairement à un secret, elle fait partie
+        # de l'IDENTITÉ de la donnée et doit donc figurer dans le manifeste. Une
+        # déclaration incohérente échoue ici, sans toucher aux autres sources.
+        try:
+            meta = {**meta, "url": _expanser_date(meta["url"], meta.get("date_url"))}
+        except ValueError as exc:
+            print(f"[!] {source_id} : ÉCHEC — {exc}")
+            failures.append(source_id)
+            continue
         dest = DATA_RAW / meta["filename"]
         already = manifest.get(source_id, {})
         glissant = bool(meta.get("glissant"))
@@ -351,7 +530,9 @@ def main(argv: list[str] | None = None) -> int:
         secrets: list[str] = []
         try:
             url_reelle, secrets = _expanser_env(meta["url"])
-            content_type = _download(url_reelle, part)
+            entetes_reels, secrets_entetes = _expanser_entetes(meta.get("entetes"))
+            secrets += secrets_entetes
+            content_type = _download(url_reelle, part, entetes_reels)
             _valider(part, meta, content_type)
             sha = empreinte(part, meta)  # canonique si empreinte_ignore_xml, sinon octets bruts
         except Exception as exc:  # noqa: BLE001 — on continue avec les autres sources
@@ -364,8 +545,9 @@ def main(argv: list[str] | None = None) -> int:
             continue
         part.replace(dest)
 
-        # _entree_certifiee n'utilise que meta["url"] (le gabarit ${...}), jamais l'url
-        # expansée : aucun secret n'atterrit dans le manifeste versionné.
+        # _entree_certifiee ne lit que `meta` — le gabarit ${...}, url comme en-têtes —
+        # jamais `url_reelle` ni `entetes_reels` : aucun secret n'atterrit dans le
+        # manifeste versionné. Les deux formes expansées meurent avec cette itération.
         manifest[source_id] = _entree_certifiee(
             already, meta, dest, sha,
             content_type=content_type, date_collecte=date.today().isoformat(),

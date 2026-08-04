@@ -19,6 +19,11 @@ data/processed/*
 # ... sauf le manifeste de collecte, qui EST la traçabilité
 !data/raw/_manifest.json
 
+# Documents de travail locaux : ne font pas partie du livrable et ne se régénèrent
+# pas depuis sources.yaml. Gardés sur le poste, hors du dépôt.
+audit/
+exercices/
+
 # Divers
 .DS_Store
 *.log
