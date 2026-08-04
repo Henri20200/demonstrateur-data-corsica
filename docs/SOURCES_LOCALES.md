@@ -367,4 +367,3 @@ les ouvertures (4).
 | Statut d'autonomie en débat au Parlement | texte et date exacts — à re-vérifier juste avant mise en ligne |
 | Fiches 1 & 2 | journal + date de parution exacts |
 | Facteur d'émission du kWh corse vs continental | publication EDF SEI ou ADEME Base Empreinte (pour la citation carbone de la section 4) |
-
