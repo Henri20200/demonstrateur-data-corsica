@@ -109,6 +109,37 @@ plafond qui produit l'écrêtement de T5 est donc, à ce jour, celui fixé pour 
 C'est le même geste que le contrôle croisé OREGES sur T7, et il vaut la même chose : un
 lecteur institutionnel ne peut pas renvoyer le chiffre à une interprétation maison.
 
+### Le second écart : le Vazzio, cinq ans après son arrêt annoncé
+
+La PPE de 2015 est explicite : passé le quota de 18 000 heures de dérogation couvrant
+2020-2023, « *l'installation devra être mise définitivement à l'arrêt* ». **La centrale
+fonctionne toujours en 2026** — le ministère parlait encore en 2023 de « *la vétusté de la
+centrale actuelle du Vazzio* », et elle reste l'une des dernières de France au fioul lourd.
+
+Son remplaçant explique le décalage sans l'effacer. La centrale du **Ricanto** :
+
+- **130 MW**, huit moteurs, alimentés en **bioliquides** — huile de colza ou de tournesol ;
+- environ **20 % de la consommation annuelle de l'île**, jusqu'à **40 % la nuit** ;
+- près de **800 M€**, chantier lancé le **22 novembre 2024** ;
+- **mise en service prévue en 2028**, livraison annoncée au second semestre 2027 ;
+- à l'été 2026, les moteurs sont en cours d'installation, au rythme d'un par semaine.
+
+Le choix des bioliquides a été arrêté par l'Assemblée de Corse le **30 mars 2023** — la même
+délibération que la révision simplifiée. Un risque d'arrêt du projet a existé : à l'été 2024,
+l'arrêté ministériel fixant le tarif de rachat n'était pas publié, ce qui menaçait le
+calendrier. Il a été levé, la CRE ayant salué l'aboutissement du projet.
+
+**Ce que ça donne, factuellement : une installation dont l'arrêt définitif était programmé
+pour fin 2023 assurera la production jusqu'en 2028 au moins.** Cinq ans. Ce n'est pas un
+manquement à imputer à quiconque — construire 130 MW prend le temps que ça prend — mais
+c'est un écart daté entre une programmation et sa réalisation, et il se dit sans
+commentaire. Il touche aussi le sujet de proximité déjà identifié : le thermique de nos
+courbes, c'est le Vazzio et Lucciana.
+
+**2028 est donc trois fois structurante** : terme de la période de programmation, mise en
+service du Ricanto, et horizon cité dans le débat public local. La date que l'utilisateur
+avait en tête tenait, même si le motif n'était pas celui qu'on croyait.
+
 Nuance à ne jamais perdre, déjà écrite dans le code : **ce n'est pas un mur physique mais un
 droit de débrancher.** La part réelle peut dépasser le seuil — c'est précisément ce que T8
 montre.
@@ -121,11 +152,11 @@ le décret de 2015 reste le texte de base, avec ses échéances 2018 et 2023. La
 d'environ 62 % d'ENR électriques en 2028, vue en source secondaire, ne figure dans aucun des
 textes lus — **ne pas la reprendre**.*
 
-1. **L'arrêt du Vazzio** : effectif ou non. Son remplacement a changé de nature en cours de
-   route — la PPE de 2015 prévoyait un cycle combiné d'environ 250 MW au fioul domestique
-   « *en attendant l'arrivée du gaz naturel* » ; le décret de 2023 ouvre la centrale du
-   Ricanto aux **bioliquides**. Ce glissement mérite d'être daté et sourcé : c'est un fait
-   local, donc jamais écrit de mémoire.
+*Vérifié le 04/08/2026 et clos : le Vazzio devait s'arrêter fin 2023 ; il tourne encore, et
+son remplaçant n'entrera pas en service avant 2028. Voir ci-dessous.*
+
+**Rien n'est plus ouvert à ce stade du cadrage.** Ce qui suit relève de la rédaction, pas de
+la vérification préalable.
 
 ## Test du prompt
 
@@ -164,3 +195,12 @@ l'objectif une fois celui-ci tenu.
   <https://www.ecologie.gouv.fr/presse/publication-revision-simplifiee-programmation-pluriannuelle-lenergie-corse>
 - Arrêté du 23 avril 2008 modifié (seuil de déconnexion des ENR variables) et Lettre OREGES
   2021, p. 8 — déjà cités dans `figures.py`, en tête de `fig_t8_seuil_deconnexion`.
+- Centrale du Ricanto, page projet EDF PEI — <https://pei.edf.fr/nos-implantations/projet-corse-centrale-du-ricanto>
+- Lancement du chantier de la centrale bioénergie du Ricanto, communiqué EDF du 22/11/2024 —
+  <https://www.edf.fr/groupe-edf/espaces-dedies/journalistes/tous-les-communiques-de-presse/le-groupe-edf-lance-le-chantier-de-construction-de-la-centrale-bioenergie-du-ricanto-en-corse>
+- Délibération CRE du 4 avril 2024 (taux de rémunération, Ricanto) —
+  <https://www.cre.fr/fileadmin/Documents/Deliberations/2024/240404_2024-67_Taux_Ricanto.pdf>
+
+> Les faits relatifs au Ricanto et au Vazzio sont **à re-vérifier juste avant publication** :
+> ce sont des faits vivants (calendrier de chantier, date de mise en service), pas des
+> constats clos. Même règle que pour toute actualité citée en intro.
