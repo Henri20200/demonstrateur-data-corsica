@@ -7,6 +7,12 @@ ROOT = Path(__file__).resolve().parents[2]
 DATA_RAW = ROOT / "data" / "raw"
 DATA_PROCESSED = ROOT / "data" / "processed"
 OUTPUTS = ROOT / "outputs"
+DOCS = ROOT / "docs"
+
+# Source éditoriale de l'étude (versionnée) et page compilée (déployée AVEC outputs/
+# d'un bloc : ses iframes pointent vers les visuels voisins, plotly.min.js mutualisé).
+ETUDE_SOURCE = DOCS / "etude.md"
+ETUDE_HTML = OUTPUTS / "etude.html"
 
 SOURCES_FILE = ROOT / "sources.yaml"
 MANIFEST_FILE = DATA_RAW / "_manifest.json"

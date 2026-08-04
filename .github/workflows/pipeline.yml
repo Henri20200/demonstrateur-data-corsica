@@ -105,6 +105,12 @@ jobs:
           python -m demonstrateur.note_air
           python -m demonstrateur.page_air
 
+      # La page de l'étude lit la hauteur de chaque iframe DANS le HTML du visuel : une
+      # figure régénérée à une autre hauteur périme la page sans rien casser de visible.
+      # Elle se recompile donc après les figures, et avant les verrous qui la vérifient.
+      - name: Page de l'étude
+        run: python -m demonstrateur.compile_etude
+
       # Garde-fou avant publication : si un verrou de résultat casse (données EDF
       # révisées, changement de version de lib…), on ne committe rien et le run alerte.
       - name: Verrous de résultats
