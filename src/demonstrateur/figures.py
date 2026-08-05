@@ -421,12 +421,18 @@ OREGES_DEPENDANCE = 86.1   # taux de dépendance énergétique publié (2020)
 def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
     """Barres 100 % empilées : la dépendance corse sur deux périmètres emboîtés.
 
-    Née d'une affirmation publique (Corse-Matin, 04/08/2026, pétition Acquasole) :
-    « la Corse dépend aujourd'hui à 85 % du pétrole importé et de l'Italie pour son
-    approvisionnement ÉLECTRIQUE ». Le chiffre existe — c'est le taux de dépendance
-    de l'OREGES (86,1 % en 2020) — mais il porte sur TOUTE l'énergie primaire. Sur
-    l'électricité seule, nos données EDF donnent 67,8 %. Contrôle croisé : pour 2020,
-    l'OREGES publie thermique 36 % / liaisons 29,8 %, nos Parquet donnent 36,0 / 29,8.
+    Née d'une confusion de périmètre courante dans le débat public sur l'énergie corse :
+    le taux de dépendance de 86 % y est rattaché à l'électricité, alors qu'il porte sur
+    TOUTE l'énergie primaire. Le chiffre est réel — 86,1 % en 2020, Lettre de l'OREGES
+    de Corse 2021, p. 4. Sur l'électricité seule, nos données EDF donnent 67,8 %.
+    Contrôle croisé : pour 2020, l'OREGES publie thermique 36 % / liaisons 29,8 %, nos
+    Parquet donnent 36,0 / 29,8.
+
+    Ce docstring attribuait jusqu'au 05/08/2026 une citation à un journal et à une date
+    précis. La recherche n'a retrouvé ni l'article, ni la pétition qu'il mentionnait, ni
+    la phrase citée : l'attribution a été retirée plutôt que laissée invérifiable
+    (cf. la fiche « Une source qui n'existait pas » de docs/SOURCES_LOCALES.md). Le
+    visuel n'en dépendait pas — il compare deux périmètres, il ne corrige personne.
 
     Deux populations différentes réunies sur une figure — c'est ici le SUJET, donc
     chaque barre écrit son périmètre et sa base ; elles ne se comparent pas de tête.

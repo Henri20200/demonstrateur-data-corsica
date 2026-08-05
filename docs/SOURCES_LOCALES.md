@@ -354,6 +354,46 @@ bien écrite, et invisible à la relecture ; elle ne se détecte qu'en remontant
 - Facture électronique sept. 2026 : obligation **nationale**, hors sujet — exemple type
   du remplissage IA.
 
+## Une source qui n'existait pas — retirée le 05/08/2026
+
+Le visuel T7 portait, dans son commentaire de code, cette origine :
+« Née d'une affirmation publique (Corse-Matin, 04/08/2026, pétition Acquasole) : *la
+Corse dépend aujourd'hui à 85 % du pétrole importé et de l'Italie pour son
+approvisionnement ÉLECTRIQUE* ». Le même passage figurait dans le test qui verrouille
+le chiffre.
+
+**Ce qui a été cherché**, le 05/08/2026 : les archives de Corse-Matin (accès abonné),
+plusieurs recherches en ligne sur l'association et sur la formulation, et les articles
+déjà collectés dans le dossier de travail.
+
+**Ce qui a été trouvé.** L'association existe : **Acqua Sole** — en deux mots, pas en un —
+présidée par **Georges Guironnet**, cofondateur de Soleco. Elle est citée dans un article
+de **Corse Net Infos, Léana Serve, 21 mai 2026**, consacré à l'hydrogène : « une nouvelle
+association, dont l'objectif est de sensibiliser la population aux enjeux de l'énergie et
+du potentiel des ressources naturelles de l'île ». Cet article ne contient **aucun
+pourcentage de dépendance** et **ne mentionne aucune pétition**. L'entretien de Georges
+Guironnet sur ICI/RCFM du 25 mai 2026 n'en contient pas davantage.
+
+**Ce qui a donc été retiré** : le nom du journal, la date, la pétition et la phrase entre
+guillemets. Aucun article portant cette affirmation n'a été retrouvé.
+
+**Ce que le cas enseigne.** L'attribution mêlait du vrai — l'association, son thème, la
+question de la dépendance — à des éléments faux : mauvais journal, date décalée de plus
+de deux mois, pétition inexistante, citation introuvable. C'est la forme habituelle d'une
+source qui a dérivé : elle s'appuie sur assez de réel pour ne pas éveiller le soupçon.
+Une relecture attentive ne l'aurait pas détectée ; seule la recherche de la pièce
+primaire l'a fait — comme pour la date du Ricanto (section précédente).
+
+**Ce qui n'était pas atteint.** Rien de publié. Le journal n'était cité dans aucune page
+d'`outputs/`, ni dans `etude.md` : l'attribution vivait dans deux commentaires internes.
+Et le visuel T7 ne repose pas dessus — il met deux périmètres côte à côte avec leurs
+bases, et son contrôle croisé sur 2020 (OREGES 36 % / 29,8 % contre nos 36,0 / 29,8) tient
+seul. Il ne corrige personne : il compare.
+
+**Règle qui en découle** : une affirmation d'origine journalistique reçoit sa fiche ici,
+avec journal, date et citation vérifiés, AVANT d'être écrite où que ce soit dans le code.
+Celle-ci n'en avait jamais eu — c'est exactement pour cette raison qu'elle a pu rester.
+
 ## Faits optionnels, recherche close le 20/07/2026
 
 **La banque ci-dessus suffit à écrire tout le document. Les faits qui suivent sont
