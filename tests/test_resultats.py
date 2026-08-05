@@ -957,12 +957,17 @@ def test_les_postes_oreges_forment_bien_cent_pour_cent():
 
 @besoin_courbe
 def test_la_dependance_electrique_est_bien_en_deca_du_taux_energetique(con):
-    """Le fait du titre n° 7, né d'une affirmation de presse à vérifier.
+    """Le fait du titre n° 7 : deux périmètres emboîtés que le débat public confond.
 
-    « La Corse dépend à 85 % du pétrole importé et de l'Italie pour son approvisionnement
-    ÉLECTRIQUE » (Corse-Matin, 04/08/2026). Le chiffre existe mais porte sur toute
-    l'énergie primaire (86,1 %, OREGES) : sur la seule électricité, thermique + imports
-    restent nettement en deçà. Si cet écart se refermait, le titre serait à réécrire.
+    Le taux de dépendance de 86,1 % (OREGES, 2020) porte sur TOUTE l'énergie primaire,
+    carburants et chauffage compris ; il est régulièrement rattaché à la seule
+    électricité, qui reste nettement en deçà. Si cet écart se refermait, le titre serait
+    à réécrire.
+
+    Ce docstring citait jusqu'au 05/08/2026 une phrase de presse attribuée à un journal
+    et à une date précis. Recherche faite, la citation n'était pas vérifiable et a été
+    retirée (cf. la fiche « Une source qui n'existait pas » de docs/SOURCES_LOCALES.md).
+    Le fait testé ici n'en dépendait pas : il tient à l'écart entre deux périmètres.
     """
     from demonstrateur.figures import OREGES_DEPENDANCE
 
