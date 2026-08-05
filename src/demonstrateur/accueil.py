@@ -48,7 +48,7 @@ SUJETS = [
         "De quoi est faite l'électricité corse",
         "Le soleil, le fioul, les barrages, les câbles : ce qui compose le courant au fil "
         "de la journée et des saisons, et l'heure où il est le plus renouvelable.",
-        [],
+        [("t0_note_methodologique.html", "Note méthodologique")],
     ),
     (
         "air_ozone.html",

@@ -151,8 +151,8 @@ côté air comme côté température.</p>
 <h2>Refaire ces chiffres</h2>
 <p>Rien n'a été téléchargé ni saisi à la main. Chaque source est déclarée dans un fichier de
 configuration, avec sa licence et son producteur ; à la collecte, son empreinte numérique
-est enregistrée et re-vérifiée à chaque exécution — une donnée qui aurait changé sous nos
-pieds ferait échouer la préparation plutôt que de passer inaperçue. Chaque chiffre publié
+est enregistrée et re-vérifiée à chaque exécution : une donnée modifiée depuis sa collecte
+fait échouer la préparation au lieu de passer inaperçue. Chaque chiffre publié
 est par ailleurs verrouillé par un test : si l'un d'eux cessait d'être vrai, c'est la phrase
 qu'il faudrait réécrire, et le test le dirait avant la mise en ligne.</p>
 
@@ -168,7 +168,10 @@ pas associés à cette étude et n'en ont pas validé les conclusions.</p>
 def main() -> int:
     verifier_sorties()
     dest = OUTPUTS / "a0_note_methodologique.html"
-    dest.write_text(_html(_chiffres()), encoding="utf-8")
+    # newline="\n" : cf. la note de `accueil.main` — sans lui, la page écrite sous Windows
+    # diffère de celle du runner Linux sur chaque ligne, et le cron committe un fichier
+    # dont le contenu n'a pas bougé.
+    dest.write_text(_html(_chiffres()), encoding="utf-8", newline="\n")
     print(f"[ok] {dest}")
     return 0
 
