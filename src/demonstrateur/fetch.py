@@ -86,8 +86,11 @@ def _load_manifest() -> dict:
 
 
 def _save_manifest(manifest: dict) -> None:
+    # newline="\n" : le manifeste est le SEUL fichier de data/ versionné. Écrit sous
+    # Windows sans cette précaution, il diffère du même manifeste écrit par le runner
+    # Linux sur chacune de ses lignes — un diff entier sur un contenu identique.
     MANIFEST_FILE.write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8"
+        json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n"
     )
 
 

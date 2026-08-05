@@ -10,9 +10,10 @@ from pathlib import Path
 
 import re
 
+import duckdb
 import pytest
 
-from demonstrateur.config import OUTPUTS
+from demonstrateur.config import DATA_PROCESSED, OUTPUTS
 from demonstrateur.provenance import EmpreinteDivergente, empreinte, verifier
 
 # Réponse ENTSO-E miniature : enveloppe de document (mRID, createdDateTime) + un TimeSeries
@@ -249,6 +250,88 @@ def test_la_note_dit_ce_que_les_chiffres_ne_disent_pas():
     assert "Vivario" in h, (
         "la note doit nommer le poste météo retenu pour Venaco — l'approximation "
         "s'assume par écrit, elle ne se devine pas"
+    )
+
+
+# --- Note méthodologique de l'électricité : mêmes exigences, et ses chiffres sont lus ----
+NOTE_ELEC = OUTPUTS / "t0_note_methodologique.html"
+
+besoin_note_elec = pytest.mark.skipif(
+    not NOTE_ELEC.exists(), reason="note absente — lancer python -m demonstrateur.note_elec"
+)
+
+
+def _texte_note_elec() -> str:
+    """Texte de la note électricité, balises retirées (cf. `_texte_note`)."""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", NOTE_ELEC.read_text(encoding="utf-8")))
+
+
+@besoin_note_elec
+def test_la_note_electricite_porte_licences_producteurs_et_date():
+    """Mêmes mentions obligatoires que la note de l'air, sur les producteurs de l'autre sujet.
+
+    Quatre producteurs y compris celui du seul chiffre recopié (l'OREGES) : c'est
+    précisément celui qu'une réécriture laisserait tomber, puisqu'il ne vient d'aucun
+    fichier téléchargé.
+    """
+    h = _texte_note_elec()
+    for mention in ("EDF", "ENTSO-E", "Terna", "OREGES", "Licence Ouverte", "CC-BY"):
+        assert mention in h, f"mention obligatoire absente de la note électricité : {mention}"
+    assert re.search(r"collectées le \d{4}-\d{2}-\d{2}", h), (
+        "la note doit porter une date de collecte, et la tenir de la lignée de build"
+    )
+    assert "n'en ont pas validé les conclusions" in h, (
+        "la note doit dire que les producteurs ne cautionnent pas l'étude"
+    )
+
+
+@besoin_note_elec
+def test_la_note_electricite_dit_ce_que_les_chiffres_ne_disent_pas():
+    """Les quatre limites que l'étude s'interdit de taire, reprises dans la note.
+
+    Chacune borne une affirmation d'un visuel : sans elles, la note se lirait comme un
+    résumé des résultats — l'inverse de son objet.
+    """
+    h = _texte_note_elec()
+    assert "montrent quand, pas pourquoi" in h, (
+        "la note doit dire que la hausse d'été est datée, jamais expliquée"
+    )
+    assert "aucune mesure de pluie" in h, (
+        "la note doit dire que la sécheresse est une explication extérieure aux données"
+    )
+    assert "pas la conformité d'une installation" in h, (
+        "la note doit dire que le seuil mesuré n'est pas un constat de conformité"
+    )
+    assert "Produit sur l'île n'est pas produit avec l'île" in h, (
+        "la note doit distinguer les trois périmètres — c'est l'erreur de lecture la "
+        "plus facile à commettre sur ces chiffres"
+    )
+
+
+@besoin_note_elec
+def test_les_chiffres_de_la_note_electricite_sortent_bien_des_donnees():
+    """La propriété qui fait tenir la note : ses chiffres sont LUS, pas recopiés.
+
+    Une note méthodologique dont les nombres sont écrits à la main vieillit en silence —
+    elle donne la caution du sérieux à des chiffres faux. Ce test recompte sur le Parquet
+    ce que la note annonce : si la donnée s'allonge d'un millésime sans que la note bouge,
+    il tombe.
+    """
+    parquet = DATA_PROCESSED / "edf_courbe_corse.parquet"
+    if not parquet.exists():
+        pytest.skip("Parquet absent — lancer fetch-data puis prepare")
+    con = duckdb.connect()
+    heures, estimees, an2 = con.execute(f"""
+        SELECT count(*), count(*) FILTER (WHERE lower(statut) LIKE 'estim%'),
+               max(extract('year' FROM timezone('UTC', date_heure)))
+        FROM '{parquet.as_posix()}'""").fetchone()
+    h = _texte_note_elec()
+    for valeur in (heures, estimees):
+        assert f"{valeur:,}".replace(",", " ") in h, (
+            f"{valeur} absent de la note — ses chiffres ne viennent plus du Parquet"
+        )
+    assert f"fin {int(an2)}" in h, (
+        "la note doit annoncer la dernière année couverte par la donnée, pas une année figée"
     )
 
 

@@ -248,7 +248,22 @@ details p:last-child{margin-bottom:0}
 table{border-collapse:collapse;width:100%;font-size:.95rem;margin:1.25rem 0}
 th,td{border:1px solid var(--rule);padding:.55rem .7rem;text-align:left;vertical-align:top}
 th{background:var(--surface);font-weight:650}
+footer{margin-top:3.5rem;padding-top:1.4rem;border-top:1px solid var(--rule);
+  font-size:.95rem;color:var(--ink-soft)}
+footer a{color:var(--accent)}
 """
+
+# Pied de page : posé par le compilateur, pas écrit dans le markdown — le compilateur ne
+# rend pas les liens inline (l'étude n'en contient aucun), et ce renvoi est une pièce du
+# livrable plutôt qu'un morceau du texte. Il pointe la note méthodologique, qui dit la même
+# méthode que les chapitres 5 et 6 mais recalcule ses chiffres à chaque rafraîchissement.
+_PIED = (
+    "<footer>\n"
+    '<p><a href="t0_note_methodologique.html">Note méthodologique</a> — sources, '
+    "licences, calculs et limites sur une page, avec les chiffres relus à chaque "
+    "rafraîchissement des données.</p>\n"
+    "</footer>"
+)
 
 
 def _page(corps: str, titre: str) -> str:
@@ -257,7 +272,7 @@ def _page(corps: str, titre: str) -> str:
         '<html lang="fr">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f"<title>{titre}</title>\n<style>{_VARS}{_CSS}</style>\n</head>\n"
-        f"<body>\n<article>\n{corps}\n</article>\n</body>\n</html>\n"
+        f"<body>\n<article>\n{corps}\n{_PIED}\n</article>\n</body>\n</html>\n"
     )
 
 
@@ -275,7 +290,9 @@ def rendre_page(md: str) -> str:
 
 
 def main() -> int:
-    ETUDE_HTML.write_text(rendre_page(ETUDE_SOURCE.read_text(encoding="utf-8")), encoding="utf-8")
+    # newline="\n" : cf. la note de `accueil.main` — même diff fantôme Windows/Linux.
+    ETUDE_HTML.write_text(rendre_page(ETUDE_SOURCE.read_text(encoding="utf-8")),
+                          encoding="utf-8", newline="\n")
     print(f"[ok] {ETUDE_HTML}")
     return 0
 

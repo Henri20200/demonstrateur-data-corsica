@@ -217,7 +217,9 @@ def main() -> int:
     verifier_sorties()
     blocs = _blocs()
     dest = OUTPUTS / "air_ozone.html"
-    dest.write_text(_html(blocs, date_collecte("aee_o3_venaco_continu")), encoding="utf-8")
+    # newline="\n" : cf. la note de `accueil.main` — même diff fantôme Windows/Linux.
+    dest.write_text(_html(blocs, date_collecte("aee_o3_venaco_continu")),
+                    encoding="utf-8", newline="\n")
     print(f"[ok] {dest}")
     return 0
 

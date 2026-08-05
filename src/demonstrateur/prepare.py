@@ -1164,7 +1164,8 @@ def _ecrire_lignee(entrees: dict, sorties: dict) -> None:
         "sorties": sorties,
     }
     tmp = BUILD_FILE.with_name(BUILD_FILE.name + ".tmp")
-    tmp.write_text(json.dumps(contenu, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.write_text(json.dumps(contenu, indent=2, ensure_ascii=False),
+                   encoding="utf-8", newline="\n")
     tmp.replace(BUILD_FILE)
     print(f"[ok] {BUILD_FILE.name} — lignée : {len(sorties)} sorties, {len(entrees)} sources")
 

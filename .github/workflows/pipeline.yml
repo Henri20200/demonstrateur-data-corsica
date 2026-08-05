@@ -95,6 +95,12 @@ jobs:
         continue-on-error: true
         run: python -m demonstrateur.figures
 
+      # Étape à part, et SANS continue-on-error : la note lit ses chiffres dans les
+      # Parquet ; si cette lecture échoue, il ne faut pas publier une note muette à côté
+      # de figures qui, elles, ont réussi.
+      - name: Note méthodologique — électricité
+        run: python -m demonstrateur.note_elec
+
       # Pas de continue-on-error ici, à la différence de l'étape électricité : celle-ci
       # tolère un code 1 parce qu'un T1 « affichage suspendu » DOIT être publié. Les
       # figures de l'air, elles, refusent de se dessiner quand leur titre devient faux
