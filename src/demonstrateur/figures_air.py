@@ -103,7 +103,12 @@ NOTE_A2 = ("Les journées chaudes portent plus d'ozone. Pourquoi il plafonne ens
            "ces mesures ne le disent pas :<br>chaleur, fort soleil et air immobile vont "
            "ensemble, et rien ici ne permet de les séparer.<br>Au-delà de 35 °C, c'est "
            "aussi la tranche la moins fournie en mesures.")
-NOMBRES = {2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq", 6: "Six"}
+# Nombres en lettres pour les textes publiés — partagée avec `page_air`, qui compte ses
+# entrées de dictionnaire par le même chemin. Un effectif annoncé au lecteur se dérive de
+# ce qu'il désigne ; écrit à la main, il devient faux le jour où la liste bouge, sans que
+# rien ne le signale.
+NOMBRES = {2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq", 6: "Six", 7: "Sept",
+           8: "Huit", 9: "Neuf", 10: "Dix"}
 
 
 def st_a3() -> str:
