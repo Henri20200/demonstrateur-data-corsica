@@ -112,7 +112,17 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   rebasculera au run suivant. Or « le rafraîchissement planifié ne committe que ce qui a
   réellement changé » est une propriété qu'on met en avant : ces diffs fantômes la
   décrédibilisent. Ce qui se committe à la main, c'est le CODE de la figure ; sa sortie
-  arrive au prochain run.
+  arrive au prochain run. **Une exception, et une seule** : `outputs/etude.html` accompagne
+  une modification de `docs/etude.md` dans le même commit, parce qu'un test les lie sans
+  skip — cette page est du HTML de texte, pas du JSON Plotly, donc elle échappe au diff
+  d'accents qui motive la règle.
+- **Le cron est aussi le publieur.** Depuis le 06/08/2026, il synchronise `outputs/` vers le
+  bucket Scaleway `air-et-energie-en-corse` (région `fr-par`) après les verrous de résultats :
+  rien ne part en ligne si un verrou casse, mais une collecte partiellement en échec se
+  déploie — c'est l'arbitrage déjà retenu pour T1 « affichage suspendu ». La vitrine ne se
+  dépose donc pas plus à la main que les visuels ne se committent à la main. Sans les secrets
+  `SCW_ACCESS_KEY` / `SCW_SECRET_KEY`, l'étape se saute avec un avertissement plutôt que de
+  faire échouer le run.
 - **La traçabilité est vérifiée, pas seulement déclarée** : `fetch` re-contrôle chaque source
   figée à chaque run, `prepare` refuse un brut non certifié et écrit la lignée (`_build.json`),
   les figures datent d'après cette lignée. L'empreinte d'une source qui réestampille son
