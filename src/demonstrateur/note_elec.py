@@ -49,12 +49,17 @@ def _chiffres() -> dict:
     # année de plus que celle que couvrent les visuels ; et `extract` sur un horodatage à
     # fuseau suit le fuseau de la SESSION — UTC sur le runner, Paris sur un poste français,
     # soit deux notes différentes pour la même donnée.
-    heures, an1, an2, estimees, sans_micro = con.execute(f"""
+    heures, an1, an2, estimees, sans_micro, couvertes = con.execute(f"""
         SELECT count(*),
                min(extract('year' FROM timezone('UTC', date_heure))),
                max(extract('year' FROM timezone('UTC', date_heure))),
                count(*) FILTER (WHERE lower(statut) LIKE 'estim%'),
-               count(*) FILTER (WHERE micro_hydraulique_mw IS NULL)
+               count(*) FILTER (WHERE micro_hydraulique_mw IS NULL),
+               -- Heures que la période couvre, bornes comprises. C'est à elle que se
+               -- compare le nombre de lignes retenues, et l'écart EST la limite publiée
+               -- juste en dessous : écrit à la main, il se figerait le jour où la
+               -- période s'allonge, dans une note qui promet de tout lire.
+               datediff('hour', min(date_heure), max(date_heure)) + 1
         FROM '{COURBE}'""").fetchone()
     pas, mix_d1, mix_d2 = con.execute(f"""
         SELECT count(*),
@@ -69,6 +74,7 @@ def _chiffres() -> dict:
         heures=heures, an1=int(an1), an2=int(an2), estimees=estimees,
         validees=heures - estimees,
         part_estimee=round(100 * estimees / heures),
+        couvertes=couvertes, manquantes=couvertes - heures,
         sans_micro=sans_micro, pas=pas, mix_d1=mix_d1, mix_d2=mix_d2,
         mois=mois, ec1=int(ec1), ec2=int(ec2),
         collecte_hist=date_collecte("edf_courbe_charge_horaire"),
@@ -195,9 +201,10 @@ n'est pas dessinée.</p>
     pauvres en eau sont les plus riches en thermique, c'est mesuré. La sécheresse, elle,
     vient d'une source extérieure : ces données ne contiennent aucune mesure de pluie, et
     un barrage garde plusieurs mois d'avance.</li>
-<li><strong>Si une installation respecte le seuil.</strong> Les données EDF ne distinguent
-    pas les installations avec stockage, que la règle exclut. La courbe donne la pression
-    sur le seuil, pas la conformité d'une installation.</li>
+<li><strong>Si une installation respecte le seuil.</strong> Le plafond ne vise que les
+    installations sans batterie ; celles qui en ont une y échappent. Or la donnée EDF
+    additionne les deux sans les distinguer. Ces courbes montrent donc à quel point
+    l'ensemble du réseau s'approche du plafond, jamais si tel producteur est en règle.</li>
 <li><strong>Ce qui est produit avec les ressources de l'île.</strong> Produit sur l'île
     n'est pas produit avec l'île : les centrales thermiques corses brûlent un combustible
     importé. Il y a trois périmètres — ce qui arrive par les câbles, ce qui est produit
@@ -211,18 +218,22 @@ n'est pas dessinée.</p>
     {n(c["validees"])} heures « validé », {n(c["estimees"])} « estimé », soit
     {c["part_estimee"]} %. Les conclusions ont été vérifiées séparément sur chaque
     moitié. Chaque visuel historique porte la mention.</li>
-<li><strong>{n(c["heures"])} heures retenues.</strong> Les heures à production nulle,
-    créées par les changements d'heure, sont retirées avant calcul. Ce total sert de
-    dénominateur à toutes les parts publiées.</li>
+<li><strong>{n(c["heures"])} heures retenues.</strong> De {c["an1"]} à {c["an2"]}, soit
+    {c["an2"] - c["an1"] + 1} années pleines, la période couvre {n(c["couvertes"])} heures.
+    Il en manque {c["manquantes"]}. Elles tombent aux passages à l'heure d'été, quand on
+    saute de deux heures du matin à trois : ces heures-là n'ont pas existé, et le fichier
+    d'EDF les porte tout de même, à production nulle. Elles sont retirées avant calcul.
+    Le total retenu sert de dénominateur à toutes les parts publiées.</li>
 <li><strong>La petite hydraulique manque sur la dernière année.</strong> Sa colonne
     disparaît des données EDF sur {n(c["sans_micro"])} heures. Elle est comptée comme
     nulle : vérification faite, le total de production l'exclut aussi. Les parts restent
     justes.</li>
-<li><strong>Le bridage compte une durée, pas une énergie.</strong> La donnée d'écrêtement
-    donne la durée maximale de limitation subie par un producteur dans le mois. Elle ne
-    dit rien des kilowattheures perdus.</li>
-<li><strong>Des moyennes d'une heure contre un seuil instantané.</strong> Les dépassements
-    réels, plus courts, sont donc plus nombreux que ceux comptés ici.</li>
+<li><strong>Le bridage se compte en heures, pas en électricité perdue.</strong> La donnée
+    d'écrêtement dit combien de temps, au plus, un producteur a été bridé dans le mois.
+    Elle ne dit pas combien de kilowattheures cela représente.</li>
+<li><strong>Le seuil est instantané, nos mesures sont horaires.</strong> Une pointe de
+    quelques minutes se noie dans la moyenne de son heure et n'apparaît nulle part. Les
+    dépassements comptés ici sont donc un minimum : les vrais sont plus nombreux.</li>
 <li><strong>Trois périodes, jamais mélangées.</strong> L'historique s'arrête fin
     {c["an2"]}, le temps réel commence à l'été 2026, l'écrêtement s'arrête en {c["ec2"]},
     dernier millésime publié. Aucun visuel n'en met deux sur le même axe.</li>
