@@ -126,6 +126,12 @@ côté air comme côté température.</p>
     davantage, c'est mesuré. Mais les jours chauds sont aussi les jours ensoleillés et sans
     vent, et rien dans des mesures de concentration ne permet de démêler ce qui revient à
     l'un ou à l'autre. On lit une <strong>coïncidence</strong>, pas une cause.</li>
+<li><strong>Ce que l'ozone n'est pas.</strong> C'est un polluant <em>secondaire</em> :
+    aucune source ne l'émet, il se forme dans l'air sous l'effet du soleil à partir d'autres
+    polluants (Qualitair Corse, « Polluants surveillés »). Sa concentration ne peut donc pas
+    se lire comme la trace des rejets d'une installation proche — c'est même à la campagne,
+    loin des moteurs, qu'on en mesure le plus. Les polluants qu'on suit au voisinage d'une
+    source — particules, dioxyde de soufre, oxydes d'azote — ne sont pas traités ici.</li>
 <li><strong>D'où vient cet ozone.</strong> Une concentration ne porte pas d'étiquette
     d'origine. Une part se forme loin de l'île et y arrive avec le vent ; la chiffrer
     demanderait un modèle, pas des mesures.</li>
@@ -141,7 +147,7 @@ côté air comme côté température.</p>
     Corte est plus près, mais sa cuvette encaissée creuse les écarts de température d'une
     façon qui fausserait la comparaison. Chaque figure nomme le poste utilisé.</li>
 <li><strong>Une station est récente.</strong> Ajaccio Confina 2 ne mesure que depuis
-    janvier 2024, quand les cinq autres remontent à 2006-2011. Ses effectifs sont donc plus
+    janvier 2024, quand les quatre autres remontent à 2006-2011. Ses effectifs sont donc plus
     faibles, ce que les figures indiquent au survol.</li>
 <li><strong>Les figures portent toutes le même périmètre</strong> — étés 2020 à 2025,
     stations dites « de fond », journées valides — pour que deux chiffres pris sur deux
