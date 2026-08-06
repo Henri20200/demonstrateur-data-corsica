@@ -48,6 +48,10 @@ SEUIL_INFORMATION = 180  # µg/m³, moyenne horaire
 
 ETES = "extract('month' FROM date_locale) IN (6, 7, 8)"
 ANNEES = "extract('year' FROM date_locale) BETWEEN 2020 AND 2025"
+# Périmètre de A3 écrit UNE fois, parce que le nombre de stations annoncé au lecteur doit
+# sortir du filtre qui trace les courbes. Tant que ce nombre était une constante, il a
+# annoncé cinq stations là où le filtre en retient quatre.
+OU_A3 = f"influence = 'Fond' AND station <> 'VENACO' AND {ETES} AND {ANNEES}"
 # Périmètre dit en langue courante (04/08/2026) : « stations de fond, journées
 # réglementairement valides » est exact mais illisible pour qui n'est pas du métier — or
 # cette ligne est la SEULE que tous les lecteurs voient, sur les cinq figures. Renvoyer
@@ -73,6 +77,16 @@ def _sous_titre(ligne: str) -> str:
     return f"{ligne}<br>{PERIMETRE}"
 
 
+def stations_a3() -> list[str]:
+    """Stations que A3 compare : celles où les DEUX polluants sont mesurés."""
+    return [s for (s,) in _con().execute(f"""
+        SELECT station FROM '{SERIE}' WHERE {OU_A3} GROUP BY 1
+        HAVING count(*) FILTER (WHERE polluant = 'O3') > 0
+           AND count(*) FILTER (WHERE polluant = 'NO2') > 0
+        ORDER BY 1
+    """).fetchall()]
+
+
 # Sous-titres et notes DÉFINIS UNE FOIS et consommés à la fois par `main()` (fichiers
 # individuels) et par `page_air` (page assemblée). Ils étaient recopiés dans les deux
 # modules : toute correction n'était appliquée que d'un côté, et les deux versions d'une
@@ -81,17 +95,28 @@ ST_A1 = _sous_titre(
     f"Objectif de qualité : {OBJECTIF_QUALITE} µg/m³ sur 8 heures. "
     f"Information du public : {SEUIL_INFORMATION} µg/m³ sur une heure.")
 ST_A2 = _sous_titre(
-    "La température est celle du poste météo le plus proche de chaque station.")
+    "La température vient du poste météo le plus ressemblant, pas toujours le plus proche.")
 # Note tenue en lignes COURTES (< 90 signes) : le pied de figure est une annotation
 # Plotly, qui ne replie pas le texte — une ligne trop longue se fait rogner à droite
 # dans la page, plus étroite que le fichier isolé.
 NOTE_A2 = ("Les journées chaudes portent plus d'ozone. Pourquoi il plafonne ensuite, "
            "ces mesures ne le disent pas :<br>chaleur, fort soleil et air immobile vont "
            "ensemble, et rien ici ne permet de les séparer.<br>Au-delà de 35 °C, c'est "
-           "aussi la tranche qui compte le moins de journées mesurées.")
-ST_A3 = _sous_titre(
-    "Cinq stations mesurant les deux polluants.<br>Chaque courbe est ramenée à son "
-    "propre maximum : on compare des heures, pas des concentrations.")
+           "aussi la tranche la moins fournie en mesures.")
+NOMBRES = {2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq", 6: "Six"}
+
+
+def st_a3() -> str:
+    """Sous-titre de A3 — une fonction, pas une constante : il compte ses stations.
+
+    Écrit à la main, ce nombre a annoncé cinq stations pendant que la figure en traçait
+    quatre : l'île compte cinq stations de fond, Venaco comprise, et A3 l'exclut faute de
+    NO2. Le lire dans la donnée est la seule façon qu'il ne redevienne pas faux.
+    """
+    n = len(stations_a3())
+    return _sous_titre(
+        f"{NOMBRES.get(n, str(n))} stations mesurant les deux polluants.<br>Chaque courbe "
+        "est ramenée à son propre maximum : on compare des heures, pas des concentrations.")
 ST_A4 = _sous_titre(
     "En part des journées mesurées, et non en nombre de jours — "
     "une station de campagne, quatre de ville.")
@@ -186,8 +211,14 @@ def fig_a2_ozone_et_chaleur() -> go.Figure:
     pas la base zéro, l'axe peut se resserrer sans tromper, et la montée puis le plafond
     se voient enfin. Les points ne sont pas reliés : entre deux tranches, rien n'est mesuré.
 
-    L'effectif est écrit sous chaque tranche : la dernière ne compte qu'une fraction des
-    journées des autres, et un lecteur doit pouvoir en tenir compte sans aller le chercher.
+    L'effectif se lit au survol, et la note de pied signale que la tranche la plus chaude
+    est la moins fournie : un lecteur doit pouvoir en tenir compte.
+
+    Cet effectif compte des RELEVÉS, soit une station un jour donné, et non des journées
+    du calendrier — cinq stations mesurent la même journée. C'est aussi la pondération de
+    la moyenne : chaque couple station-jour y pèse pareil. A1 est tombée dans ce piège
+    avant d'en sortir (cf. le total de journées distinctes qu'elle affiche) ; ici il est
+    dans le libellé, qui ne dit jamais « jours ».
     """
     con = _con()
     df = con.execute(f"""
@@ -195,7 +226,7 @@ def fig_a2_ozone_et_chaleur() -> go.Figure:
                     WHEN t_max < 30 THEN '25 à 30 °C'
                     WHEN t_max < 35 THEN '30 à 35 °C'
                     ELSE '≥ 35 °C' END AS tranche,
-               min(t_max) AS borne, avg(mda8) AS ozone, count(*) AS jours
+               min(t_max) AS borne, avg(mda8) AS ozone, count(*) AS releves
         FROM '{CROISE}'
         WHERE influence = 'Fond' AND {ETES} AND {ANNEES}
         GROUP BY 1 ORDER BY borne
@@ -228,9 +259,9 @@ def fig_a2_ozone_et_chaleur() -> go.Figure:
         text=etiquettes, textposition="top center",
         textfont=dict(family=SANS, size=18, color=PALETTE["ink"]),
         cliponaxis=False,
-        customdata=df["jours"],
+        customdata=df["releves"],
         hovertemplate="%{x}<br>%{y:.1f} µg/m³ en moyenne<br>"
-                      "sur %{customdata} journées mesurées<extra></extra>",
+                      "sur %{customdata} relevés — une station, une journée<extra></extra>",
     ))
     fig.add_annotation(
         x=df.loc[len(df) - 1, "tranche"], y=float(df.loc[len(df) - 1, "ozone"]),
@@ -272,14 +303,25 @@ def fig_a3_ozone_contre_azote() -> go.Figure:
     concentrations — d'où l'indexation sur 100 % du maximum de chaque série. Les valeurs
     absolues restent lisibles au survol.
 
-    Cinq stations et non six : Venaco ne mesure plus le NO2, et comparer deux polluants
-    exige qu'ils soient mesurés au même endroit.
+    Venaco est écartée : elle ne mesure plus le NO2, et comparer deux polluants exige
+    qu'ils soient mesurés au même endroit. Restent les stations de fond des deux villes.
+    Leur nombre n'est pas écrit ici : le sous-titre le compte (cf. `st_a3`).
     """
     con = _con()
+    # Les deux courbes doivent porter sur les MÊMES stations : une station qui ne
+    # mesurerait qu'un polluant nourrirait une courbe et pas l'autre, et le sous-titre
+    # compterait des stations qui ne comparent rien.
+    appariees = stations_a3()
+    tracees = [s for (s,) in con.execute(
+        f"SELECT DISTINCT station FROM '{SERIE}' WHERE {OU_A3} ORDER BY 1").fetchall()]
+    if tracees != appariees:
+        raise ValueError(
+            f"A3 : {sorted(set(tracees) - set(appariees))} ne mesure(nt) qu'un seul des "
+            "deux polluants — les courbes ne porteraient pas sur les mêmes stations."
+        )
     df = con.execute(f"""
         SELECT heure_locale AS h, polluant, avg(valeur) AS v
-        FROM '{SERIE}'
-        WHERE influence = 'Fond' AND station <> 'VENACO' AND {ETES} AND {ANNEES}
+        FROM '{SERIE}' WHERE {OU_A3}
         GROUP BY 1, 2 ORDER BY 1
     """).df()
     pivot = df.pivot(index="h", columns="polluant", values="v")
@@ -468,7 +510,7 @@ def main() -> int:
                 SRC_AIR_METEO, d_meteo, sous_titre=ST_A2, note=NOTE_A2,
                 pied_decalage_px=PIED_A2)
     export_html(fig_a3_ozone_contre_azote(), "a3_ozone_contre_azote",
-                SRC_AIR, d_air, sous_titre=ST_A3)
+                SRC_AIR, d_air, sous_titre=st_a3())
     export_html(fig_a4_campagne_contre_ville(), "a4_campagne_contre_ville",
                 SRC_AIR, d_air, sous_titre=ST_A4)
     export_html(fig_a5_creneau_a_eviter(), "a5_creneau_a_eviter",

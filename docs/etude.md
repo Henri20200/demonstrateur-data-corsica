@@ -156,12 +156,13 @@ journée où l'électricité corse est la moins insulaire et la moins renouvelab
 > **Pour aller plus loin — le plafond qui borne le solaire insulaire.** Sur un réseau
 > insulaire, les productions intermittentes (soleil et vent sans stockage) sont
 > plafonnées en puissance instantanée : 30 % à l'origine (arrêté du 23 avril 2008,
-> modifié en 2010), seuil relevé depuis à 35 %, puis 45 % en Corse. Au-delà, le
-> gestionnaire déconnecte des producteurs, selon la règle du « dernier arrivé,
-> premier déconnecté » : c'est l'écrêtement, que raconte le chapitre du printemps.
-> Les installations couplées à des batteries, elles, échappent au plafond. Notre pic
-> d'été à ~35 % évolue au voisinage de ces seuils, mais les périmètres de calcul
-> diffèrent : cette proximité n'a pas valeur de démonstration.
+> modifié en 2010), 35 % en Corse depuis 2018. La programmation visait 45 % en 2023,
+> mais la révision de juin 2023 n'a pas touché à l'article qui fixe le seuil : celui
+> qui s'applique est resté 35 %. Au-delà, le gestionnaire déconnecte des producteurs,
+> selon la règle du « dernier arrivé, premier déconnecté » : c'est l'écrêtement, que
+> raconte le chapitre du printemps. Les installations couplées à des batteries, elles,
+> échappent au plafond. Notre pic d'été à ~35 % évolue au voisinage de ce seuil, mais
+> les périmètres de calcul diffèrent : cette proximité n'a pas valeur de démonstration.
 >
 > **Attention au changement de focale.** Ce chapitre décrit l'été. Le suivant se
 > calcule sur toute l'année, et les pourcentages ne se comparent pas d'un chapitre à

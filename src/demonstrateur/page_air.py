@@ -42,8 +42,7 @@ def _blocs() -> list[tuple[str, str, str]]:
         (
             "<p>Quand l'air se dégrade franchement, on le sait : Qualitair Corse alerte, les "
             "médias relaient. Ce dispositif fonctionne. Mais il ne se déclenche qu'au-delà "
-            "d'un seuil rarement atteint sur l'île — et en dessous, personne ne dit rien. "
-            "Voici ce qui s'y passe.</p>",
+            "d'un seuil rarement atteint sur l'île. Voici ce qui se passe en dessous.</p>",
             "a1",
             preparer_figure(
                 fa.fig_a1_depassements_sans_alerte(), fa.SRC_AIR, d_air,
@@ -67,7 +66,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             "a3",
             preparer_figure(
                 fa.fig_a3_ozone_contre_azote(), fa.SRC_AIR, d_air,
-                sous_titre=fa.ST_A3,
+                sous_titre=fa.st_a3(),
             ),
         ),
         (
@@ -151,10 +150,13 @@ def _html(blocs, collecte: str) -> str:
         graphique = fig.to_html(full_html=False, include_plotlyjs=False, div_id=div_id)
         corps.append(f'<section>{texte}\n<figure>{graphique}</figure></section>')
         if i == 0:
+            # La phrase s'arrête à ce que la série mesure. « Aucun communiqué, aucun
+            # article » disait davantage : rien ici ne mesure la communication publique,
+            # qui peut naître d'une prévision, d'un autre polluant ou d'une autre
+            # autorité. Le seuil, lui, est calculé — et A1 échoue s'il est franchi.
             corps.append(
                 '<p class="cle">Aucune de ces journées n\'a atteint le seuil qui déclenche '
-                "une information du public. Elles n'ont donc jamais fait l'objet d'un "
-                "communiqué, ni d'un article.</p>"
+                "une information du public. Rien n'obligeait donc à les signaler.</p>"
             )
     return f"""<!doctype html>
 <html lang="fr"><head><meta charset="utf-8">
