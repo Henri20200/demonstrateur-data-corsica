@@ -299,7 +299,12 @@ def test_la_note_electricite_dit_ce_que_les_chiffres_ne_disent_pas():
     assert "aucune mesure de pluie" in h, (
         "la note doit dire que la sécheresse est une explication extérieure aux données"
     )
-    assert "pas la conformité d'une installation" in h, (
+    # Formulation reprise le 06/08/2026 (« pas la conformité d'une installation »). Le
+    # verrou porte sur la phrase EXACTE : c'est ce qui l'a fait échouer bruyamment quand
+    # la note a été réécrite, et c'est bien ce qu'on veut — une limite qu'on reformule
+    # doit être re-décidée, pas glisser. En local, il lit `outputs/`, qui peut être en
+    # retard sur le code : régénérer la note avant de conclure qu'il passe.
+    assert "jamais si tel producteur est en règle" in h, (
         "la note doit dire que le seuil mesuré n'est pas un constat de conformité"
     )
     assert "Produit sur l'île n'est pas produit avec l'île" in h, (
