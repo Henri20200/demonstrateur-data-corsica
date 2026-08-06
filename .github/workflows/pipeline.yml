@@ -27,6 +27,12 @@ concurrency:
 jobs:
   rafraichir:
     runs-on: ubuntu-latest
+    # Remonté au niveau du job pour être lisible dans un `if:` de step — un `env:` de
+    # step ne l'est pas dans la condition du même step. La clé sert à savoir SI la
+    # vitrine peut être déployée ; la valeur, elle, ne circule que dans l'étape qui
+    # déploie (GitHub la masque de toute façon dans les logs).
+    env:
+      SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
     # 25 min : le premier run après l'arrivée du sujet air télécharge ~90 Mo de plus
     # (tranche météo close 2020-2024, et les Parquet de l'AEE). Les runs suivants les
     # retrouvent dans le cache — sauf éviction, cf. la note sur le volume ci-dessous.
@@ -139,6 +145,48 @@ jobs:
             git pull --rebase origin master
             git push origin master
           fi
+
+      # --- Vitrine publique ---------------------------------------------------------
+      # Le cron est déjà seul propriétaire d'outputs/ ; il l'est jusqu'au bout. Déployer
+      # à la main laisserait la vitrine vieillir entre deux dépôts, alors que les visuels
+      # se rafraîchissent ici toutes les 6 h — et c'est cette fraîcheur qu'on met en avant.
+      #
+      # Placé APRÈS les verrous de résultats, qui n'ont pas de continue-on-error : rien ne
+      # part en ligne si un verrou casse. En revanche une collecte partiellement en échec
+      # se déploie quand même, exactement comme elle se committe ci-dessus — c'est
+      # l'arbitrage déjà retenu pour T1 « affichage suspendu », dont le lecteur doit
+      # justement pouvoir constater qu'il est suspendu.
+      - name: Déployer la vitrine (Scaleway Object Storage)
+        if: env.SCW_ACCESS_KEY != ''
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.SCW_ACCESS_KEY }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.SCW_SECRET_KEY }}
+          AWS_DEFAULT_REGION: fr-par
+          BUCKET: air-et-energie-en-corse
+          ENDPOINT: https://s3.fr-par.scw.cloud
+        run: |
+          # plotly.min.js d'abord, avec un cache long : 4,7 Mio identiques d'un run à
+          # l'autre, que personne n'a de raison de retélécharger. Il monte avant les
+          # pages qui le référencent.
+          aws s3 sync outputs/ "s3://$BUCKET/" --endpoint-url "$ENDPOINT" \
+            --exclude "*" --include "plotly.min.js" \
+            --acl public-read --cache-control "public, max-age=31536000, immutable"
+          # Les pages ensuite, cache court : elles changent toutes les 6 h, et une vitrine
+          # qui met sa fraîcheur en avant ne peut pas être servie périmée. --delete tient
+          # le bucket comme reflet exact d'outputs/ plutôt que comme dépotoir de fichiers
+          # oubliés ; les filtres valant aussi pour la suppression, le plotly.min.js exclu
+          # ici n'est pas balayé au passage.
+          aws s3 sync outputs/ "s3://$BUCKET/" --endpoint-url "$ENDPOINT" \
+            --exclude "plotly.min.js" --delete \
+            --acl public-read --cache-control "public, max-age=300"
+
+      # Sauter sans bruit serait pire que casser : la vitrine cesserait de suivre les
+      # visuels sans que rien ne le dise. Le run reste vert (les visuels, eux, sont bien
+      # publiés) mais l'avertissement est visible dans le résumé.
+      - name: Vitrine non déployée — secret absent
+        if: env.SCW_ACCESS_KEY == ''
+        run: |
+          echo "::warning::SCW_ACCESS_KEY absent : visuels commités, vitrine NON mise à jour."
 
       - name: Signaler un échec de collecte ou de fraîcheur
         if: steps.fetch.outcome == 'failure' || steps.figures.outcome == 'failure'
