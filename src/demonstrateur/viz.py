@@ -11,6 +11,7 @@ fond neutre clair, sans-serif) est porté par le template appliqué à chaque fi
 from __future__ import annotations
 
 import json
+import re
 import textwrap
 
 import plotly.graph_objects as go
@@ -118,6 +119,113 @@ def replier_pied(texte: str, largeur: int = LARGEUR_PIED) -> str:
     return "<br>".join(lignes)
 
 
+# --- Mesure des titres : un titre Plotly ne se replie JAMAIS ------------------
+# Le pied de figure est replié par `replier_pied` ; le titre et le sous-titre, eux,
+# sont rendus tels quels et se font rogner sans un mot d'avertissement — invisible
+# tant qu'on relit sur écran large. Huit des dix figures de l'étude ont vécu ainsi
+# (constat du 06/08/2026). D'où ce gabarit, qui rend la largeur MESURABLE, donc
+# vérifiable en test.
+#
+# Ratios largeur/corps relevés sur Segoe UI (la `system-ui` de Windows, celle qui
+# rend nos figures ici) et figés dans le code : un test qui lirait la police du
+# système donnerait un résultat différent d'un runner Linux à un poste Windows, et
+# ne verrouillerait plus rien. Le comptage de caractères, lui, surestimait de 15 %.
+GABARIT = {
+    0.217: ",.:;·", 0.229: "‘’", 0.230: "'", 0.239: "|", 0.242: "ijlîï",
+    0.266: "IÎÏ", 0.268: "`", 0.274: " ", 0.284: "!", 0.302: "()[]{}",
+    0.313: "f", 0.339: "t", 0.348: "r", 0.357: "J", 0.366: "²³",
+    0.377: "°“”", 0.379: "\\", 0.390: "/", 0.392: '"', 0.400: "-",
+    0.415: "_", 0.417: "*", 0.424: "s", 0.448: "?", 0.452: "z",
+    0.459: "x", 0.462: "cç", 0.471: "L", 0.479: "v", 0.484: "yÿ",
+    0.488: "F", 0.497: "k", 0.500: "–", 0.506: "EÉÈÊË«»", 0.509: "aàâä",
+    0.523: "eéèêë", 0.524: "T", 0.531: "S", 0.539: "$0123456789€", 0.553: "Y",
+    0.560: "P", 0.566: "hnuùûü", 0.570: "Z", 0.573: "B", 0.577: "µ",
+    0.580: "K", 0.586: "oôö", 0.588: "bp", 0.589: "dgq", 0.590: "X",
+    0.591: "#", 0.598: "R", 0.619: "CÇ", 0.621: "V", 0.645: "AÀÂÄ",
+    0.646: "▾▴✓⚠", 0.684: "+<=>^~×−", 0.686: "G", 0.687: "UÙÛÜ", 0.701: "D",
+    0.710: "H", 0.723: "w", 0.733: "…", 0.748: "N", 0.754: "OQÔÖ",
+    0.800: "&", 0.818: "%", 0.832: "æ", 0.860: "Æ", 0.861: "m",
+    0.898: "M", 0.928: "œ", 0.931: "Œ", 0.934: "W", 0.955: "@",
+    1.000: "—",
+}
+GABARIT_PAR_CAR = {car: ratio for ratio, cars in GABARIT.items() for car in cars}
+GABARIT_DEFAUT = 0.60
+"""Ratio d'un caractère hors table — pris large, pour que l'inconnu ne passe pas sous le radar."""
+
+LARGEUR_VISUEL = 992
+"""Largeur de RÉFÉRENCE d'affichage d'un visuel du livrable (colonne « figure » de l'étude,
+page air à 62rem). C'est à elle que titres et sous-titres doivent tenir. Elle vit ici, avec
+la mesure qui l'utilise : sans point fixe écrit quelque part, chaque retouche de titre se
+calibrerait sur la fenêtre de qui la relit."""
+
+TAILLE_TITRE = 28
+TAILLE_SOUS_TITRE = 18
+"""Corps du titre et du sous-titre, tels que le template les fixe."""
+
+RETRAIT_TITRE_PX = 18
+"""Largeur perdue par le titre : x=0.01 du conteneur, plus une garde à droite."""
+
+
+def largeur_px(texte: str, taille: int) -> float:
+    """Largeur rendue d'UNE ligne, en pixels. Les balises (`<b>`, `<i>`) ne comptent pas.
+
+    Ne coupe pas sur `<br>` : à l'appelant de découper d'abord — une ligne, une mesure.
+    """
+    nu = re.sub(r"<[^>]+>", "", texte)
+    return sum(GABARIT_PAR_CAR.get(car, GABARIT_DEFAUT) for car in nu) * taille
+
+
+def lignes_de_titre(fig) -> list[tuple[str, int]]:
+    """Les lignes du titre et du sous-titre d'une figure, avec leur corps.
+
+    Lit le layout de la figure, pas le HTML : les titres d'AXES portent le même nom
+    et une recherche textuelle les ramasserait, donnant des largeurs fausses.
+    """
+    titre = fig.layout.title
+    lignes = []
+    if titre and titre.text:
+        lignes += [(li, TAILLE_TITRE) for li in titre.text.split("<br>")]
+    if titre and titre.subtitle and titre.subtitle.text:
+        lignes += [(li, TAILLE_SOUS_TITRE) for li in titre.subtitle.text.split("<br>")]
+    return lignes
+
+
+def marge_haute_minimale(fig) -> int:
+    """Marge haute qu'il faut à cette figure pour que le tracé ne remonte pas dans le titre.
+
+    Interligne 1,45 (celui de Plotly), plus une bande de respiration sous la dernière
+    ligne de sous-titre : sans elle, le graphique s'entremêle au propos — c'était le cas
+    de T7, dont la marge tombait à la ligne près.
+    """
+    hauteur = sum(taille * 1.45 for _, taille in lignes_de_titre(fig))
+    return round(12 + hauteur + 30)
+
+
+def verifier_titres(fig, nom: str = "figure", largeur: int = LARGEUR_VISUEL) -> None:
+    """Refuse une figure dont le titre déborde, ou dont la marge haute est trop courte.
+
+    Verrou posé le 06/08/2026, en réponse à la crainte — juste — qu'en corrigeant une
+    figure les erreurs se déplacent ailleurs : la contrainte est écrite une fois, à
+    l'endroit par lequel TOUTE figure publiée passe, plutôt que relue figure par figure.
+    Échec bruyant : un run qui casse ici ne publie rien et laisse la vitrine précédente
+    en place — un titre rogné, lui, part en ligne sans prévenir.
+    """
+    dispo = largeur - RETRAIT_TITRE_PX
+    fautes = [
+        f"    {taille} px — {largeur_px(li, taille):.0f} px (dispo {dispo}) : {li}"
+        for li, taille in lignes_de_titre(fig)
+        if largeur_px(li, taille) > dispo
+    ]
+    marge = fig.layout.margin.t
+    besoin = marge_haute_minimale(fig)
+    if marge is not None and marge < besoin:
+        fautes.append(f"    marge haute t={marge} — il en faut {besoin} pour ce titre")
+    if fautes:
+        raise ValueError(
+            f"{nom} : titre hors gabarit à {largeur} px de large — couper sur <br>, "
+            "ou raccourcir.\n" + "\n".join(fautes))
+
+
 def date_collecte(source_id: str) -> str:
     """Date de collecte de la donnée RÉELLEMENT présente dans le Parquet.
 
@@ -152,7 +260,7 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
                 l'est pas). Le défaut (-85) passe sous ticks + titre d'axe ; à creuser
                 quand une légende occupe la bande basse (cf. T6)
     """
-    preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px)
+    preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px, nom=name)
     dest = OUTPUTS / f"{name}.html"
     # "directory" : pas de CDN (le visuel se charge sans réseau tiers) ni de JS
     # embarqué par fichier (~4,5 Mo x5) — une seule copie partagée dans outputs/.
@@ -165,7 +273,7 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
 
 
 def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
-                    note: str = "", pied_decalage_px: int = -85):
+                    note: str = "", pied_decalage_px: int = -85, nom: str = "figure"):
     """Applique le template et incruste la mention de source obligatoire. Renvoie `fig`.
 
     Extraite d'`export_html` pour que la page d'assemblage obtienne EXACTEMENT les mêmes
@@ -178,6 +286,8 @@ def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
         # Commentaire = sous-titre NATIF (un seul bloc avec le titre) : contrairement à
         # une annotation flottante, il ne peut plus télescoper la légende.
         fig.update_layout(title=dict(subtitle=dict(text=sous_titre)))
+    # Le titre est posé : on vérifie qu'il TIENT, avant de dessiner quoi que ce soit.
+    verifier_titres(fig, nom)
     # Coupure VOULUE avant la date quand la source est longue : elle tombe à un endroit
     # qui a du sens, plutôt qu'au hasard du repli. Le repli automatique ci-dessous prend
     # le relais pour tout ce qui dépasse encore, source ou note.
