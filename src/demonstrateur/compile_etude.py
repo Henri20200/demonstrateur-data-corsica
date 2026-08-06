@@ -215,17 +215,31 @@ def compiler(md: str) -> str:
 
 # --- Assemblage de la page -----------------------------------------------------------
 
+# Largeur de LECTURE de la prose. Une colonne plus large fatigue : au-delà d'environ
+# 80 signes par ligne, l'œil perd le début de la ligne suivante.
+LARGEUR_TEXTE = 760
+
+# Largeur de RÉFÉRENCE des visuels, alignée sur celle de la page air (62rem). C'est à
+# elle que les titres et sous-titres des figures doivent tenir : un titre Plotly ne se
+# replie jamais, il se fait rogner. Elle vit ici, en un seul endroit, parce que le test
+# de lisibilité la lit pour vérifier chaque figure — sans point fixe écrit quelque part,
+# chaque retouche de titre se calibre sur la fenêtre de qui la relit.
+# Constat du 06/08/2026 : à 760 px, huit des dix figures de l'étude débordaient.
+LARGEUR_VISUEL = 992
+
 # Variables CSS dérivées de la palette des figures : la page et les visuels partagent
 # la même encre, les mêmes filets. Un seul endroit où la couleur vit (viz.PALETTE).
 _VARS = ":root{" + ";".join(
-    [f"--{cle.replace('_', '-')}:{val}" for cle, val in PALETTE.items()] + [f"--sans:{SANS}"]
+    [f"--{cle.replace('_', '-')}:{val}" for cle, val in PALETTE.items()]
+    + [f"--sans:{SANS}", f"--largeur-texte:{LARGEUR_TEXTE}px",
+       f"--largeur-visuel:{LARGEUR_VISUEL}px"]
 ) + "}"
 
 _CSS = """
 *{box-sizing:border-box}
 body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);
   font-size:18px;line-height:1.62;-webkit-font-smoothing:antialiased}
-article{max-width:760px;margin:0 auto;padding:3.5rem 1.25rem 5rem}
+article{max-width:var(--largeur-texte);margin:0 auto;padding:3.5rem 1.25rem 5rem}
 .titre{margin-bottom:2.5rem}
 h1{font-size:2.1rem;line-height:1.18;margin:0 0 .5rem}
 .sous-titre{font-size:1.2rem;color:var(--ink-soft);font-style:italic;margin:0}
@@ -238,7 +252,12 @@ p{margin:0 0 1.1rem}
 ul,ol{margin:0 0 1.2rem;padding-left:1.4rem}
 li{margin:.45rem 0}
 strong{font-weight:650}
-.visuel{margin:2.25rem 0}
+/* Les visuels sortent de la colonne de prose, centrés sur elle : le texte garde sa
+   largeur de lecture, les figures reçoivent celle pour laquelle leurs titres sont
+   écrits. `min()` les fait rétrécir avec la fenêtre plutôt que déborder — left+translate
+   recentre le bloc élargi sur la colonne, sans jamais provoquer de défilement latéral. */
+.visuel{margin:2.25rem 0;width:min(var(--largeur-visuel),calc(100vw - 2.5rem));
+  position:relative;left:50%;transform:translateX(-50%)}
 .visuel iframe{width:100%;border:0;display:block}
 details{background:var(--surface);border:1px solid var(--rule);border-radius:8px;
   padding:.8rem 1.15rem;margin:1.35rem 0}
