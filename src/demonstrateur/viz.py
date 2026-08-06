@@ -160,7 +160,16 @@ calibrerait sur la fenêtre de qui la relit."""
 
 TAILLE_TITRE = 28
 TAILLE_SOUS_TITRE = 18
-"""Corps du titre et du sous-titre, tels que le template les fixe."""
+TAILLE_PIED = 16
+"""Corps du titre, du sous-titre et du pied, tels que le template les fixe."""
+
+INTERLIGNE = 1.3
+"""Interligne de Plotly (`LINE_SPACING`), pour un bloc de texte à plusieurs lignes."""
+
+GARDE_BASSE_PX = 18
+"""Sous la dernière ligne du pied : jambages, plus de quoi absorber l'écart entre
+l'interligne théorique et ce que rend vraiment le navigateur. Un pied qui tient à un
+pixel près ne tient pas."""
 
 RETRAIT_TITRE_PX = 18
 """Largeur perdue par le titre : x=0.01 du conteneur, plus une garde à droite."""
@@ -193,12 +202,53 @@ def lignes_de_titre(fig) -> list[tuple[str, int]]:
 def marge_haute_minimale(fig) -> int:
     """Marge haute qu'il faut à cette figure pour que le tracé ne remonte pas dans le titre.
 
-    Interligne 1,45 (celui de Plotly), plus une bande de respiration sous la dernière
-    ligne de sous-titre : sans elle, le graphique s'entremêle au propos — c'était le cas
-    de T7, dont la marge tombait à la ligne près.
+    Interligne 1,45 (le titre respire plus qu'un bloc courant), plus une bande de
+    respiration sous la dernière ligne de sous-titre : sans elle, le graphique
+    s'entremêle au propos — c'était le cas de T7, dont la marge tombait à la ligne près.
     """
     hauteur = sum(taille * 1.45 for _, taille in lignes_de_titre(fig))
     return round(12 + hauteur + 30)
+
+
+def marge_basse_minimale(pied: str, pied_decalage_px: int) -> int:
+    """Marge basse qu'il faut pour que le pied tienne ENTIER dans la figure.
+
+    Symétrique de `marge_haute_minimale`, et née du même aveuglement : sous la marge
+    déclarée, Plotly ne replie ni ne rogne proprement — il coupe au bord du dessin. Six
+    figures sur seize perdaient ainsi la fin de leur pied le 06/08/2026, et ce qui
+    tombait n'était pas décoratif : sur T7 et T8, c'était la mention « données estimées ».
+
+    Le pied est déjà replié à ce stade : ses `<br>` disent le nombre de lignes.
+    `pied_decalage_px` mesure du bas de la zone de tracé au HAUT du texte ; le texte
+    descend ensuite, d'où l'addition. La garde couvre les jambages de la dernière ligne.
+    """
+    lignes = pied.count("<br>") + 1
+    return round(abs(pied_decalage_px) + lignes * TAILLE_PIED * INTERLIGNE + GARDE_BASSE_PX)
+
+
+def marge_effective(fig, cote: str) -> int:
+    """Marge d'un côté de la figure, celle du template si la figure n'en déclare pas."""
+    marge = getattr(fig.layout.margin, cote)
+    if marge is None:
+        marge = getattr(template().layout.margin, cote)
+    return marge
+
+
+def verifier_pied(fig, nom: str, pied: str, pied_decalage_px: int) -> None:
+    """Refuse une figure dont la marge basse couperait le pied — source ou note.
+
+    Le pied est le porteur du sourçage obligatoire ET des réserves de méthode : le
+    laisser se faire rogner revient à publier une figure moins prudente que ce que le
+    code affirme. Cf. `marge_basse_minimale`.
+    """
+    besoin = marge_basse_minimale(pied, pied_decalage_px)
+    marge = marge_effective(fig, "b")
+    if marge < besoin:
+        lignes = pied.count("<br>") + 1
+        raise ValueError(
+            f"{nom} : le pied ({lignes} lignes) déborde du bas de la figure — marge "
+            f"b={marge}, il en faut {besoin}. Augmenter `b` ET `height` d'autant, pour "
+            "ne pas écraser la zone de tracé.")
 
 
 def verifier_titres(fig, nom: str = "figure", largeur: int = LARGEUR_VISUEL) -> None:
@@ -216,9 +266,9 @@ def verifier_titres(fig, nom: str = "figure", largeur: int = LARGEUR_VISUEL) -> 
         for li, taille in lignes_de_titre(fig)
         if largeur_px(li, taille) > dispo
     ]
-    marge = fig.layout.margin.t
+    marge = marge_effective(fig, "t")
     besoin = marge_haute_minimale(fig)
-    if marge is not None and marge < besoin:
+    if marge < besoin:
         fautes.append(f"    marge haute t={marge} — il en faut {besoin} pour ce titre")
     if fautes:
         raise ValueError(
@@ -303,9 +353,8 @@ def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
     # `xref="container"` sur une annotation ; le décalage se fait donc en pixels, depuis
     # la marge déjà fixée par la figure — une valeur en pixels, donc stable quelle que
     # soit la largeur d'affichage, contrairement à une fraction de zone de tracé.
-    marge_gauche = fig.layout.margin.l
-    if marge_gauche is None:
-        marge_gauche = template().layout.margin.l
+    verifier_pied(fig, nom, pied, pied_decalage_px)
+    marge_gauche = marge_effective(fig, "l")
     fig.add_annotation(
         text=pied,
         xref="paper", yref="paper", x=0, y=0, yanchor="top", yshift=pied_decalage_px,

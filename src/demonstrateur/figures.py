@@ -318,8 +318,10 @@ def fig_t5_ecretement() -> go.Figure:
         # Pied à quatre lignes (source repliée en 2 + note en 2) : marge basse
         # élargie ET hauteur relevée, sinon la zone de tracé rétrécit, l'axe des
         # années s'éclaircit et le pied remonte dans les libellés de mois.
-        margin=dict(t=144, b=200, l=116, r=56),
-        height=690,
+        # b et height montent ensemble : la marge basse doit loger le pied ENTIER
+        # (cf. viz.marge_basse_minimale), sans quoi c'est la zone de tracé qui paie.
+        margin=dict(t=144, b=245, l=116, r=56),
+        height=735,
     )
     return fig
 
@@ -392,8 +394,8 @@ def fig_t6_corse_sardaigne() -> go.Figure:
         legend=dict(orientation="h", y=-0.10, yanchor="top", x=0, traceorder="normal"),
         # t : de quoi loger le titre (28) et SES TROIS lignes de sous-titre (18) sans que
         # le tracé remonte dans le propos — cf. `marge_haute_minimale` dans viz.
-        margin=dict(t=180, b=260, l=116, r=56),
-        height=660,
+        margin=dict(t=180, b=350, l=116, r=56),
+        height=750,
     )
     return fig
 
@@ -503,8 +505,12 @@ def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
     for i, val in enumerate([OREGES_DEPENDANCE, importe_elec]):
         fig.add_shape(type="line", x0=val, x1=val, y0=i - 0.30, y1=i + 0.30,
                       line=dict(color=PALETTE["ink"], width=2))
+        # En GRAS, non pour insister mais pour SÉPARER : l'étiquette du haut arrive juste
+        # sous la dernière ligne de sous-titre, et en graisse normale elle s'y lisait comme
+        # une quatrième ligne de texte. La graisse la range du côté du graphique.
+        # Les deux étiquettes sont le même objet : les distinguer inventerait une hiérarchie.
         fig.add_annotation(
-            x=val, y=i, yshift=52, text=f"{pct(val)} vient de l'extérieur ▾",
+            x=val, y=i, yshift=52, text=f"<b>{pct(val)} vient de l'extérieur ▾</b>",
             showarrow=False, xanchor="right", xshift=-4,
             font=dict(family=SANS, size=17, color=PALETTE["ink"]))
 
@@ -517,8 +523,8 @@ def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
         yaxis=dict(showgrid=False, ticks="", autorange="reversed"),
         legend=dict(orientation="h", y=-0.16, yanchor="top", x=0, traceorder="normal"),
         # t : titre + trois lignes de sous-titre. À 150, le tracé remontait dans le texte.
-        margin=dict(t=180, b=250, l=250, r=56),
-        height=660,
+        margin=dict(t=180, b=330, l=250, r=56),
+        height=740,
     )
     return fig, importe_elec
 
@@ -615,8 +621,8 @@ def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
                    range=[0, float(df["sup_corse"].max()) * 1.14]),
         legend=dict(orientation="h", y=-0.16, yanchor="top", x=0, traceorder="reversed"),
         # t : titre + QUATRE lignes de sous-titre — le plus chargé de l'étude.
-        margin=dict(t=205, b=270, l=116, r=60),
-        height=680,
+        margin=dict(t=205, b=330, l=116, r=60),
+        height=740,
     )
     return fig, annees[-1], h_fin - h_deb
 

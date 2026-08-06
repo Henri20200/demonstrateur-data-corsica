@@ -17,7 +17,9 @@ from demonstrateur.viz import (
     LARGEUR_VISUEL,
     RETRAIT_TITRE_PX,
     largeur_px,
+    marge_basse_minimale,
     marge_haute_minimale,
+    verifier_pied,
     verifier_titres,
 )
 
@@ -96,6 +98,33 @@ def test_la_marge_minimale_croit_avec_le_nombre_de_lignes():
     court = marge_haute_minimale(figure(sous_titre="Une ligne."))
     long = marge_haute_minimale(figure(sous_titre="Une ligne.<br>Deux.<br>Trois.<br>Quatre."))
     assert long > court
+
+
+# --- Le pied tient entier ------------------------------------------------------
+
+def test_un_pied_qui_deborde_du_bas_est_refuse():
+    """Le défaut de T7 et T8 : la ligne coupée était « données estimées » — la figure
+    publiée était moins prudente que ce que le code affirmait."""
+    pied = "<br>".join(["Source : EDF — données collectées le 2026-07-22"] + ["note"] * 7)
+    fig = figure()
+    fig.update_layout(margin=dict(t=400, b=250))
+    with pytest.raises(ValueError, match="pied"):
+        verifier_pied(fig, "t_essai", pied, -130)
+
+
+def test_la_marge_basse_minimale_tient_compte_du_decalage_et_des_lignes():
+    """Les deux termes comptent : éloigner le pied du tracé coûte autant qu'y ajouter
+    des lignes. C'est ce qui rendait T6 (décalage -170) le plus exposé."""
+    base = marge_basse_minimale("une ligne", -85)
+    assert marge_basse_minimale("une ligne", -170) > base
+    assert marge_basse_minimale("une<br>ligne", -85) > base
+
+
+def test_un_pied_qui_tient_passe():
+    fig = figure()
+    fig.update_layout(margin=dict(t=400, b=330))
+    pied = "<br>".join(["Source : EDF"] + ["note"] * 7)
+    verifier_pied(fig, "t_essai", pied, -130)
 
 
 def test_une_figure_sans_marge_declaree_passe():
