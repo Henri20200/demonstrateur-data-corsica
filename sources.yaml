@@ -316,6 +316,43 @@ sources:
       global, J/cm²) est le seul autre champ tentant pour l'ozone — hors BRIEF, à ne pas
       ouvrir sans décision.
 
+  # --- Référentiel des sites de mesure corses (Geod'air) ---
+  # Le SEUL endroit où les caractéristiques des stations sont écrites par leur producteur :
+  # date d'entrée en service, implantation, influence, altitude, coordonnées. Jusqu'ici
+  # `prepare.STATIONS_AIR` les portait RECOPIÉES à la main — exactes, mais invérifiables
+  # depuis le dépôt, et une note du livrable en affirme le chiffré (« 2006-2011 »).
+  # `tests/test_stations_air.py` confronte désormais la table au référentiel.
+  # region=94 : code Insee de la Corse — l'export national fait 511 sites pour 8 corses.
+  # ATTENTION, 2A/2B et jamais 20 côté Insee (Météo-France, lui, publie sous « 20 » —
+  # cf. plus haut) ; on filtre par région, ce qui évite d'avoir à trancher.
+  # Le référentiel est VERSIONNÉ (colonnes Version, Date de début de version) : une
+  # station remaniée gagne une ligne. Les 8 sites corses n'ont qu'une version au 07/08/2026.
+  # Répond DIRECTEMENT, sans le mécanisme d'export asynchrone des mesures (commande puis
+  # téléchargement) : un GET, une clé en en-tête, rien de plus dans fetch.
+  geodair_stations:
+    url: "https://www.geodair.fr/api-ext/station/export?region=94"
+    filename: "geodair_stations.csv"
+    # ATTENTION, ce champ est PUBLIÉ : `accueil.py` l'affiche tel quel sur la page d'entrée
+    # de la vitrine. Il porte ce que le lecteur doit lire, jamais une consigne interne.
+    # Sans version : le LCSQA écrit que les informations de ses membres sont diffusées par
+    # défaut sous Licence Ouverte (https://www.lcsqa.org/fr/conditions-utilisation-site)
+    # SANS en préciser le millésime — ne pas y ajouter « 2.0 » sans l'avoir lu chez lui.
+    licence: "Licence Ouverte (Etalab) — réutilisation libre avec mention du producteur"
+    producteur: "Geod'air — LCSQA/Ineris, base nationale de la qualité de l'air (mesures Qualitair Corse)"
+    entetes:
+      apikey: "${GEODAIR_KEY}"
+    glissant: true      # référentiel vivant : une station nouvelle ne doit pas nous échapper
+    format: csv
+    delimiter: ";"
+    colonnes_attendues: [Code, Nom, "Date d'entrée en service (à 00h00)", Implantation, Altitude]
+    notes: >
+      8 sites corses au 07/08/2026, dont les 6 qui mesurent l'ozone. Les 2 autres :
+      BASTIA FANGO (FR41060) et AJACCIO NAPOLEON (FR41073, en service depuis le
+      11/07/2025, remplaçante d'Ajaccio Abbatucci) — à vérifier avant de conclure sur
+      le périmètre, une station trafic ne mesure pas l'ozone.
+      Le jeton ${GEODAIR_KEY} n'existe QUE dans .env en local et dans les secrets
+      GitHub Actions : le manifeste n'enregistre que le gabarit.
+
   # ============================================================================
   # OZONE — Agence européenne pour l'environnement (AEE), un Parquet par station
   # ============================================================================

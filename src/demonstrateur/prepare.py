@@ -459,6 +459,13 @@ def air_corse_to_parquet(dest: str) -> None:
 # codes PSR d'ENTSO-E, plutôt que déclarées en source — le xls n'est pas un format que
 # `fetch` sait certifier, et aucune sortie quotidienne n'en dépend.
 #
+# ELLES SONT DÉSORMAIS VÉRIFIÉES, ce qui lève la faiblesse de toute recopie : depuis le
+# 07/08/2026, la source `geodair_stations` rapatrie le référentiel des sites corses chez
+# leur producteur (un CSV, que `fetch` certifie), et `tests/test_stations_air.py` confronte
+# chaque valeur de cette table à ce qu'il publie — mise en service, implantation, altitude,
+# coordonnées. La table reste écrite ici : c'est un PÉRIMÈTRE (les six stations d'ozone),
+# pas un miroir du réseau. Le test dit quand le miroir cesse de refléter.
+#
 # (nom, latitude, longitude, altitude en m, mise en service, implantation, influence)
 STATIONS_AIR = {
     "FR41001": ("AJACCIO CANETTO",   41.924694, 8.735694,  39, "2006-05-23",

@@ -89,6 +89,11 @@ jobs:
           # dans Settings → Secrets and variables → Actions. Vide tant qu'aucune
           # source de sources.yaml ne référence ${ENTSOE_TOKEN} — sans effet d'ici là.
           ENTSOE_TOKEN: ${{ secrets.ENTSOE_TOKEN }}
+          # Clé Geod'air (référentiel des sites de mesure corses), portée par l'en-tête
+          # `apikey:` et non par l'url. Absente, la seule source `geodair_stations` échoue
+          # et le run continue : `tests/test_stations_air.py` se saute alors faute de brut,
+          # sans rien invalider de ce qui est publié.
+          GEODAIR_KEY: ${{ secrets.GEODAIR_KEY }}
         run: fetch-data
 
       - name: Préparation (Parquet)
