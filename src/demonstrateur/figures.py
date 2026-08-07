@@ -318,8 +318,10 @@ def fig_t5_ecretement() -> go.Figure:
         # Pied à quatre lignes (source repliée en 2 + note en 2) : marge basse
         # élargie ET hauteur relevée, sinon la zone de tracé rétrécit, l'axe des
         # années s'éclaircit et le pied remonte dans les libellés de mois.
-        margin=dict(t=144, b=200, l=116, r=56),
-        height=690,
+        # b et height montent ensemble : la marge basse doit loger le pied ENTIER
+        # (cf. viz.marge_basse_minimale), sans quoi c'est la zone de tracé qui paie.
+        margin=dict(t=144, b=245, l=116, r=56),
+        height=735,
     )
     return fig
 
@@ -390,8 +392,10 @@ def fig_t6_corse_sardaigne() -> go.Figure:
         # La marge basse absorbe la légende même repliée sur 3 rangées (iframe étroite) ;
         # le pied est abaissé d'autant via pied_y à l'export.
         legend=dict(orientation="h", y=-0.10, yanchor="top", x=0, traceorder="normal"),
-        margin=dict(t=144, b=260, l=116, r=56),
-        height=660,
+        # t : de quoi loger le titre (28) et SES TROIS lignes de sous-titre (18) sans que
+        # le tracé remonte dans le propos — cf. `marge_haute_minimale` dans viz.
+        margin=dict(t=180, b=350, l=116, r=56),
+        height=750,
     )
     return fig
 
@@ -501,8 +505,12 @@ def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
     for i, val in enumerate([OREGES_DEPENDANCE, importe_elec]):
         fig.add_shape(type="line", x0=val, x1=val, y0=i - 0.30, y1=i + 0.30,
                       line=dict(color=PALETTE["ink"], width=2))
+        # En GRAS, non pour insister mais pour SÉPARER : l'étiquette du haut arrive juste
+        # sous la dernière ligne de sous-titre, et en graisse normale elle s'y lisait comme
+        # une quatrième ligne de texte. La graisse la range du côté du graphique.
+        # Les deux étiquettes sont le même objet : les distinguer inventerait une hiérarchie.
         fig.add_annotation(
-            x=val, y=i, yshift=52, text=f"{pct(val)} vient de l'extérieur ▾",
+            x=val, y=i, yshift=52, text=f"<b>{pct(val)} vient de l'extérieur ▾</b>",
             showarrow=False, xanchor="right", xshift=-4,
             font=dict(family=SANS, size=17, color=PALETTE["ink"]))
 
@@ -514,8 +522,9 @@ def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
                    ticks="", showline=False, zeroline=False),
         yaxis=dict(showgrid=False, ticks="", autorange="reversed"),
         legend=dict(orientation="h", y=-0.16, yanchor="top", x=0, traceorder="normal"),
-        margin=dict(t=150, b=250, l=250, r=56),
-        height=660,
+        # t : titre + trois lignes de sous-titre. À 150, le tracé remontait dans le texte.
+        margin=dict(t=180, b=330, l=250, r=56),
+        height=740,
     )
     return fig, importe_elec
 
@@ -611,8 +620,9 @@ def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
                    tickvals=list(range(0, int(df["sup_corse"].max()), 500)),
                    range=[0, float(df["sup_corse"].max()) * 1.14]),
         legend=dict(orientation="h", y=-0.16, yanchor="top", x=0, traceorder="reversed"),
-        margin=dict(t=180, b=270, l=116, r=60),
-        height=680,
+        # t : titre + QUATRE lignes de sous-titre — le plus chargé de l'étude.
+        margin=dict(t=205, b=330, l=116, r=60),
+        height=740,
     )
     return fig, annees[-1], h_fin - h_deb
 
@@ -699,14 +709,17 @@ def main() -> int:
     fig1, quand, statut, age_h = fig_t1_soleil()
     sous_titre_t1 = f"Dernier relevé du {quand} (statut : {statut.lower()})"
     if age_h > FRAICHEUR_BLOQUER_H:
+        # Repli explicite : l'avertissement rallonge le sous-titre au-delà de la largeur
+        # du visuel, et un titre Plotly se fait rogner plutôt que replier — le message
+        # d'alerte disparaîtrait précisément quand il est le plus utile.
         sous_titre_t1 = ("⚠ Relevé de plus de 48 h : l'affichage « en ce moment » est "
-                         "suspendu. " + sous_titre_t1)
+                         "suspendu.<br>" + sous_titre_t1)
         print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_BLOQUER_H} h) — "
               "titre « en ce moment » bloqué, visuel dégradé, run en échec.")
         code = 1
     elif age_h > FRAICHEUR_AVERTIR_H:
         sous_titre_t1 = (f"⚠ Relevé de plus de {FRAICHEUR_AVERTIR_H} h — collecte à "
-                         "relancer. " + sous_titre_t1)
+                         "relancer.<br>" + sous_titre_t1)
         print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_AVERTIR_H} h) — "
               "avertissement affiché sur le visuel.")
     export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix, sous_titre=sous_titre_t1)
@@ -720,7 +733,7 @@ def main() -> int:
                 note=NOTE_ESTIME)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
                 sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
-                           "2019-2024. Interconnexions = câbles SACOI (Italie via la Sardaigne).",
+                           "2019-2024.<br>Interconnexions = câbles SACOI (Italie via la Sardaigne).",
                 note=NOTE_ESTIME)
     export_html(fig_t4_heure_verte(), "t4_heure_verte", SRC_HIST, d_hist,
                 sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024."
@@ -778,7 +791,7 @@ def main() -> int:
                     date_collecte("entsoe_sardaigne_2024"),
                     sous_titre="Mix de génération électrique, moyenne 2019-2024. Comparaison à "
                                "périmètre égal :<br>génération locale seule (les 27,8 % d'imports "
-                               "corses sont exclus et le reste renormalisé ; la Sardaigne, "
+                               "corses sont exclus et le reste<br>renormalisé ; la Sardaigne, "
                                "exportatrice, n'importe pas).",
                     note="La Sardaigne (10× plus grande) fait 32 % de son courant au charbon et "
                          "32 % au gaz de synthèse (IGCC), quasi absents en Corse ;<br>elle a 15 "

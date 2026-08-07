@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 
 from .config import ETUDE_HTML, ETUDE_SOURCE, OUTPUTS
-from .viz import PALETTE, SANS
+from .viz import LARGEUR_VISUEL, PALETTE, SANS
 
 # --- Rendu inline : échappement + le seul balisage inline présent (gras, italique) ---
 
@@ -219,13 +219,10 @@ def compiler(md: str) -> str:
 # 80 signes par ligne, l'œil perd le début de la ligne suivante.
 LARGEUR_TEXTE = 760
 
-# Largeur de RÉFÉRENCE des visuels, alignée sur celle de la page air (62rem). C'est à
-# elle que les titres et sous-titres des figures doivent tenir : un titre Plotly ne se
-# replie jamais, il se fait rogner. Elle vit ici, en un seul endroit, parce que le test
-# de lisibilité la lit pour vérifier chaque figure — sans point fixe écrit quelque part,
-# chaque retouche de titre se calibre sur la fenêtre de qui la relit.
-# Constat du 06/08/2026 : à 760 px, huit des dix figures de l'étude débordaient.
-LARGEUR_VISUEL = 992
+# La largeur de RÉFÉRENCE des visuels (`viz.LARGEUR_VISUEL`, 992 px, alignée sur la page
+# air) vit avec la mesure qui la fait respecter : `viz.verifier_titres` refuse à l'export
+# une figure dont le titre déborderait. Constat du 06/08/2026 : à 760 px — la largeur de
+# la colonne de prose — huit des dix figures de l'étude débordaient.
 
 # Variables CSS dérivées de la palette des figures : la page et les visuels partagent
 # la même encre, les mêmes filets. Un seul endroit où la couleur vit (viz.PALETTE).

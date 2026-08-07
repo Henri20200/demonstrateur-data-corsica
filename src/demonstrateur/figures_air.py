@@ -291,8 +291,8 @@ def fig_a2_ozone_et_chaleur() -> go.Figure:
                    range=[bas - marge, haut + marge]),
         # Bande basse généreuse : le graphique se termine franchement avant que le texte
         # de bas de figure ne commence (cf. pied_decalage_px à l'export).
-        margin=dict(t=170, b=250, l=120, r=70),
-        height=640,
+        margin=dict(t=170, b=350, l=120, r=70),
+        height=740,
     )
     return fig
 
@@ -498,8 +498,8 @@ def fig_a5_creneau_a_eviter() -> go.Figure:
         title=dict(text="L'été, l'air est le plus chargé de 11 h à 18 h"),
         xaxis=dict(title=dict(text="Heure locale", font=AXE), dtick=3, ticksuffix=" h"),
         yaxis=dict(title=dict(text="Ozone (µg/m³)", font=AXE)),
-        margin=dict(t=200, b=170, l=140, r=60),
-        height=600,
+        margin=dict(t=200, b=220, l=140, r=60),
+        height=650,
     )
     return fig
 
