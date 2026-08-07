@@ -332,10 +332,12 @@ sources:
   geodair_stations:
     url: "https://www.geodair.fr/api-ext/station/export?region=94"
     filename: "geodair_stations.csv"
-    licence: "Licence Ouverte (Etalab) — les informations produites par les membres du LCSQA
-      sont mises à disposition par défaut sous Licence Ouverte
-      (https://www.lcsqa.org/fr/conditions-utilisation-site). Le producteur n'en précise
-      PAS la version : ne pas écrire « 2.0 » ici sans l'avoir vérifié chez lui."
+    # ATTENTION, ce champ est PUBLIÉ : `accueil.py` l'affiche tel quel sur la page d'entrée
+    # de la vitrine. Il porte ce que le lecteur doit lire, jamais une consigne interne.
+    # Sans version : le LCSQA écrit que les informations de ses membres sont diffusées par
+    # défaut sous Licence Ouverte (https://www.lcsqa.org/fr/conditions-utilisation-site)
+    # SANS en préciser le millésime — ne pas y ajouter « 2.0 » sans l'avoir lu chez lui.
+    licence: "Licence Ouverte (Etalab) — réutilisation libre avec mention du producteur"
     producteur: "Geod'air — LCSQA/Ineris, base nationale de la qualité de l'air (mesures Qualitair Corse)"
     entetes:
       apikey: "${GEODAIR_KEY}"
