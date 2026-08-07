@@ -346,10 +346,16 @@ sources:
     delimiter: ";"
     colonnes_attendues: [Code, Nom, "Date d'entrée en service (à 00h00)", Implantation, Altitude]
     notes: >
-      8 sites corses au 07/08/2026, dont les 6 qui mesurent l'ozone. Les 2 autres :
+      8 sites corses au 07/08/2026, dont les 6 qui mesurent l'ozone. Les 2 autres,
       BASTIA FANGO (FR41060) et AJACCIO NAPOLEON (FR41073, en service depuis le
-      11/07/2025, remplaçante d'Ajaccio Abbatucci) — à vérifier avant de conclure sur
-      le périmètre, une station trafic ne mesure pas l'ozone.
+      11/07/2025, remplaçante d'Ajaccio Abbatucci), N'EN MESURENT PAS — vérifié le
+      07/08/2026 sur `/pointdeprelevement/export`, le référentiel qui associe chaque
+      site à ses polluants : Napoléon est d'influence Trafic et porte C6H6, CO, NO,
+      NO2, NOx et PM10, jamais le code 08. Le périmètre à 6 stations est donc complet.
+      C'est le mécanisme qui l'explique, pas le hasard : l'ozone est détruit par les
+      oxydes d'azote frais, on en mesure le moins là où roule le plus de trafic.
+      (Napoléon mesure bien le NO2, mais son influence Trafic la range hors du
+      périmètre « de fond » sur lequel le sujet air est bâti.)
       Le jeton ${GEODAIR_KEY} n'existe QUE dans .env en local et dans les secrets
       GitHub Actions : le manifeste n'enregistre que le gabarit.
 

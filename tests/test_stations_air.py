@@ -35,6 +35,10 @@ besoin_referentiel = pytest.mark.skipif(
 SITES_CORSES_CONNUS = {
     "FR41001", "FR41002", "FR41004", "FR41017", "FR41024",  # périmètre ozone (5 anciennes)
     "FR41063",                                              # périmètre ozone (Confina 2)
+    # Ces deux-là ne mesurent PAS l'ozone — vérifié le 07/08/2026 sur le référentiel des
+    # points de prélèvement : AJACCIO NAPOLEON est d'influence Trafic (C6H6, CO, NO, NO2,
+    # NOx, PM10). Ils sont listés pour que leur présence ne fasse pas échouer la suite ;
+    # un NEUVIÈME site, lui, doit la faire échouer.
     "FR41060",                                              # BASTIA FANGO — hors périmètre
     "FR41073",                                              # AJACCIO NAPOLEON — hors périmètre
 }
