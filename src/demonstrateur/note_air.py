@@ -38,9 +38,22 @@ def _chiffres() -> dict:
         SELECT count(*), count(DISTINCT num_poste), min(date_locale), max(date_locale)
         FROM '{METEO}'""").fetchone()
     jours = con.execute(f"SELECT count(*) FROM '{MDA8}' WHERE valide").fetchone()[0]
+    # Collectées ≠ tracées : les figures filtrent sur l'influence « de fond ». Le lecteur
+    # qui compte les courbes doit trouver l'écart expliqué, pas le deviner. Les deux
+    # décomptes se lisent, et la station écartée se NOMME — une phrase au singulier, parce
+    # qu'il n'y en a qu'une ; le test qui tient ce paragraphe le dira si cela change.
+    fond = con.execute(
+        f"SELECT count(DISTINCT station) FROM '{SERIE}' WHERE influence = 'Fond'"
+    ).fetchone()[0]
+    hors = con.execute(
+        f"SELECT DISTINCT station, influence FROM '{SERIE}' WHERE influence <> 'Fond' "
+        "ORDER BY 1"
+    ).fetchall()
     return dict(
         air_h=air[0], air_st=air[1], air_d1=air[2], air_d2=air[3], air_verif=air[4],
-        verif_d2=air[5],
+        verif_d2=air[5], air_fond=fond,
+        hors_noms=" et ".join(s.title() for s, _ in hors),
+        hors_type=hors[0][1].lower() if hors else "",
         meteo_h=meteo[0], meteo_p=meteo[1], meteo_d1=meteo[2], meteo_d2=meteo[3],
         jours=jours,
         collecte_air=date_collecte("aee_o3_venaco_continu"),
@@ -104,6 +117,14 @@ relevé pris à une autre porte.</p>
 {c["air_d2"]}, dont {n(c["air_verif"])} portent le statut « vérifié » du producteur — les
 plus récentes ne l'ont pas encore, et c'est normal : la vérification vient après.
 Côté températures, {n(c["meteo_h"])} relevés du {c["meteo_d1"]} au {c["meteo_d2"]}.</p>
+<p><strong>{c["air_st"]} stations sont collectées, {c["air_fond"]} sont tracées.</strong>
+Les figures ne retiennent que les stations dites « de fond », celles qu'aucune source
+proche n'influence. {c["hors_noms"]} n'en fait pas partie : son producteur la classe
+« {c["hors_type"]} » — un mot qui dit ce que la station a été installée pour observer, et
+non la nature du lieu ni l'origine de ce qu'elle mesure. La mêler aux autres reviendrait à
+comparer des populations différentes, quand ces figures opposent la ville à la campagne.
+Ses mesures sont collectées et vérifiables comme les autres ; elles ne servent simplement
+aucune figure.</p>
 
 <h2>Ces chiffres peuvent changer après coup</h2>
 <p>Une mesure publiée n'est pas définitive. Qualitair Corse contrôle ses analyseurs en

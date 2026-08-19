@@ -254,6 +254,30 @@ def test_la_note_dit_ce_que_les_chiffres_ne_disent_pas():
 
 
 @besoin_note
+def test_la_note_distingue_stations_collectees_et_stations_tracees():
+    """Le lecteur qui compte les courbes en trouve cinq ; le tableau des sources en
+    annonce six. L'écart doit s'expliquer dans la note, pas se deviner.
+
+    Les figures filtrent sur l'influence « de fond », ce qui écarte la seule station que
+    son producteur classe autrement (BRIEF_AIR, « comparer ce qui est comparable »). Les
+    deux décomptes sont LUS dans la série : écrits à la main, ils ont déjà annoncé cinq
+    stations là où le filtre en retenait quatre, du côté des figures.
+    """
+    h = _texte_note()
+    assert re.search(r"\d+ stations sont collectées, \d+ sont tracées", h), (
+        "la note doit porter les deux décomptes, et les lire dans la série"
+    )
+    assert "La Marana" in h, (
+        "la note doit nommer la station écartée des figures — un décompte qui ne dit pas "
+        "qui manque laisse le lecteur devant un écart inexpliqué"
+    )
+    assert "installée pour observer" in h, (
+        "la note doit préciser que le classement décrit la vocation de la station, pas la "
+        "nature du lieu : « industrielle » ne dit rien de l'environnement de la Marana"
+    )
+
+
+@besoin_note
 def test_la_note_annonce_que_les_mesures_sont_revisables():
     """Le producteur corrige des heures DÉJÀ publiées, des semaines après coup.
 
