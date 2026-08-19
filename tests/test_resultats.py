@@ -418,14 +418,20 @@ def test_meteo_corse_cycle_diurne_physique(con):
 # d'elle-même, et une erreur y serait invisible — le pipeline tournerait, les figures
 # sortiraient, et la température affichée en face de l'ozone serait celle d'un autre
 # endroit. D'où ces verrous.
+#
+# Les deux sens du contrôle ne se lisent pas sur la même source (corrigé le 19/08/2026).
+# Une station de plus se montre dès le flux du jour ; une entrée qui ne désigne rien est
+# un défaut du CODE, qui se lit sur la série entière. Les avoir confondus a arrêté la
+# chaîne : l'analyseur d'ozone de BASTIA LA MARANA est muet depuis le 05/08/2026 à 14 h
+# (sa station publie toujours NO2 et PM10 ; l'AEE la donne à 0 heure valide sur 318), et
+# l'appariement s'est trouvé accusé d'un défaut qu'il n'a pas.
 
 @besoin_air
-def test_appariement_couvre_toutes_les_stations_ozone(con):
-    """Aucune station d'ozone ne doit rester sans poste, ni l'inverse.
-
-    Le jour où Qualitair Corse ouvre une septième station, elle apparaîtra dans le Parquet
-    sans température associée : ce test le dit, au lieu de laisser la station disparaître
-    silencieusement du croisement.
+def test_aucune_station_d_ozone_ne_reste_sans_poste(con):
+    """Le jour où Qualitair Corse ouvre une septième station, elle apparaîtra dans le
+    Parquet sans température associée : ce test le dit, au lieu de laisser la station
+    disparaître silencieusement du croisement. Le flux du jour est ici la bonne source —
+    c'est là qu'une station neuve se voit en premier.
     """
     stations = {
         r[0]
@@ -435,8 +441,27 @@ def test_appariement_couvre_toutes_les_stations_ozone(con):
     }
     sans_poste = stations - set(APPARIEMENT_AIR_METEO)
     assert not sans_poste, f"station(s) d'ozone sans poste météo : {sorted(sans_poste)}"
+
+
+@besoin_serie
+def test_aucun_apparie_ne_designe_une_station_sans_ozone(con):
+    """L'autre sens : pas d'entrée d'appariement qui ne corresponde à rien.
+
+    Contrôlé sur la SÉRIE (2013 -> aujourd'hui), jamais sur le flux du jour : ce qu'on
+    cherche est un code de station faux ou périmé, qui n'a alors jamais porté d'ozone.
+    Une station qui en a mesuré puis s'arrête, elle, reste correctement appariée — son
+    silence est un fait de terrain, pas une erreur de table.
+    """
+    stations = {
+        r[0]
+        for r in con.execute(
+            f"SELECT DISTINCT code_site FROM '{SERIE.as_posix()}' WHERE polluant = 'O3'"
+        ).fetchall()
+    }
     fantomes = set(APPARIEMENT_AIR_METEO) - stations
-    assert not fantomes, f"apparié(s) mais absent(s) des mesures d'ozone : {sorted(fantomes)}"
+    assert not fantomes, (
+        f"apparié(s) sans aucune mesure d'ozone dans la série : {sorted(fantomes)}"
+    )
 
 
 @besoin_meteo
