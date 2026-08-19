@@ -197,6 +197,20 @@ NOTE = OUTPUTS / "a0_note_methodologique.html"
 besoin_note = pytest.mark.skipif(
     not NOTE.exists(), reason="note absente — lancer python -m demonstrateur.note_air"
 )
+# Certains paragraphes de la note sont CALCULÉS depuis la série : les deux décomptes de
+# stations, la borne du statut « vérifié ». Les verrouiller sur la note VERSIONNÉE ne
+# marche pas — elle a été écrite par le cron avant la modification, donc tout ajout de
+# texte y échouerait jusqu'au prochain run (constaté sur la PR du 19/08/2026). Ces
+# verrous-là exigent donc une note régénérée dans le même run que les Parquet : sans
+# `data/`, ils se sautent comme les autres verrous de résultats, et le pipeline planifié —
+# qui régénère la note juste avant pytest — les exécute pour de bon avant publication.
+# C'est aussi pourquoi la note n'accompagne PAS le code dans le commit, contrairement à
+# `outputs/etude.html` : elle porte des chiffres lus, et committer ceux d'une machine
+# locale publierait un état que le cron n'a pas produit.
+besoin_note_a_jour = pytest.mark.skipif(
+    not (NOTE.exists() and (DATA_PROCESSED / "air_serie.parquet").exists()),
+    reason="note ou série absente — lancer prepare puis note_air",
+)
 
 
 def _texte_note() -> str:
@@ -253,7 +267,7 @@ def test_la_note_dit_ce_que_les_chiffres_ne_disent_pas():
     )
 
 
-@besoin_note
+@besoin_note_a_jour
 def test_la_note_distingue_stations_collectees_et_stations_tracees():
     """Le lecteur qui compte les courbes en trouve cinq ; le tableau des sources en
     annonce six. L'écart doit s'expliquer dans la note, pas se deviner.
@@ -277,7 +291,7 @@ def test_la_note_distingue_stations_collectees_et_stations_tracees():
     )
 
 
-@besoin_note
+@besoin_note_a_jour
 def test_la_note_annonce_que_les_mesures_sont_revisables():
     """Le producteur corrige des heures DÉJÀ publiées, des semaines après coup.
 
