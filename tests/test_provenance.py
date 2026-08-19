@@ -253,6 +253,30 @@ def test_la_note_dit_ce_que_les_chiffres_ne_disent_pas():
     )
 
 
+@besoin_note
+def test_la_note_annonce_que_les_mesures_sont_revisables():
+    """Le producteur corrige des heures DÉJÀ publiées, des semaines après coup.
+
+    Mesuré le 19/08/2026 : l'ozone de BASTIA LA MARANA s'arrête le 05/08 à 14 h, et son
+    invalidation n'est descendue dans les fichiers en ligne que la nuit du 18 au 19/08.
+    Les fichiers quotidiens du LCSQA sont d'ailleurs réécrits bien au-delà : toutes les
+    journées de juillet contrôlées ce jour-là avaient été republiées dans la semaine.
+    Une figure peut donc bouger entre deux visites — le lecteur doit l'apprendre de la
+    note plutôt que de le découvrir. Verrou posé parce que ce paragraphe est exactement
+    ce qu'une relecture « pour alléger » ferait sauter.
+    """
+    h = _texte_note()
+    assert "pas définitive" in h, (
+        "la note doit dire qu'une mesure publiée peut encore être révisée"
+    )
+    assert "30 septembre" in h, (
+        "la note doit dater la vérification annuelle du producteur (rapportage E1a)"
+    )
+    assert re.search(r"arrête au \d{4}-\d{2}-\d{2}", h), (
+        "la borne du statut « vérifié » doit être LUE dans la série, pas annoncée en l'air"
+    )
+
+
 # --- Note méthodologique de l'électricité : mêmes exigences, et ses chiffres sont lus ----
 NOTE_ELEC = OUTPUTS / "t0_note_methodologique.html"
 

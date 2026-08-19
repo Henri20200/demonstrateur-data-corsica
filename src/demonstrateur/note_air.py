@@ -31,7 +31,8 @@ def _chiffres() -> dict:
     con = duckdb.connect()
     air = con.execute(f"""
         SELECT count(*), count(DISTINCT station), min(date_locale), max(date_locale),
-               count(*) FILTER (WHERE verification = 1)
+               count(*) FILTER (WHERE verification = 1),
+               max(date_locale) FILTER (WHERE verification = 1)
         FROM '{SERIE}'""").fetchone()
     meteo = con.execute(f"""
         SELECT count(*), count(DISTINCT num_poste), min(date_locale), max(date_locale)
@@ -39,6 +40,7 @@ def _chiffres() -> dict:
     jours = con.execute(f"SELECT count(*) FROM '{MDA8}' WHERE valide").fetchone()[0]
     return dict(
         air_h=air[0], air_st=air[1], air_d1=air[2], air_d2=air[3], air_verif=air[4],
+        verif_d2=air[5],
         meteo_h=meteo[0], meteo_p=meteo[1], meteo_d1=meteo[2], meteo_d2=meteo[3],
         jours=jours,
         collecte_air=date_collecte("aee_o3_venaco_continu"),
@@ -102,6 +104,21 @@ relevé pris à une autre porte.</p>
 {c["air_d2"]}, dont {n(c["air_verif"])} portent le statut « vérifié » du producteur — les
 plus récentes ne l'ont pas encore, et c'est normal : la vérification vient après.
 Côté températures, {n(c["meteo_h"])} relevés du {c["meteo_d1"]} au {c["meteo_d2"]}.</p>
+
+<h2>Ces chiffres peuvent changer après coup</h2>
+<p>Une mesure publiée n'est pas définitive. Qualitair Corse contrôle ses analyseurs en
+continu et, quand l'un d'eux s'avère avoir mal fonctionné, les heures concernées sont
+retirées — y compris dans des journées déjà diffusées, parfois plusieurs semaines après.
+Le canal européen reprend ces corrections, et cette étude avec lui, à chaque
+rafraîchissement.</p>
+<p>Le statut « vérifié » du producteur, lui, ne vient qu'une fois par an : les mesures
+d'une année sont rapportées validées au 30 septembre de l'année suivante. Ici, la
+vérification s'arrête au <strong>{c["verif_d2"]}</strong> — au-delà, ce sont les relevés
+transmis au fil de l'eau, et ils restent corrigeables.</p>
+<p>La conséquence pour qui lit ces figures tient en une phrase : deux visites espacées de
+quelques semaines peuvent ne pas donner exactement le même chiffre. Ce n'est pas une
+erreur, c'est le relevé qui s'affine. La date portée au pied de chaque figure dit sur quel
+état de la donnée elle a été construite.</p>
 
 <h2>Comment les chiffres sont calculés</h2>
 <p>Deux repères réglementaires reviennent, et ils <strong>ne comptent pas la même
