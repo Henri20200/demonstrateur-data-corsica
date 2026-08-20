@@ -94,7 +94,34 @@ jobs:
           # et le run continue : `tests/test_stations_air.py` se saute alors faute de brut,
           # sans rien invalider de ce qui est publié.
           GEODAIR_KEY: ${{ secrets.GEODAIR_KEY }}
+          # Dépôt durable des millésimes (src/demonstrateur/depot.py). Bucket DISTINCT de
+          # celui de la vitrine : celle-ci est tenue comme reflet exact d'outputs/ par un
+          # `aws s3 sync --delete` qui effacerait l'archive au déploiement suivant —
+          # `depot.configurer()` refuse d'ailleurs de s'y écrire. Variable de dépôt et non
+          # secret : un nom de bucket n'en est pas un, et le voir dans les logs aide.
+          # Absente, la collecte continue : les versions sont indexées
+          # `payload_archived: false`, et le premier run qui en a les moyens les dépose.
+          ARCHIVE_BUCKET: ${{ vars.ARCHIVE_BUCKET }}
+          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
+          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
         run: fetch-data
+
+      # Un index a toujours l'air complet — c'est sa nature de ne porter que des
+      # métadonnées. Une version dont les octets ne sont jamais arrivés ne se verrait donc
+      # nulle part, jusqu'au jour où l'on irait chercher un contenu qui n'existe plus. La
+      # reprise est automatique au run suivant (`archive.retenter_depots_en_attente`) ;
+      # encore faut-il savoir qu'elle est due. Avertissement et non échec : la collecte est
+      # valide, et l'intervalle de connaissance — la partie irremplaçable — est sauf.
+      - name: Millésimes en attente de dépôt durable
+        run: |
+          python - <<'PY'
+          from demonstrateur import archive
+
+          attente = archive.versions_non_deposees()
+          if attente:
+              details = ", ".join(f"{source} {sha[:8]}" for source, sha in attente[:20])
+              print(f"::warning::{len(attente)} millésime(s) sans octets durables : {details}")
+          PY
 
       - name: Préparation (Parquet)
         run: python -m demonstrateur.prepare
@@ -142,7 +169,19 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # `_versions.json` accompagne le manifeste : le manifeste dit ce que la source
+          # dit AUJOURD'HUI, l'index des millésimes dit quelle version nous détenions
+          # ENTRE QUAND ET QUAND. C'est la seule information de l'archive qui ne se
+          # reconstruit pas après coup — le contenu, lui, reste dans data/ (non versionné).
+          # Ne bouge que lorsqu'une empreinte a changé : ne fabrique donc pas de commit
+          # à vide, la propriété « ne committe que ce qui a réellement changé » tient.
           git add outputs data/raw/_manifest.json
+          # Sous condition d'existence : `git add` sur un chemin absent est fatal, et une
+          # collecte entièrement en échec ne produit aucun index — ce n'est pas une raison
+          # pour faire échouer la publication des visuels.
+          if [ -f data/archive/_versions.json ]; then
+            git add data/archive/_versions.json
+          fi
           if git diff --cached --quiet; then
             echo "Aucun changement à publier."
           else

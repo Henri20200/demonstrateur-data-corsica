@@ -101,8 +101,9 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   Rien ne se télécharge « à la main ».
 - **Les URL des sources peuvent changer** ; plusieurs sont marquées « à vérifier / à confirmer »
   dans `sources.yaml`. En cas d'échec de `fetch-data`, vérifier l'URL sur la fiche du jeu.
-- **Ne jamais committer `data/raw/` ou `data/processed/`** (sauf `_manifest.json`). Tout se
-  régénère depuis `sources.yaml`.
+- **Ne jamais committer `data/raw/` ou `data/processed/`** (sauf `_manifest.json` et
+  `data/archive/_versions.json`, cf. ci-dessous). Tout le reste se régénère depuis
+  `sources.yaml`.
 - **Chaque visuel cite sa source et sa date** — via `viz.export_html`, pas à la main.
 - **Le cron est seul propriétaire d'`outputs/`.** Régénérer en local pour VÉRIFIER une figure
   est normal ; committer le résultat ne l'est pas. Une même figure sérialisée sous Windows
@@ -123,6 +124,19 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   dépose donc pas plus à la main que les visuels ne se committent à la main. Sans les secrets
   `SCW_ACCESS_KEY` / `SCW_SECRET_KEY`, l'étape se saute avec un avertissement plutôt que de
   faire échouer le run.
+- **Les millésimes se déposent hors du dépôt Git.** Depuis le 20/08/2026, chaque contenu
+  distinct d'une source part dans un bucket d'archive **append-only** — clés immuables
+  `archive/<source_id>/<AAAA>/<MM>/<instant>_<sha256>.<ext>`, jamais de `sync`, jamais de
+  `--delete` — pendant que `data/archive/_versions.json`, versionné, dit quelle version la
+  chaîne détenait entre quand et quand. Les deux moitiés sont nécessaires : l'index sans
+  les octets promet une version que plus personne ne peut produire, les octets sans l'index
+  ne disent pas à quelle date ils s'appliquaient. **Aucune rétention destructive** : rien
+  n'est jamais supprimé ni échantillonné, une révision effacée aujourd'hui ne se
+  récupérerait pas pour un backtest dans deux ans. Configuration par `ARCHIVE_BUCKET` +
+  `SCW_ACCESS_KEY`/`SCW_SECRET_KEY` ; absente, la collecte continue et marque les versions
+  `payload_archived: false`, reprises au run suivant. **Le bucket d'archive n'est jamais
+  celui de la vitrine** — celle-ci est synchronisée avec `--delete`, qui l'effacerait, et
+  `depot.configurer()` refuse explicitement ce cas.
 - **La traçabilité est vérifiée, pas seulement déclarée** : `fetch` re-contrôle chaque source
   figée à chaque run, `prepare` refuse un brut non certifié et écrit la lignée (`_build.json`),
   les figures datent d'après cette lignée. L'empreinte d'une source qui réestampille son

@@ -28,6 +28,13 @@ data/processed/*
 # ... sauf le manifeste de collecte, qui EST la traçabilité
 !data/raw/_manifest.json
 
+# Millésimes : le CONTENU des versions passées est de la donnée (non versionné, comme le
+# reste), mais l'INDEX qui dit quelle version nous détenions entre quand et quand ne se
+# reconstruit pas après coup — il se committe, comme le manifeste. `_last_checked.json`
+# reste dehors : réécrit à chaque run, il ferait commiter le cron toutes les 6 h.
+data/archive/*
+!data/archive/_versions.json
+
 # Documents de travail locaux : ne font pas partie du livrable et ne se régénèrent
 # pas depuis sources.yaml. Gardés sur le poste, hors du dépôt.
 audit/

@@ -1,0 +1,27 @@
+"""Garde commune à toute la suite : aucun test n'écrit dans le vrai `data/archive/`.
+
+`data/archive/_versions.json` est VERSIONNÉ, et le rafraîchissement planifié le committe
+(`git add data/archive/_versions.json`) — après avoir lancé pytest, dans le même run. Un
+test qui pilote `fetch.main()` sur un dépôt jetable, comme `tests/test_secrets.py`,
+n'isole que ce que `fetch` connaît : `sources.yaml`, `data/raw`, le manifeste. Les chemins
+de l'archive, eux, vivent dans les globales de `archive.py`. Sans cette redirection, la
+source fictive d'un test entrait dans l'index des millésimes, puis dans un commit du cron,
+toutes les six heures — constaté le 20/08/2026, `faux_geodair` écrit pour de bon.
+
+Redirigé pour TOUS les tests, y compris ceux qui ne touchent pas à l'archive : la garantie
+ne doit pas dépendre de ce dont l'auteur du prochain test se souviendra. Les tests qui ont
+besoin d'un chemin à eux (`tests/test_archive.py`) le redéfinissent par-dessus, ce qui ne
+change rien à la propriété tenue ici.
+"""
+
+import pytest
+
+from demonstrateur import archive
+
+
+@pytest.fixture(autouse=True)
+def _archive_hors_du_depot(tmp_path, monkeypatch):
+    racine = tmp_path / "archive_de_test"
+    monkeypatch.setattr(archive, "DATA_ARCHIVE", racine)
+    monkeypatch.setattr(archive, "VERSIONS_FILE", racine / "_versions.json")
+    monkeypatch.setattr(archive, "LAST_CHECKED_FILE", racine / "_last_checked.json")
