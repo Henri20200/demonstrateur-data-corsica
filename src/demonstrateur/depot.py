@@ -31,8 +31,16 @@ valeur par défaut : pointer l'archive sur le mauvais bucket doit demander un ge
     ARCHIVE_BUCKET      bucket de l'archive. DISTINCT de celui de la vitrine.
     ARCHIVE_ENDPOINT    défaut https://s3.fr-par.scw.cloud
     ARCHIVE_REGION      défaut fr-par
-    SCW_ACCESS_KEY      (ou AWS_ACCESS_KEY_ID)
+    ARCHIVE_ACCESS_KEY  clé propre à l'archive, si elle existe
+    ARCHIVE_SECRET_KEY
+    SCW_ACCESS_KEY      sinon, la clé du dépôt (ou AWS_ACCESS_KEY_ID)
     SCW_SECRET_KEY      (ou AWS_SECRET_ACCESS_KEY)
+
+UNE CLÉ PROPRE À L'ARCHIVE EST PRÉFÉRABLE, et pour la même raison que le garde-fou sur le
+bucket : la clé qui déploie la vitrine peut la synchroniser avec `--delete`. Restreinte au
+seul bucket d'archive, elle ne peut pas l'effacer même par accident de configuration — le
+garde-fou n'est plus une condition dans du code, mais une propriété du compte. À défaut,
+`SCW_*` sert aux deux, ce qui marche et se surveille.
 
 Absente, la collecte continue : les versions sont indexées `payload_archived: false` et
 le premier run qui en a les moyens les dépose.
@@ -246,8 +254,12 @@ def configurer() -> Depot | None:
     `payload_archived: false`, et déposées au premier run qui en aura les moyens.
     """
     bucket = os.environ.get("ARCHIVE_BUCKET", "").strip()
-    acces = (os.environ.get("SCW_ACCESS_KEY") or os.environ.get("AWS_ACCESS_KEY_ID") or "").strip()
-    secret = (os.environ.get("SCW_SECRET_KEY")
+    # Une clé dédiée à l'archive prime sur la clé générale du dépôt : c'est elle qu'on veut
+    # restreinte au seul bucket d'archive. L'ordre compte — si les deux sont posées, c'est
+    # la plus étroite qui sert.
+    acces = (os.environ.get("ARCHIVE_ACCESS_KEY") or os.environ.get("SCW_ACCESS_KEY")
+             or os.environ.get("AWS_ACCESS_KEY_ID") or "").strip()
+    secret = (os.environ.get("ARCHIVE_SECRET_KEY") or os.environ.get("SCW_SECRET_KEY")
               or os.environ.get("AWS_SECRET_ACCESS_KEY") or "").strip()
     if not bucket or not acces or not secret:
         return None

@@ -194,13 +194,36 @@ def test_le_bucket_de_la_vitrine_est_refuse(monkeypatch):
 
 def test_sans_configuration_le_depot_est_simplement_absent(monkeypatch):
     """Absent n'est pas en erreur : en local, personne n'a de raison de porter les clés."""
-    for nom in ("ARCHIVE_BUCKET", "SCW_ACCESS_KEY", "SCW_SECRET_KEY",
+    for nom in ("ARCHIVE_BUCKET", "ARCHIVE_ACCESS_KEY", "ARCHIVE_SECRET_KEY",
+                "SCW_ACCESS_KEY", "SCW_SECRET_KEY",
                 "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"):
         monkeypatch.delenv(nom, raising=False)
     assert depot.configurer() is None
 
     monkeypatch.setenv("ARCHIVE_BUCKET", "archive-corse")
     assert depot.configurer() is None, "un bucket sans clés ne suffit pas"
+
+
+def test_une_cle_dediee_a_l_archive_prime_sur_celle_du_depot(monkeypatch):
+    """C'est le garde-fou du bucket, mais côté compte plutôt que côté code.
+
+    Une clé restreinte au seul bucket d'archive ne peut pas effacer la vitrine, ni être
+    effacée par le `--delete` qui la synchronise. La condition dans `configurer()` devient
+    alors une deuxième ceinture, pas la seule.
+    """
+    monkeypatch.setenv("ARCHIVE_BUCKET", "archive-corse")
+    monkeypatch.setenv("SCW_ACCESS_KEY", "cle-du-depot")
+    monkeypatch.setenv("SCW_SECRET_KEY", "secret-du-depot")
+    monkeypatch.setenv("ARCHIVE_ACCESS_KEY", "cle-etroite")
+    monkeypatch.setenv("ARCHIVE_SECRET_KEY", "secret-etroit")
+
+    configure = depot.configurer()
+    assert configure.cle_acces == "cle-etroite"
+    assert configure.cle_secrete == "secret-etroit"
+
+    monkeypatch.delenv("ARCHIVE_ACCESS_KEY")
+    monkeypatch.delenv("ARCHIVE_SECRET_KEY")
+    assert depot.configurer().cle_acces == "cle-du-depot", "sans clé dédiée, celle du dépôt sert"
 
 
 def test_la_configuration_se_lit_dans_l_environnement(monkeypatch):
