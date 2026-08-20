@@ -18,6 +18,12 @@ import pytest
 
 from demonstrateur import archive
 
+# Identifiants de source inventés par la suite de tests. Les nommer ici sert à deux
+# choses : documenter ce qui n'est PAS une source réelle, et permettre au verrou de
+# `test_archive.py` de vérifier qu'aucun d'eux n'a atterri dans le registre versionné.
+# Un test qui invente un nouvel identifiant l'ajoute ici — c'est le prix d'entrée.
+SOURCES_FICTIVES = frozenset({"faux_geodair", "mix", "tranche"})
+
 
 @pytest.fixture(autouse=True)
 def _archive_hors_du_depot(tmp_path, monkeypatch):

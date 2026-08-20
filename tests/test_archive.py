@@ -27,8 +27,9 @@ n'est écrit dans le vrai `data/`, rien ne sort sur le réseau.
 import json
 
 import pytest
+from conftest import SOURCES_FICTIVES
 
-from demonstrateur import archive, depot
+from demonstrateur import archive, config, depot
 
 
 class DepotFactice:
@@ -330,3 +331,40 @@ def test_la_reprise_ne_depose_jamais_les_octets_d_une_autre_version(archive_isol
     assert v1["payload_key"] not in revenu.objets
     v2 = _versions()[1]
     assert revenu.objets[v2["payload_key"]] == fichier.read_bytes()
+
+
+def test_aucun_test_n_ecrit_dans_le_vrai_registre():
+    """Invariant de la chaîne, et pas un confort de test.
+
+    Ce test ne prend AUCUNE fixture d'isolation : il vérifie la garantie que
+    `tests/conftest.py` donne à toute la suite, y compris aux tests qui ne demandent
+    rien. Supprimer la redirection casse ici, pas six heures plus tard dans un commit
+    du cron.
+    """
+    assert archive.VERSIONS_FILE != config.VERSIONS_FILE
+    assert config.DATA_ARCHIVE not in archive.VERSIONS_FILE.parents
+    assert config.DATA_ARCHIVE not in archive.LAST_CHECKED_FILE.parents
+
+
+def test_le_registre_reel_ne_contient_aucune_source_fictive():
+    """L'index est VERSIONNÉ : une donnée synthétique qui y entre devient un fait.
+
+    C'est ce qui s'est produit le 20/08/2026 — `faux_geodair`, source inventée par
+    `test_secrets.py`, écrite dans le vrai `_versions.json`. Le cron lance pytest AVANT
+    `git add data/archive/_versions.json` : elle serait partie sur GitHub, où plus rien
+    ne l'aurait distinguée d'un millésime réellement observé. Un registre historique ne
+    se corrige pas après coup, il fait foi.
+
+    Le verrou porte sur le RÉSULTAT, là où `conftest.py` porte sur la cause : il
+    attraperait aussi une contamination arrivée par un chemin non prévu — sous-processus,
+    écriture directe par `config`, exécution manuelle.
+    """
+    reel = config.VERSIONS_FILE
+    if not reel.exists():
+        pytest.skip("aucun registre de millésimes sur ce poste — rien à contaminer")
+    intruses = SOURCES_FICTIVES & set(json.loads(reel.read_text(encoding="utf-8")))
+    assert not intruses, (
+        f"sources fictives dans le registre versionné : {sorted(intruses)}. "
+        f"Les retirer de {reel} AVANT tout commit — elles ne se distingueront plus "
+        "d'un millésime réel une fois dans l'historique Git."
+    )
