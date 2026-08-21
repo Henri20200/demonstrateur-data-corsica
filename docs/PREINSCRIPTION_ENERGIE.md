@@ -10,12 +10,18 @@ les résultats — c'est-à-dire exactement la tricherie qu'elle est censée emp
 C4.6 de la doctrine demande de fixer la question avant l'analyse ; elle ne demande pas de
 faire semblant que l'analyse commence aujourd'hui.
 
-**Document de référence, situé dans l'autre dépôt :**
-`tourisme-corse/docs/ORIENTATION_VITRINE_CORSE.md`, version 2 du 21/08/2026. Les renvois
-« C1 … C6 » et « §8 de l'orientation » qui suivent y pointent. La répartition vient du §5 de
-cette doctrine — `demonstrateur-data-corsica` porte le produit public et les études,
-`tourisme-corse` le laboratoire tourisme —, ce qui laisse pour l'instant la doctrine dans un
-dépôt et l'étude qu'elle gouverne dans l'autre. Point à trancher, pas ici.
+**Les quatre obligations qui engagent ce document, rappelées ici pour qu'il reste
+intelligible seul** — une pré-inscription datée ne doit pas changer de sens parce qu'un
+document externe est réorganisé six mois plus tard :
+
+1. la **question du §1 est fixée** et ne se modifie plus en cours d'analyse ;
+2. **publication quel que soit le résultat**, y compris négatif (§6) ;
+3. les **tests contradictoires du §5** sont effectués avant de conclure ;
+4. la **règle d'arrêt du §6** décide seule quand l'étude est finie.
+
+Les renvois « C1 … C6 » et « §8 de l'orientation » qui suivent relèvent de la généalogie :
+ils indiquent d'où viennent ces obligations, ils ne les remplacent pas. Doctrine :
+`docs/ORIENTATION_VITRINE_CORSE.md`, dans ce dépôt depuis le commit `2f4b880`.
 
 ---
 
