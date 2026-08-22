@@ -228,15 +228,45 @@ maintenant explicitement l'année civile **locale** — seule définition qui va
 îles au même fuseau. Ensuite le bord d'année demeure, mais symétrique : une heure sur 8 760,
 soit 0,011 %, et elle tombe hors de la fenêtre des deux côtés.
 
-**Reste ouvert, et ce n'est pas mince.** Le profil solaire corse de juillet a son centre de
-masse à **15,2 h**, contre **12,9 h** côté sarde — 2,2 heures d'écart entre deux îles à la
-même longitude, où le midi solaire tombe vers 13 h 25. Le bord du matin, lui, coïncide en
-janvier. Ce n'est donc pas un décalage d'horloge, et la cause n'est pas établie : convention
-de nommage de l'heure (début ou fin d'intervalle), effet du net d'auxiliaires qui écrase la
-rampe du matin, ou autre chose. Tant que ce n'est pas tranché, **les figures horaires corses
-— T2b, T3, et le « l'heure la plus verte est 14 h » de T4 — reposent sur une heure locale
-dont la vérification ci-dessus ne dit rien.** Elles n'entrent pas dans le périmètre de ce
-document, qui porte sur la comparaison sarde ; elles entrent dans celui du chantier suivant.
+**Et un défaut du côté corse, que le même fil a fini par isoler.** Le profil solaire corse de
+juillet a son centre de masse à 15,2 h contre 12,9 h côté sarde, à longitude égale. L'ancre
+qui tranche est extérieure aux deux : le **rayonnement global mesuré au pyranomètre** par
+Météo-France (`GLO`), disponible à Ajaccio, Bastia et Corte depuis 2020 — autre producteur,
+autre instrument, même soleil.
+
+Le pyranomètre se valide d'abord tout seul : lu en UTC, son maximum tombe à 13 h 00 en
+janvier et 13 h 55 en juillet, soit une demi-heure après le midi solaire de 9° E — la
+signature d'un cumul horaire daté par la **fin** de son intervalle. Ensuite, corrélation
+instant contre instant, par régime d'heure légale :
+
+| Série | Décalage optimal, hiver (CET) | Décalage optimal, été (CEST) |
+|---|---:|---:|
+| Sardaigne (ENTSO-E) | **+1 h** | **+1 h** |
+| Corse (EDF) | **0 h** | **−1 h** |
+
+La Sardaigne ne bouge pas d'une saison à l'autre : son décalage constant dit simplement
+qu'elle date ses heures par le **début** de l'intervalle quand Météo-France les date par la
+fin. C'est aussi le **témoin** qui disculpe le pyranomètre — si la météo dérivait avec
+l'heure d'été, la Sardaigne dériverait avec elle.
+
+La Corse, seule, se déplace d'exactement **une heure entre l'hiver et l'été**. Aucun parc, ni
+orientation, ni ombrage de relief ne produit un saut discret calé sur un changement d'heure
+légale : c'est une convention humaine, donc un traitement d'horodatage. L'interprétation la
+plus simple — **la courbe EDF porte de l'heure locale sous un suffixe `+00:00`** — rend compte
+exactement de l'écart mesuré, une heure l'hiver et deux l'été. Elle reste une interprétation ;
+le déplacement, lui, est établi.
+
+Deux conséquences, de portée très différente. **T6 n'est pas concernée** : elle somme des
+années entières, et un décalage d'une à deux heures sur 8 760 ne déplace rien. En revanche
+**T2b, T3 et le « l'heure la plus verte est 14 h » de T4 lisent `heure_locale`** — donc une
+heure qui, si l'interprétation tient, est en retard d'une à deux heures selon la saison.
+Cela n'entre pas dans le périmètre de ce document, qui porte sur la comparaison sarde, mais
+cela ne peut pas rester non écrit.
+
+Dernier point, qui appartient au chantier suivant : **ce déplacement est identique avant et
+après la bascule « Estimé »** — optimum 0 h l'hiver et −1 h l'été aussi bien sur l'année
+validée 2020 que sur les quatre années estimées. Il ne dit donc rien du statut, et le statut
+n'en explique rien.
 
 En revanche, **la fenêtre corse de T6 n'est bornée nulle part dans le code**. La requête
 agrège tout `edf_courbe_corse.parquet`, qui contient déjà une heure de 2025. Aujourd'hui
