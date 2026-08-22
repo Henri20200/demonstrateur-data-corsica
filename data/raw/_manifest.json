@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "10179c02e122622faa08247f16b69bcef6a4cdfef9123e2bddfbc2198dbfa417",
+    "sha256": "70551ab8e71a74ae4b9c628d2b0c5ddad21bb02d31fd41b015efa09958531b9f",
     "date_collecte": "2026-08-22",
-    "taille_octets": 398527
+    "taille_octets": 398385
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -162,9 +162,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv",
-    "sha256": "1bfb3e959644144144ed80f2677a08c5f2112739b6b00e8bbee9ca11482e3ba7",
+    "sha256": "cec3da1b3de7b5e3eeb778634e6407739bd617299b183a6d54ddb7ac087ef69a",
     "date_collecte": "2026-08-22",
-    "taille_octets": 12783333
+    "taille_octets": 12813789
   },
   "meteo_horaire_corse": {
     "url": "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz",
@@ -173,9 +173,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv.gz",
     "content_type": "application/gzip",
-    "sha256": "4ed3988cbf93cc5bde0f8007f5ccf8796e470014724aad95a4fceab13bf9ed58",
+    "sha256": "7bd87306eb3318e34d99cd0d62b20071f4fcfab35aa14598308431caa053ff1e",
     "date_collecte": "2026-08-22",
-    "taille_octets": 28295230
+    "taille_octets": 28346021
   },
   "aee_o3_ajaccio_canetto_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41001_7.parquet",
@@ -195,9 +195,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "5c936576a611a10daf22cf7af5f10ff480ef5f618262a794ed45df3196bf2ade",
+    "sha256": "1694ceaf4e9578c5402cd8c1f8c24e8254ded7fea565284e49d479edb936ef2b",
     "date_collecte": "2026-08-22",
-    "taille_octets": 247927
+    "taille_octets": 248069
   },
   "aee_o3_ajaccio_confina2_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_7.parquet",
@@ -217,9 +217,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "fe2ba47d5027122039012e5514c8412568bf9cf08d1bc2b0892085c3bf264e59",
+    "sha256": "94b7e8b9f72ec262b9791566388599a85dc17670d703b8afa08bd8c265829795",
     "date_collecte": "2026-08-22",
-    "taille_octets": 249299
+    "taille_octets": 249430
   },
   "aee_o3_bastia_giraud_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_7.parquet",
@@ -239,9 +239,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "d594c46f2542cf2accaefb445c5e408ca3c81dee1355adb902a72a319144f4eb",
+    "sha256": "d502a00ccbfe11fd0a77f428a03dc261e3011ba095a974cb7eb4702a3b657a94",
     "date_collecte": "2026-08-22",
-    "taille_octets": 243039
+    "taille_octets": 243175
   },
   "aee_o3_bastia_montesoro_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_7.parquet",
@@ -261,9 +261,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "89af6af453e5c1e89e964b187e570259cf7bbd958f51b67328cc4150a1ad9ac0",
+    "sha256": "2ac8bedf639db8dd08ca2633fcfb772ef03429302c9d20f86fa99cef410496a9",
     "date_collecte": "2026-08-22",
-    "taille_octets": 246001
+    "taille_octets": 246125
   },
   "aee_o3_bastia_marana_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_7.parquet",
@@ -283,9 +283,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "1301c8855e414869958c4bc1afe91834a6b979fd23212e5614830ae3b8ae63f7",
+    "sha256": "1d40b845c5bb58b615b26379f5189790489b4ac680e3924f997ce22d771dc235",
     "date_collecte": "2026-08-22",
-    "taille_octets": 250357
+    "taille_octets": 250496
   },
   "aee_o3_venaco_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41024_7.parquet",
@@ -327,9 +327,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "2b67205f7bec230c964b05f41172b4914b5006439dd05f92361f0b059a101371",
+    "sha256": "850719d9fed06654dcda8c9499496afa1f6acff5a6072422f9412d5077ee82d6",
     "date_collecte": "2026-08-22",
-    "taille_octets": 244616
+    "taille_octets": 244735
   },
   "aee_no2_ajaccio_confina2_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_8.parquet",
@@ -349,9 +349,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "78fb65fc6860d7cd5771f40b66948cbd2e003128a98853c4a4786e7b9ba4818f",
+    "sha256": "467c7b0f6f7f6d0ed4d3dbcfa286173d61113b51347a5adcdd7dca8dec8f7783",
     "date_collecte": "2026-08-22",
-    "taille_octets": 241209
+    "taille_octets": 241324
   },
   "aee_no2_bastia_giraud_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_8.parquet",
@@ -371,9 +371,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "961bd1ab5831c1e168fba0b3f9211a974bd159afaadada266a838b673928f6e1",
+    "sha256": "d075aa26732b7aa5d4c134729240e848e356bd9b3f92737c739812f79c0ceb78",
     "date_collecte": "2026-08-22",
-    "taille_octets": 231080
+    "taille_octets": 231191
   },
   "aee_no2_bastia_montesoro_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_8.parquet",
@@ -393,9 +393,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "83eeb9cc4f565ad28370f59cd42b084a5e040f8733e6fbbb5dd59cc53603b4f8",
+    "sha256": "98e8110ca58c72fc6bc4cbb4d2c5e85f7aa8acbe2d17755897fde9c1cf06c99d",
     "date_collecte": "2026-08-22",
-    "taille_octets": 227994
+    "taille_octets": 228106
   },
   "aee_no2_bastia_marana_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_8.parquet",
@@ -415,9 +415,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "9647ddf0dab91836992afe1bdd209d0ff672732e002de3f2a1e174a33e49a77d",
+    "sha256": "b64c7ec7a49f72f6d4520c3f2f602c7f25775980a16a2e86dcce7c537be32212",
     "date_collecte": "2026-08-22",
-    "taille_octets": 226996
+    "taille_octets": 227124
   },
   "meteo_horaire_corse_2020_2024": {
     "url": "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_previous-2020-2024.csv.gz",
