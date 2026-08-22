@@ -308,10 +308,12 @@ couplées à du stockage y échappent.
 
 À périmètre comparable, c'est-à-dire la seule production locale de chacune, les deux
 îles sont dominées par le thermique : 55 % en Corse, 69 % en Sardaigne. Le détail,
-lui, diffère beaucoup. Le thermique sarde, c'est un tiers de charbon et un tiers de
-gaz de synthèse industriel ; le corse, du fioul. Chaque île tire ensuite parti de ce
-qu'elle a sous la main : la Corse 28 % de ses montagnes, la Sardaigne 4 % seulement,
-mais 15 % de vent — plus de quinze fois la part corse.
+lui, diffère beaucoup. Sur l'ensemble du courant sarde, près d'un tiers vient du
+charbon, près d'un tiers du gaz de synthèse industriel, et environ 4 points d'une
+autre catégorie thermique qu'ENTSO-E ne nomme pas ; le thermique corse, lui, c'est
+du fioul. Chaque île tire ensuite parti de ce qu'elle a sous la main : la Corse 28 %
+de ses montagnes, la Sardaigne 4 % seulement, mais 15 % de vent — plus de quinze
+fois la part corse.
 
 > **Pour aller plus loin — pourquoi « génération locale seule ».** La comparaison
 > exclut les importations corses (27,8 % de la demande sur 2019-2024) : la

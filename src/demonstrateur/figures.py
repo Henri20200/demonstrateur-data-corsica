@@ -386,13 +386,17 @@ def fig_t6_corse_sardaigne() -> go.Figure:
     corse, sard, _, _ = mix_t6()
 
     # Ordre d'empilement : deux verts (hydro sauge / éolien forêt) jamais adjacents.
+    # Plus de segment « Autre » depuis le reclassement de B20 (22/08/2026) : il vaut zéro
+    # des deux côtés, et une clé de légende qui ne montre aucun segment pose au lecteur une
+    # question que la figure ne répond pas. Ce qui garantit qu'on ne perd rien en le
+    # retirant n'est pas ce commentaire, c'est `test_sardaigne_thermique_domine`, qui tient
+    # ce poste à zéro : s'il redevient non nul, la suite casse avant la publication.
     filieres = [
         ("thermique",   "Thermique",   PALETTE["thermique"]),
         ("hydraulique", "Gde hydraulique", PALETTE["hydro"]),
         ("solaire",     "Solaire",     PALETTE["solaire"]),
         ("eolien",      "Éolien",      PALETTE["renouv"]),
         ("bioenergies", "Bioénergies", PALETTE["accent"]),
-        ("autre",       "Autre",       PALETTE["imports"]),
     ]
     iles = ["Corse", "Sardaigne"]
     fig = go.Figure()
@@ -822,10 +826,20 @@ def main() -> int:
                                "périmètre égal :<br>génération locale seule (les 27,8 % d'imports "
                                "corses sont exclus et le reste<br>renormalisé ; la Sardaigne, "
                                "exportatrice, n'importe pas).",
-                    note="La Sardaigne (10× plus grande) fait 32 % de son courant au charbon et "
-                         "32 % au gaz de synthèse (IGCC), quasi absents en Corse ;<br>elle a 15 "
-                         "fois plus d'éolien. La Corse compense par la grande hydraulique et les "
-                         "câbles. Corse estimée à partir de 2021.",
+                    # Plus de « 10× plus grande » : aucun multiplicateur unique ne décrit
+                    # cet écart de taille — 4,5× en population, 2,8× en superficie, 7,4× en
+                    # production. Un raccourci chiffré sans dénominateur est exactement ce
+                    # que le §8 de l'orientation interdit. La formule redevient qualitative ;
+                    # si un rapport compte pour une comparaison précise, on donnera celui-là.
+                    # Elle s'arrête à deux qualificatifs, et c'est une contrainte mesurée :
+                    # « dotée d'un système électrique de plus grande taille » porte le pied
+                    # à 8 lignes, soit 354 px de marge basse pour 350 disponibles. On coupe
+                    # le texte plutôt que de pousser `b` et `height` — la place manque au
+                    # pied, pas dans la prose de l'étude, qui peut porter la phrase entière.
+                    note="La Sardaigne, plus vaste et plus peuplée, fait 32 % de son courant "
+                         "au charbon et 32 % au gaz de synthèse (IGCC), quasi absents en "
+                         "Corse ;<br>elle a 15 fois plus d'éolien. La Corse compense par la "
+                         "grande hydraulique et les câbles. Corse estimée à partir de 2021.",
                     pied_decalage_px=-170)
         print("\n9 visuels exportés dans outputs/")
     else:
