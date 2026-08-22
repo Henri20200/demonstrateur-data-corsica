@@ -1289,11 +1289,19 @@ def test_etude_mix_generation_locale(con):
         f"mix corse génération locale = {tuple(round(v, 1) for v in corse)} "
         "— l'étude écrit 55/28/15/1"
     )
-    hy_s, so_s, eo_s = con.execute(
+    hy_s, so_s, eo_s, th_s = con.execute(
         f"""SELECT 100*sum(hydraulique_mw)/sum(production_totale_mw),
                    100*sum(solaire_mw)/sum(production_totale_mw),
-                   100*sum(eolien_mw)/sum(production_totale_mw) FROM '{SARD.as_posix()}'"""
+                   100*sum(eolien_mw)/sum(production_totale_mw),
+                   100*sum(thermique_mw)/sum(production_totale_mw) FROM '{SARD.as_posix()}'"""
     ).fetchone()
+    # Le thermique sarde manquait ici, et c'est ce qui a failli laisser passer une phrase
+    # fausse : le reclassement de B20 (22/08/2026) a déplacé ce chiffre de 65 à 69 % sans
+    # qu'aucun verrou ne voie que la section 4 écrivait encore 65. Le seul test qui aurait
+    # cassé était celui de T6 — c'est-à-dire précisément celui qu'on retouchait.
+    assert round(th_s) == 69, (
+        f"thermique sarde = {th_s:.1f} % — l'étude écrit « 69 % en Sardaigne »"
+    )
     assert round(hy_s) == 4 and round(so_s) == 9, (
         f"Sardaigne hydro/solaire = {hy_s:.1f} % / {so_s:.1f} % — l'étude écrit 4 % et 9 %"
     )

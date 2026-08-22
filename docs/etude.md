@@ -307,7 +307,7 @@ couplées à du stockage y échappent.
 {{visuel:t6_corse_sardaigne}}
 
 À périmètre comparable, c'est-à-dire la seule production locale de chacune, les deux
-îles sont dominées par le thermique : 55 % en Corse, 65 % en Sardaigne. Le détail,
+îles sont dominées par le thermique : 55 % en Corse, 69 % en Sardaigne. Le détail,
 lui, diffère beaucoup. Le thermique sarde, c'est un tiers de charbon et un tiers de
 gaz de synthèse industriel ; le corse, du fioul. Chaque île tire ensuite parti de ce
 qu'elle a sous la main : la Corse 28 % de ses montagnes, la Sardaigne 4 % seulement,
