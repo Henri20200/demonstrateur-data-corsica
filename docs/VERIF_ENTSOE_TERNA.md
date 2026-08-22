@@ -251,10 +251,23 @@ l'heure d'été, la Sardaigne dériverait avec elle.
 
 La Corse, seule, se déplace d'exactement **une heure entre l'hiver et l'été**. Aucun parc, ni
 orientation, ni ombrage de relief ne produit un saut discret calé sur un changement d'heure
-légale : c'est une convention humaine, donc un traitement d'horodatage. L'interprétation la
-plus simple — **la courbe EDF porte de l'heure locale sous un suffixe `+00:00`** — rend compte
-exactement de l'écart mesuré, une heure l'hiver et deux l'été. Elle reste une interprétation ;
-le déplacement, lui, est établi.
+légale : c'est une convention humaine, donc un traitement d'horodatage.
+
+**Ce qui est établi, et qui suffit** — formulé sobrement, parce qu'il ne faut pas prétendre
+en savoir plus qu'on n'en sait :
+
+> La série EDF présente, face à une ancre solaire indépendante, un décalage saisonnier d'une
+> heure que le témoin sarde ne présente pas. Une propriété physique du parc n'explique pas un
+> saut discret aligné sur le changement d'heure légale. Donc **`heure_locale`, telle qu'elle
+> est calculée aujourd'hui, ne peut pas servir à publier une heure de la journée.**
+
+C'est la conclusion opérante, et elle ne dépend d'aucune hypothèse sur la cause. Une
+explication plus précise se propose — que la courbe EDF porte de l'heure locale sous un
+suffixe `+00:00`, ce qui rendrait compte exactement de l'écart, une heure l'hiver et deux
+l'été — mais elle reste une **hypothèse**, et la réparation ne doit pas en dépendre. En
+particulier, on ne « retire pas une heure l'été » dans une figure : ce serait enfouir
+l'hypothèse dans la sortie. La correction se fait là où la convention temporelle est
+interprétée, et le brut se conserve à côté de l'interprété.
 
 Deux conséquences, de portée très différente. **T6 n'est pas concernée** : elle somme des
 années entières, et un décalage d'une à deux heures sur 8 760 ne déplace rien. En revanche
@@ -375,12 +388,26 @@ son Parquet plutôt que par appartenance à la lignée du build courant.
 - **Le contenu réel de `B20` n'est pas nommé.** Qu'il soit thermique est établi par le solde
   du bilan Terna, sur deux années ; ce qui brûle exactement ne l'est pas. Le flux
   « génération par unité de production » (art. 16.1.a) le dirait, il n'a pas été interrogé.
-- **Le statut « estimé » de la courbe corse n'est pas levé.** Il couvre 2021 à 2024, soit
-  35 063 heures sur 52 605 — **66,7 % de la barre corse**. On peut seulement borner la
-  discontinuité : le thermique corse vaut 55,90 % sur les deux années validées et 55,17 % sur
-  les quatre estimées, écart qui ne se distingue pas de la variabilité inter-annuelle
-  (47,55 % à 64,13 % selon l'année). Absence de rupture visible n'est pas validation : des
-  estimations ne se contrôlent pas avec elles-mêmes.
+- **Le statut « estimé » de la courbe corse n'est pas levé — c'est une limite explicite.**
+  Il couvre 2021 à 2024, soit 35 063 heures sur 52 605, **66,7 % de la barre corse**. La
+  limite, telle qu'elle doit être portée :
+
+  > La cohérence horaire du photovoltaïque EDF classé « Estimé » est confirmée par
+  > comparaison au rayonnement solaire mesuré indépendamment par Météo-France. Cette
+  > validation **ne porte pas sur les niveaux annuels par filière** utilisés dans la
+  > comparaison Corse–Sardaigne ; ceux-ci restent à recouper avec un bilan électrique
+  > indépendant.
+
+  Ce qui est acquis : les années estimées suivent le rayonnement mesuré à r = 0,963 l'été et
+  0,926 l'hiver, contre 0,981 et 0,973 pour la seule année validée disponible (2020). Une
+  série grossièrement reconstruite ne ferait pas cela. Ce qui ne l'est pas : T6 ne lit ni la
+  forme horaire ni le photovoltaïque, mais des **sommes annuelles** dominées par le thermique
+  et l'hydraulique — **un biais multiplicatif annuel passerait entièrement au travers de ce
+  test**. Deux mesures internes complètent le tableau sans rien valider : la bascule est
+  annuelle et non observation par observation (dernière heure validée, 1ᵉʳ janvier 2021 à
+  00 h), et les tests de signature — granularité, valeurs distinctes, répétitions, part de
+  négatifs — ne trouvent aucune trace de reconstruction grossière. Absence de rupture visible
+  n'est pas validation : des estimations ne se contrôlent pas avec elles-mêmes.
 - **Terna révise ses statistiques régionales.** Les chiffres 2023 utilisés ici sont ceux de
   l'édition 2023 ; une édition ultérieure peut les corriger.
 - **Les données de puissance installée (art. 14.1.a) n'ont pas été touchées** — le dépôt ne
