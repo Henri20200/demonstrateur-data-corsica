@@ -332,9 +332,20 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
               coalesce(sum(mw) FILTER (WHERE filiere='autre'), 0)       AS autre_mw
             FROM large GROUP BY 1
           )
+          -- `date_heure` est un TIMESTAMP NAÏF portant de l'UTC. Sur un naïf,
+          -- timezone('Europe/Rome', x) ne CONVERTIT pas : il INTERPRÈTE x comme étant
+          -- déjà à Rome et rend un TIMESTAMPTZ, dont extract() relit ensuite l'heure
+          -- dans le fuseau de session. Sur une machine à l'heure de Rome, l'aller-retour
+          -- est l'identité : `heure_locale` valait donc l'heure UTC, décalée d'une heure
+          -- l'hiver et de deux l'été. Le pic solaire sarde tombait à 11 h — impossible à
+          -- 9° de longitude, où la Corse pique à 14 h. Il faut donc DIRE d'abord que le
+          -- naïf est de l'UTC, puis convertir. Écrit ainsi, le calcul ne dépend plus du
+          -- fuseau de la machine qui le lance. Cf. docs/VERIF_ENTSOE_TERNA.md § 5.
           SELECT date_heure,
-            extract('year' FROM date_heure)                        AS annee,
-            extract('hour' FROM timezone('Europe/Rome', date_heure)) AS heure_locale,
+            extract('year' FROM (date_heure AT TIME ZONE 'UTC')
+                                 AT TIME ZONE 'Europe/Rome')       AS annee,
+            extract('hour' FROM (date_heure AT TIME ZONE 'UTC')
+                                 AT TIME ZONE 'Europe/Rome')       AS heure_locale,
             thermique_mw, hydraulique_mw, solaire_mw, eolien_mw, bioenergies_mw, autre_mw,
             (thermique_mw + hydraulique_mw + solaire_mw + eolien_mw
              + bioenergies_mw + autre_mw)                          AS production_totale_mw

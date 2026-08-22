@@ -218,6 +218,34 @@ def test_t6_compare_bien_deux_fois_la_meme_periode():
     )
 
 
+@besoin_sard
+def test_heure_locale_sarde_est_bien_locale(con):
+    """`heure_locale` côté sarde doit être l'heure de Rome, pas l'heure UTC.
+
+    Le verrou n'interroge aucune convention déclarée, mais le soleil : la fenêtre de
+    production solaire doit se poser sur le lever et le coucher réels. C'est ce qui a
+    révélé le défaut du 22/08/2026 — `timezone()` INTERPRÈTE un TIMESTAMP naïf au lieu de
+    le convertir, si bien que la colonne portait l'heure UTC, fausse d'une heure l'hiver et
+    de deux l'été (pic solaire à 11 h, impossible à 9° de longitude). Aucune figure ne
+    lisait alors cette colonne : le défaut était invisible et le serait resté jusqu'au
+    premier profil horaire comparé. Cf. docs/VERIF_ENTSOE_TERNA.md § 5.
+    """
+    # Seuil à 20 MW : bien au-dessus du bruit d'un parc de ~1,3 GW, bien en dessous d'une
+    # vraie heure de production — on cherche les BORDS de la journée solaire.
+    for mois, lever, coucher in ((1, 8, 17), (7, 6, 21)):
+        a, b = con.execute(
+            f"""SELECT min(heure_locale), max(heure_locale) FROM '{SARD.as_posix()}'
+                WHERE extract('month' FROM (date_heure AT TIME ZONE 'UTC')
+                                            AT TIME ZONE 'Europe/Rome') = {mois}
+                  AND solaire_mw > 20"""
+        ).fetchone()
+        assert abs(a - lever) <= 1 and abs(b - coucher) <= 1, (
+            f"mois {mois} : le solaire sarde produit de {a} h à {b} h, alors que le soleil "
+            f"se lève vers {lever} h et se couche vers {coucher} h — `heure_locale` n'est "
+            "plus l'heure de Rome (conversion de fuseau perdue dans prepare)"
+        )
+
+
 @besoin_sard_xml
 def test_sardaigne_charbon_igcc():
     """T6 note « 32 % charbon + 32 % IGCC » : reconstruit sur le XML brut 2023 (via le parser)."""

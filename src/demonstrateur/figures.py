@@ -336,6 +336,15 @@ def fig_t5_ecretement() -> go.Figure:
 # non « la requête est juste aujourd'hui ». Cf. docs/VERIF_ENTSOE_TERNA.md § 5.
 FENETRE_T6 = (2019, 2024)
 
+# Une année civile LOCALE des deux côtés, et dite explicitement. Les deux Parquet ne
+# stockent pas le même type : la courbe EDF est en TIMESTAMPTZ, dont `extract('year')`
+# se lit dans le fuseau de la MACHINE — la borne aurait donc découpé autrement ici et
+# sur le runner CI, qui tourne en UTC. Le côté sarde porte un TIMESTAMP naïf d'UTC, qu'il
+# faut déclarer avant de convertir. Les deux îles étant à la même longitude et dans le
+# même fuseau, l'année locale est la seule définition qui vaille pour les deux.
+_AN_CORSE = "extract('year' FROM timezone('Europe/Paris', date_heure))"
+_AN_SARD = "extract('year' FROM (date_heure AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Rome')"
+
 
 def mix_t6() -> tuple:
     """Les deux mix de T6, avec la période effectivement couverte de chaque côté.
@@ -346,7 +355,8 @@ def mix_t6() -> tuple:
     """
     con = _con()
     a, b = FENETRE_T6
-    borne = f"WHERE extract('year' FROM date_heure) BETWEEN {a} AND {b}"
+    borne_c = f"WHERE {_AN_CORSE} BETWEEN {a} AND {b}"
+    borne_s = f"WHERE {_AN_SARD} BETWEEN {a} AND {b}"
     sard = con.execute(f"""
       SELECT 'Sardaigne' AS ile,
         100.0*sum(thermique_mw)/sum(production_totale_mw)   AS thermique,
@@ -355,17 +365,17 @@ def mix_t6() -> tuple:
         100.0*sum(eolien_mw)/sum(production_totale_mw)      AS eolien,
         100.0*sum(bioenergies_mw)/sum(production_totale_mw) AS bioenergies,
         100.0*sum(autre_mw)/sum(production_totale_mw)       AS autre,
-        min(extract('year' FROM date_heure))::INT           AS an_min,
-        max(extract('year' FROM date_heure))::INT           AS an_max
-      FROM '{SARD}' {borne}""").df().iloc[0]
+        min({_AN_SARD})::INT                                AS an_min,
+        max({_AN_SARD})::INT                                AS an_max
+      FROM '{SARD}' {borne_s}""").df().iloc[0]
     corse = con.execute(f"""
       WITH b AS (
         SELECT sum(thermique_mw) th,
                sum(hydraulique_mw+coalesce(micro_hydraulique_mw,0)) hy,
                sum(photovoltaique_mw) so, sum(eolien_mw) eo, sum(bioenergies_mw) bi,
-               min(extract('year' FROM date_heure))::INT an_min,
-               max(extract('year' FROM date_heure))::INT an_max
-        FROM '{COURBE}' {borne})
+               min({_AN_CORSE})::INT an_min,
+               max({_AN_CORSE})::INT an_max
+        FROM '{COURBE}' {borne_c})
       SELECT 100.0*th/(th+hy+so+eo+bi) thermique, 100.0*hy/(th+hy+so+eo+bi) hydraulique,
              100.0*so/(th+hy+so+eo+bi) solaire, 100.0*eo/(th+hy+so+eo+bi) eolien,
              100.0*bi/(th+hy+so+eo+bi) bioenergies, 0.0 autre, an_min, an_max

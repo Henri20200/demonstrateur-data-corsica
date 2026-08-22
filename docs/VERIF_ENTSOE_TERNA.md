@@ -185,18 +185,58 @@ se déclencher, et elle reste utile pour la suite (2025 en ajoutera).
 
 ---
 
-## 5. Calendrier — vérifié, avec un bord d'un pouce
+## 5. Calendrier — le seul point que cette vérification avait d'abord raté
 
-Europe/Rome et Europe/Paris ont le même décalage toute l'année, changements d'heure compris :
-le fuseau n'est pas un problème, et le §4 de la pré-inscription avait raison de le donner
-pour fait.
+> **Rédigé une première fois le 22/08/2026 sur la foi d'un commentaire de code, puis
+> corrigé le même jour sur mesure.** La version initiale concluait « vérifié » : elle
+> reprenait la ligne « fait » du §4 de la pré-inscription et l'argument, exact mais hors
+> sujet, qu'Europe/Rome et Europe/Paris partagent le même décalage. Les deux fuseaux
+> coïncident bien — mais le code ne faisait pas la conversion. Un verrou qu'on déclare
+> tenu parce qu'un commentaire l'affirme n'est pas un verrou ; c'est l'erreur même que ce
+> document reproche ailleurs.
 
-Un bord subsiste, qui n'était pas déclaré. Les deux Parquet stockent des instants **UTC
-naïfs**, et l'année est extraite en UTC. Notre « 2023 » couvre donc du 1ᵉʳ janvier 01:00 au
-1ᵉʳ janvier 00:00 en heure locale — décalé d'une heure sur l'année civile de Terna. L'effet
-est d'une heure sur 8 760, soit 0,011 %, et il porte **uniquement sur la confrontation du
-§1** : le décalage étant identique des deux côtés, la comparaison Corse–Sardaigne n'en
-souffre pas.
+**Les deux Parquet ne portent pas le même type**, et c'est de là que tout vient. La courbe
+EDF arrive horodatée `+00:00` — de l'UTC explicite, correctement lu en `TIMESTAMP WITH TIME
+ZONE`. Le flux ENTSO-E, lui, est écrit par `prepare` en `TIMESTAMP` **naïf** portant de
+l'UTC. Or `timezone('Europe/Rome', x)` ne fait pas la même chose sur l'un et sur l'autre :
+sur un instant daté il **convertit** et rend du local ; sur un naïf il **interprète** — il
+décrète que la valeur était déjà à Rome — et rend un instant daté, dont `extract()` relit
+ensuite l'heure dans le fuseau de la machine. Sur un poste réglé à l'heure de Rome,
+l'aller-retour est l'identité.
+
+Conséquence mesurée : `heure_locale` valait l'**heure UTC** côté sarde, décalée d'une heure
+l'hiver et de deux l'été. Le pic solaire tombait à 11 h — impossible à 9° de longitude, où
+la Corse pique à 14 h. Aucune figure publiée ne lisait cette colonne, donc rien de faux
+n'est paru ; mais c'est exactement celle qu'un profil horaire Corse–Sardaigne aurait lue en
+premier.
+
+Après correction — dire que le naïf est de l'UTC, *puis* convertir — la fenêtre solaire
+sarde se pose sur le soleil réel :
+
+| Mois | Solaire sarde non nul | Lever / coucher réels |
+|---|---|---|
+| janvier | 8 h → 17 h | 07 h 50 → 17 h 10 |
+| juillet | 6 h → 20 h | 06 h 00 → 21 h 15 |
+
+C'est la vérification qui compte, parce qu'elle ne dépend d'aucune convention déclarée :
+le soleil se lève quand il se lève.
+
+**Deux conséquences pour la suite.** D'abord l'année elle-même : `extract('year')` sur un
+instant daté se lit dans le fuseau de la **machine**, donc la borne de T6 aurait découpé
+autrement ici et sur le runner d'intégration, qui tourne en UTC. Les deux côtés déclarent
+maintenant explicitement l'année civile **locale** — seule définition qui vaille pour deux
+îles au même fuseau. Ensuite le bord d'année demeure, mais symétrique : une heure sur 8 760,
+soit 0,011 %, et elle tombe hors de la fenêtre des deux côtés.
+
+**Reste ouvert, et ce n'est pas mince.** Le profil solaire corse de juillet a son centre de
+masse à **15,2 h**, contre **12,9 h** côté sarde — 2,2 heures d'écart entre deux îles à la
+même longitude, où le midi solaire tombe vers 13 h 25. Le bord du matin, lui, coïncide en
+janvier. Ce n'est donc pas un décalage d'horloge, et la cause n'est pas établie : convention
+de nommage de l'heure (début ou fin d'intervalle), effet du net d'auxiliaires qui écrase la
+rampe du matin, ou autre chose. Tant que ce n'est pas tranché, **les figures horaires corses
+— T2b, T3, et le « l'heure la plus verte est 14 h » de T4 — reposent sur une heure locale
+dont la vérification ci-dessus ne dit rien.** Elles n'entrent pas dans le périmètre de ce
+document, qui porte sur la comparaison sarde ; elles entrent dans celui du chantier suivant.
 
 En revanche, **la fenêtre corse de T6 n'est bornée nulle part dans le code**. La requête
 agrège tout `edf_courbe_corse.parquet`, qui contient déjà une heure de 2025. Aujourd'hui
