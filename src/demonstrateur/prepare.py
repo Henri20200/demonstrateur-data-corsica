@@ -56,14 +56,21 @@ QT_ECARTES = (2,)       # 2 douteuse, en cours de vérification
 # On agrège les fossiles en « thermique » ; B10 (STEP) en génération -> hydraulique ;
 # déchets (B17) avec bioénergies comme le classement EDF. La Sardaigne a du charbon (B05)
 # et du gaz de synthèse IGCC (B03, centrale Sarlux), d'où un thermique majoritaire.
+# B20 (« Other ») est du THERMIQUE, et ce n'est pas une supposition : le bilan régional de
+# Terna n'a que six lignes de production, dont la géothermique sarde est vide — tout ce qui
+# n'est ni hydro, ni vent, ni soleil, ni batterie y est donc nécessairement thermique. Le
+# solde le confirme : sans B20 le thermique reconstruit manque 8,9 % (2023) et 9,2 % (2024)
+# de la mesure Terna ; avec lui, l'écart tombe à 1,2 % et 1,8 %. Rangé en « autre », il
+# fabriquait sur T6 un bloc de 4 % sans contrepartie corse — la Corse n'a pas de poste
+# « autre ». Cf. docs/VERIF_ENTSOE_TERNA.md § 3.1.
 PSR_VERS_FILIERE = {
     "B02": "thermique", "B03": "thermique", "B04": "thermique", "B05": "thermique",
-    "B06": "thermique", "B07": "thermique", "B08": "thermique",
+    "B06": "thermique", "B07": "thermique", "B08": "thermique", "B20": "thermique",
     "B10": "hydraulique", "B11": "hydraulique", "B12": "hydraulique",
     "B16": "solaire",
     "B18": "eolien", "B19": "eolien",
     "B01": "bioenergies", "B17": "bioenergies",
-    "B09": "autre", "B13": "autre", "B14": "autre", "B15": "autre", "B20": "autre",
+    "B09": "autre", "B13": "autre", "B14": "autre", "B15": "autre",
     "B25": "autre",  # stockage (batteries, décharge) — apparu en 2024, pas d'équivalent EDF
 }
 _PT_MINUTES = {"PT15M": 15, "PT30M": 30, "PT60M": 60}

@@ -166,14 +166,27 @@ def test_ecretement_record_mai_2020(con):
 
 @besoin_sard
 def test_sardaigne_thermique_domine(con):
-    """T6 : Sardaigne ~65 % thermique (majoritaire), Corse ~55 % (génération seule)."""
+    """T6 : Sardaigne ~69 % thermique (majoritaire), Corse ~55 % (génération seule).
+
+    69 et non 65 depuis le 22/08/2026 : B20 (« Other ») était rangé en « autre » alors que
+    le bilan régional de Terna le compte dans le thermique — il n'a nulle part ailleurs où
+    le mettre. Cf. docs/VERIF_ENTSOE_TERNA.md § 3.1.
+    """
     s = con.execute(
         f"""SELECT 100.0*sum(thermique_mw)/sum(production_totale_mw),
-                   100.0*sum(eolien_mw)/sum(production_totale_mw)
+                   100.0*sum(eolien_mw)/sum(production_totale_mw),
+                   100.0*sum(autre_mw)/sum(production_totale_mw)
             FROM '{SARD.as_posix()}'"""
     ).fetchone()
-    assert s[0] == pytest.approx(65.1, abs=1.0), (
+    assert s[0] == pytest.approx(69.1, abs=1.0), (
         f"thermique sarde = {s[0]:.1f} % — le titre « deux îles thermiques » de T6 à revoir"
+    )
+    # Le poste « autre » sarde n'a AUCUNE contrepartie corse (T6 code un « autre » corse à
+    # 0,0 en dur). S'il redevient non nul, la figure recommence à empiler un bloc qui n'a
+    # pas d'équivalent en face : c'est le défaut que le reclassement de B20 a corrigé.
+    assert s[2] == pytest.approx(0.0, abs=0.05), (
+        f"« autre » sarde = {s[2]:.2f} % — un code PSR non thermique est réapparu ; T6 "
+        "empile de nouveau un segment sans contrepartie corse (cf. PSR_VERS_FILIERE)"
     )
     # Contraste éolien du sous-titre : Sardaigne ~15 %, Corse ~1 % (≈ 15×).
     c_eol = con.execute(
@@ -182,6 +195,26 @@ def test_sardaigne_thermique_domine(con):
     ).fetchone()[0]
     assert s[1] / c_eol >= 10, (
         f"éolien sarde {s[1]:.1f} % vs corse {c_eol:.1f} % — le « 15 fois plus » de T6 ne tient plus"
+    )
+
+
+@besoin_sard
+@besoin_courbe
+def test_t6_compare_bien_deux_fois_la_meme_periode():
+    """T6 annonce « moyenne 2019-2024 » : les deux barres doivent couvrir cette période.
+
+    Le piège n'est pas théorique — la courbe corse porte déjà une heure de 2025, et EDF
+    publiera l'année entière. Sans borne, la figure comparerait une Corse plus longue à une
+    Sardaigne arrêtée en 2024, sans rien afficher de ce décalage. On interroge la fonction
+    qui construit la figure, pas les Parquet : c'est la BORNE qu'on verrouille, et elle ne
+    se voit que là. Cf. docs/VERIF_ENTSOE_TERNA.md § 5.
+    """
+    from demonstrateur.figures import FENETRE_T6, mix_t6
+
+    _, _, span_corse, span_sard = mix_t6()
+    assert span_corse == span_sard == FENETRE_T6, (
+        f"T6 compare une Corse {span_corse} à une Sardaigne {span_sard}, "
+        f"alors que la figure annonce {FENETRE_T6} — la borne a sauté d'un côté"
     )
 
 

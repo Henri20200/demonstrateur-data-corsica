@@ -327,15 +327,26 @@ def fig_t5_ecretement() -> go.Figure:
 
 
 # --- Titre 6 : « deux îles thermiques, mais la Sardaigne brûle du charbon » ---
-def fig_t6_corse_sardaigne() -> go.Figure:
-    """Barres 100 % empilées : mix de génération local, Corse vs Sardaigne (2019-2024).
+# Fenêtre de la comparaison, bornée des DEUX côtés. La courbe corse déborde déjà de son
+# millésime — elle porte une heure de 2025 — et EDF publiera 2025 en entier : sans borne,
+# la figure comparerait une Corse 2019-2025 à une Sardaigne 2019-2024 sans que rien ne le
+# signale, sous un sous-titre qui annonce « moyenne 2019-2024 ». Le côté sarde n'en a pas
+# besoin aujourd'hui (le Parquet ne contient que ces six années), mais la borne y est
+# répétée pour que la propriété tenue soit « les deux barres couvrent la même période », et
+# non « la requête est juste aujourd'hui ». Cf. docs/VERIF_ENTSOE_TERNA.md § 5.
+FENETRE_T6 = (2019, 2024)
 
-    Comparaison honnête = GÉNÉRATION seule : on exclut les imports corses (27,8 % de la
-    demande) et on renormalise, car la Sardaigne (exportatrice) n'a pas de poste import
-    dans les données ENTSO-E. Les deux îles sont thermiques (~55 / 65 %), mais la Sardaigne
-    brûle du charbon (+ gaz de synthèse IGCC) quand la Corse tient au fioul + grande hydro.
+
+def mix_t6() -> tuple:
+    """Les deux mix de T6, avec la période effectivement couverte de chaque côté.
+
+    Renvoie (corse, sardaigne, span_corse, span_sard) — les deux `span` étant des couples
+    (année min, année max). Ils sortent d'ici plutôt que d'être supposés : c'est ce qui
+    permet à un test de casser si une des deux bornes disparaît (cf. `FENETRE_T6`).
     """
     con = _con()
+    a, b = FENETRE_T6
+    borne = f"WHERE extract('year' FROM date_heure) BETWEEN {a} AND {b}"
     sard = con.execute(f"""
       SELECT 'Sardaigne' AS ile,
         100.0*sum(thermique_mw)/sum(production_totale_mw)   AS thermique,
@@ -343,18 +354,36 @@ def fig_t6_corse_sardaigne() -> go.Figure:
         100.0*sum(solaire_mw)/sum(production_totale_mw)     AS solaire,
         100.0*sum(eolien_mw)/sum(production_totale_mw)      AS eolien,
         100.0*sum(bioenergies_mw)/sum(production_totale_mw) AS bioenergies,
-        100.0*sum(autre_mw)/sum(production_totale_mw)       AS autre
-      FROM '{SARD}'""").df().iloc[0]
+        100.0*sum(autre_mw)/sum(production_totale_mw)       AS autre,
+        min(extract('year' FROM date_heure))::INT           AS an_min,
+        max(extract('year' FROM date_heure))::INT           AS an_max
+      FROM '{SARD}' {borne}""").df().iloc[0]
     corse = con.execute(f"""
       WITH b AS (
         SELECT sum(thermique_mw) th,
                sum(hydraulique_mw+coalesce(micro_hydraulique_mw,0)) hy,
-               sum(photovoltaique_mw) so, sum(eolien_mw) eo, sum(bioenergies_mw) bi
-        FROM '{COURBE}')
+               sum(photovoltaique_mw) so, sum(eolien_mw) eo, sum(bioenergies_mw) bi,
+               min(extract('year' FROM date_heure))::INT an_min,
+               max(extract('year' FROM date_heure))::INT an_max
+        FROM '{COURBE}' {borne})
       SELECT 100.0*th/(th+hy+so+eo+bi) thermique, 100.0*hy/(th+hy+so+eo+bi) hydraulique,
              100.0*so/(th+hy+so+eo+bi) solaire, 100.0*eo/(th+hy+so+eo+bi) eolien,
-             100.0*bi/(th+hy+so+eo+bi) bioenergies, 0.0 autre
+             100.0*bi/(th+hy+so+eo+bi) bioenergies, 0.0 autre, an_min, an_max
       FROM b""").df().iloc[0]
+    return (corse, sard,
+            (int(corse["an_min"]), int(corse["an_max"])),
+            (int(sard["an_min"]), int(sard["an_max"])))
+
+
+def fig_t6_corse_sardaigne() -> go.Figure:
+    """Barres 100 % empilées : mix de génération local, Corse vs Sardaigne (2019-2024).
+
+    Comparaison honnête = GÉNÉRATION seule : on exclut les imports corses (27,8 % de la
+    demande) et on renormalise, car la Sardaigne (exportatrice) n'a pas de poste import
+    dans les données ENTSO-E. Les deux îles sont thermiques (~55 / 69 %), mais la Sardaigne
+    brûle du charbon (+ gaz de synthèse IGCC) quand la Corse tient au fioul + grande hydro.
+    """
+    corse, sard, _, _ = mix_t6()
 
     # Ordre d'empilement : deux verts (hydro sauge / éolien forêt) jamais adjacents.
     filieres = [
