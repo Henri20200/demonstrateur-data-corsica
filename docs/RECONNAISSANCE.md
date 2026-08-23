@@ -49,7 +49,9 @@ respectés. Tous les chiffres ont été vérifiés empiriquement (DuckDB sur le 
   l'import) : bagasse_charbon, geothermie, **stockage** → à caster/ignorer dans `prepare`.
 - **`micro_hydraulique_mw` : rupture de série** — présente 2019-2023 (0 NULL), **absente
   en 2024** (NULL sur ~toute l'année). Voir « Données manquantes » ci-dessous.
-- **Profondeur Corse** : horaire, **2019-01-01 00:00 → 2024-12-31 23:00 UTC**, 52 608 h (6 ans).
+- **Profondeur Corse** : horaire, **2019-01-01 00:00 → 2024-12-31 23:00 en heure légale
+  corse**, 52 608 h (6 ans). L'étiquette `+00:00` du fichier est fausse — établi le
+  23/08/2026, cf. `docs/VERIF_ENTSOE_TERNA.md` § 5.
 - **Statut Corse** : `Validé` 17 544 (~2 ans) + `Estimé` 35 064 (~4 ans).
 - `cout_moyen_de_production_eur_mwh` : **hors périmètre** (cf. « vague 2 »).
 
@@ -68,6 +70,10 @@ Sur le temps réel (écart max mesuré = 0.0000 sauf mention) :
   où `total` seul est corrompu (348,8 au lieu de ~450 ; filières saines, ni négatif).
   → geste `prepare` : **dropper la ligne via le bouclage > 50 MW** (robuste au fuseau).
 - **Fuseau = UTC**, prouvé par la physique : pic PV à **11 h UTC = 13 h local** (été).
+  **Cette preuve ne vaut que pour le temps réel.** Elle a été étendue par analogie à la
+  courbe horaire du jeu 2, qui est du même producteur et porte le même suffixe `+00:00` —
+  et qui, elle, est en heure légale. Une convention se vérifie par JEU, jamais par
+  producteur (23/08/2026).
 
 ### ENR de comparaison « maintenant vs historique » — définition SYMÉTRIQUE
 

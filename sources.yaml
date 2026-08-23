@@ -106,7 +106,12 @@ sources:
   # ATTENTION : l'ancien host opendata-corse-outremer.edf.fr est une SPA morte
   # (renvoyait du HTML en 200). Vrai host : opendata.edf.fr, même dataset id.
   # 5 territoires (Corse + 4 Outre-mer) — FILTRER territoire = 'Corse'.
-  # Corse : horaire, 2019-01-01 -> 2024-12-31 (6 ans), 52 608 h, en UTC.
+  # Corse : horaire, 2019-01-01 -> 2024-12-31 (6 ans), 52 608 h.
+  # FUSEAU : le suffixe `+00:00` de date_heure est FAUX — ce jeu porte l'heure légale
+  # corse (établi le 23/08/2026 contre le pyranomètre Météo-France, les dix bascules
+  # d'heure légale et la structure du fichier ; cf. docs/VERIF_ENTSOE_TERNA.md § 5).
+  # NE PAS déduire le fuseau de celui du temps réel, qui est bien en UTC : c'est
+  # exactement la généralisation qui a produit le défaut.
   edf_courbe_charge_horaire:
     url: "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv"
     filename: "edf_courbe_charge_horaire.csv"
@@ -117,7 +122,8 @@ sources:
     colonnes_attendues: [territoire, date_heure, production_totale_mw, photovoltaique_mw, statut]
     notes: >
       Filtrer sur territoire = 'Corse'. Contient aussi cout_moyen_de_production
-      (hors périmètre du démonstrateur). Fuseau UTC. Statut Corse : 2 ans validés
+      (hors périmètre du démonstrateur). Étiquette `+00:00` trompeuse : heure légale
+      corse. Statut Corse : 2 ans validés
       + 4 ans estimés. stockage_mw nul en Corse. Correspondance temps réel :
       thermique_mw <-> filiere_thermique, importations_mw <-> liaisons.
 
