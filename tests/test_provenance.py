@@ -447,3 +447,39 @@ def test_la_page_reste_lisible_en_trois_minutes():
     assert len(re.findall(r'class="plotly-graph-div"', h)) == 5, (
         "les cinq titres du brief doivent être représentés"
     )
+
+
+@besoin_note_elec
+def test_la_periode_sarde_annoncee_est_le_perimetre_analytique():
+    """La note doit annoncer la fenêtre que l'étude EXPLOITE, pas un extremum d'horodatage.
+
+    Défaut du 23/08/2026 : la note tirait la période sarde de `min/max(annee)`, colonne
+    d'année LOCALE. La dernière heure de 2024 en UTC bascule au 1ᵉʳ janvier suivant en
+    heure de Rome, si bien que la page allait publier « de 2019 à 2025 » pour une source
+    qui couvre six années pleines. C'est le pendant exact de la confusion de bord éliminée
+    côté corse le même jour, et un horodatage daté par la FIN d'intervalle la recréerait.
+
+    Le verrou porte donc sur le périmètre, en deux temps : ce que la note annonce doit être
+    la fenêtre de T6, et la source doit réellement tenir dans cette fenêtre sur SON PROPRE
+    axe — celui qu'ENTSO-E publie, l'UTC. Un test qui se contenterait de comparer deux
+    extrema se laisserait déplacer par n'importe quel changement de convention.
+    """
+    parquet = DATA_PROCESSED / "entsoe_sardaigne.parquet"
+    if not parquet.exists():
+        pytest.skip("Parquet sarde absent — lancer fetch-data puis prepare")
+    from demonstrateur.figures import FENETRE_T6
+
+    a, b = FENETRE_T6
+    h = _texte_note_elec()
+    assert f"de {a} à {b}" in h, (
+        f"la note n'annonce pas la période sarde « de {a} à {b} » — soit elle publie une "
+        "autre fenêtre que celle que T6 exploite, soit elle la tire encore d'un extremum"
+    )
+    hors = duckdb.connect().execute(
+        f"""SELECT count(*) FROM '{parquet.as_posix()}'
+            WHERE extract('year' FROM date_heure) NOT BETWEEN {a} AND {b}"""
+    ).fetchone()[0]
+    assert hors == 0, (
+        f"{hors} heure(s) sarde(s) hors de {a}-{b} sur l'axe UTC de la source — la note "
+        "annonce une couverture que la donnée ne tient pas"
+    )

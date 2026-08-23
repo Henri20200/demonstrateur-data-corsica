@@ -1,9 +1,14 @@
 """Verrous de la page d'entrée `outputs/index.html`.
 
 À la différence de `outputs/etude.html`, la page d'accueil ne peut pas être verrouillée
-par une comparaison octet à octet : elle porte la date de compilation, le commit et le
-compteur d'actualisations, qui changent à chaque run planifié. Ce sont donc ses PROMESSES
-qu'on tient ici — celles qui la rendraient menteuse si elles cessaient d'être vraies.
+par une comparaison octet à octet : elle porte la date de compilation et le commit, qui
+changent à chaque run planifié. Ce sont donc ses PROMESSES qu'on tient ici — celles qui la
+rendraient menteuse si elles cessaient d'être vraies.
+
+S'y ajoute depuis le 23/08/2026 une promesse d'un autre ordre : **à donnée égale, la page
+ne dépend de rien d'autre que de la donnée**. Elle a porté un compteur tiré de `git log`,
+qui valait 1 sur le clone superficiel du cron et 143 sur un poste complet — une page
+versionnée qui oscille selon la machine qui la génère.
 """
 
 import datetime as dt
@@ -91,4 +96,63 @@ def test_cachet_de_fraicheur_porte_une_date_exploitable():
         assert m.group(1) == attendu, (
             "la date affichée n'est plus celle de la lignée de build — la page annoncerait "
             "une fraîcheur qu'elle n'a pas ; relancer `python -m demonstrateur.accueil`"
+        )
+
+
+def test_la_page_ne_depend_pas_de_l_historique_git(tmp_path, monkeypatch):
+    """À donnée égale, la page doit sortir IDENTIQUE si aucune commande externe ne répond.
+
+    Verrou posé le 23/08/2026, après un défaut de reproductibilité : la page portait un
+    compteur « Nᵉ actualisation » compté sur `git log`, qui ne voit que ce qui est
+    atteignable depuis HEAD. Le cron, en clone superficiel, écrivait « 1ᵉ » ; un poste avec
+    l'historique complet écrivait « 143ᵉ ». Une page versionnée oscillait donc selon la
+    machine qui la générait, et le dépôt aurait committé cette oscillation à chaque run.
+
+    Le test sabote `subprocess.run` : c'est la porte par laquelle git était appelé, et
+    n'importe quelle autre commande externe passerait par là. Si la page change, c'est
+    qu'elle a repris une dépendance à l'environnement d'exécution plutôt qu'à la donnée.
+    """
+    if not BUILD_FILE.exists():
+        pytest.skip("lignée de build absente — lancer prepare")
+    import subprocess
+
+    from demonstrateur import accueil
+
+    def generer(dossier):
+        dossier.mkdir(parents=True, exist_ok=True)
+        monkeypatch.setattr(accueil, "OUTPUTS", dossier)
+        accueil.main()
+        return (dossier / "index.html").read_bytes()
+
+    normal = generer(tmp_path / "avec")
+    monkeypatch.setattr(
+        subprocess, "run",
+        lambda *a, **k: (_ for _ in ()).throw(OSError("aucune commande externe")),
+    )
+    prive = generer(tmp_path / "sans")
+    assert normal == prive, (
+        "la page d'accueil change quand les commandes externes échouent — elle tire "
+        "quelque chose de son environnement d'exécution et non de la donnée"
+    )
+
+
+def test_la_page_ne_lit_jamais_l_historique_git():
+    """Le pendant statique du test précédent, et il vise la CAUSE plutôt que l'effet.
+
+    Un futur ajout pourrait relire l'historique sans passer par `subprocess.run` — module
+    `git`, fichier `.git/` ouvert à la main. Cette assertion casse dès la mention, avant
+    même qu'un run planifié n'ait l'occasion de faire osciller la page.
+    """
+    from pathlib import Path
+
+    from demonstrateur import accueil
+
+    source = Path(accueil.__file__).read_text(encoding="utf-8")
+    code = "\n".join(x for x in source.splitlines() if not x.lstrip().startswith("#"))
+    corps = code.split('"""', 2)[-1]  # la docstring RACONTE le défaut, elle ne le crée pas
+    for interdit in ("subprocess", "git log", '".git"', "'.git'", "import git"):
+        assert interdit not in corps, (
+            f"`{interdit}` est réapparu dans accueil.py — la page d'entrée est versionnée, "
+            "son contenu ne doit dépendre que de la donnée, jamais de l'historique ni de "
+            "la profondeur du clone (cf. la docstring du module)"
         )

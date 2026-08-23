@@ -15,13 +15,23 @@ le HTML à la compilation : elle reste vraie sans JavaScript. L'âge relatif, lu
 recalculé À LA LECTURE par quelques lignes de script. Une page statique qui aurait figé
 « rafraîchi il y a 2 h » mentirait dès le lendemain ; recalculé, l'âge dit la vérité même
 quand la chaîne s'arrête — et il le dit franchement au-delà d'un cycle manqué.
+
+**Rien de cette page ne vient de l'historique Git, et c'est une règle.** Elle a porté
+jusqu'au 23/08/2026 un compteur « Nᵉ actualisation » compté sur les commits `chore(data)`.
+Il était faux : `git log` ne voit que ce qui est atteignable depuis HEAD, si bien que le
+cron — qui travaille en clone superficiel — écrivait « 1ᵉ » là où un poste avec
+l'historique complet écrivait « 143ᵉ ». Une page VERSIONNÉE dont le contenu dépend de la
+profondeur du clone qui la produit n'est pas reproductible, et elle aurait fait osciller le
+dépôt à chaque run. Le compteur est retiré plutôt que réparé : sa fonction — dire que la
+chaîne tourne — est déjà remplie par la date de compilation, qui vient de la lignée de
+build, donc de la donnée. `tests/test_accueil.py` interdit désormais tout retour en
+arrière : la page doit sortir identique quand aucune commande externe ne répond.
 """
 
 from __future__ import annotations
 
 import html
 import json
-import subprocess
 from collections import defaultdict
 
 from .config import BUILD_FILE, MANIFEST_FILE, OUTPUTS
@@ -58,25 +68,6 @@ SUJETS = [
         [("a0_note_methodologique.html", "Note méthodologique")],
     ),
 ]
-
-
-def _actualisations() -> int | None:
-    """Nombre de rafraîchissements planifiés déjà commités.
-
-    Compté sur les commits `chore(data)` : c'est la trace que la chaîne tourne vraiment,
-    et elle est infalsifiable une fois le dépôt ouvert. Renvoie None hors dépôt git
-    (archive téléchargée, par exemple) — auquel cas la page n'affiche simplement pas le
-    compteur, plutôt qu'un nombre inventé.
-    """
-    try:
-        sortie = subprocess.run(
-            ["git", "log", "--grep=^chore(data)", "--format=%h"],
-            capture_output=True, text=True, timeout=30, check=True,
-        ).stdout
-    except (OSError, subprocess.SubprocessError):
-        return None
-    n = len([ligne for ligne in sortie.splitlines() if ligne.strip()])
-    return n or None
 
 
 def _manifeste() -> tuple[list[tuple[str, str, list[dict]]], int, int]:
@@ -136,11 +127,7 @@ def _sujets() -> str:
     return "".join(blocs)
 
 
-def _html(genere_le: str, groupes, n_sources: int, n_prod: int,
-          actualisations: int | None) -> str:
-    compteur = (
-        f" · {actualisations}<sup>e</sup> actualisation" if actualisations else ""
-    )
+def _html(genere_le: str, groupes, n_sources: int, n_prod: int) -> str:
     return f"""<!doctype html>
 <html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -200,7 +187,7 @@ tourne toute seule.</p>
 
 <p class="cachet" id="cachet" data-genere="{html.escape(genere_le)}">
   <span id="age"></span><span class="abs">Données compilées le
-  <time datetime="{html.escape(genere_le)}">{_txt(genere_le[:10])}</time>{compteur}.</span>
+  <time datetime="{html.escape(genere_le)}">{_txt(genere_le[:10])}</time>.</span>
 </p>
 
 {_sujets()}
@@ -274,7 +261,7 @@ def main() -> int:
     # Git normalise au commit, mais le cron ne doit committer QUE ce qui a changé — mieux
     # vaut que le fichier soit identique dès l'écriture (cf. la règle dans CLAUDE.md).
     dest.write_text(
-        _html(build["genere_le"], groupes, n_sources, n_prod, _actualisations()),
+        _html(build["genere_le"], groupes, n_sources, n_prod),
         encoding="utf-8", newline="\n",
     )
     print(f"[ok] {dest}")

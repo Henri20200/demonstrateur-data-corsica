@@ -87,8 +87,17 @@ def _chiffres() -> dict:
     # elle disparaît alors du tableau plutôt que d'y figurer sans chiffres (comme
     # `figures` saute T6). Une ligne de tableau vide serait un sourçage qui ment.
     if SARD_PATH.exists():
+        # PAS `min/max(annee)` : cette colonne porte l'année LOCALE (Rome), et la
+        # dernière heure de 2024 en UTC y bascule au 1er janvier suivant. La note
+        # annoncerait « 2019 à 2025 » pour une source qui couvre six années pleines —
+        # exactement la confusion de bord corrigée côté corse le 23/08/2026. On lit donc
+        # l'axe de la SOURCE, qu'ENTSO-E publie en UTC. `tests/test_provenance.py` relie
+        # cette annonce au périmètre analytique (`figures.FENETRE_T6`) : c'est lui qui
+        # fait foi, pas un extremum d'horodatage.
         n, sa1, sa2 = con.execute(
-            f"SELECT count(*), min(annee), max(annee) FROM '{SARD_PATH.as_posix()}'"
+            f"""SELECT count(*), min(extract('year' FROM date_heure)),
+                       max(extract('year' FROM date_heure))
+                FROM '{SARD_PATH.as_posix()}'"""
         ).fetchone()
         c["sard"] = dict(heures=n, an1=int(sa1), an2=int(sa2),
                          collecte=date_collecte("entsoe_sardaigne_2024"))
