@@ -390,7 +390,7 @@ def test_les_chiffres_de_la_note_electricite_sortent_bien_des_donnees():
     con = duckdb.connect()
     heures, estimees, an2 = con.execute(f"""
         SELECT count(*), count(*) FILTER (WHERE lower(statut) LIKE 'estim%'),
-               max(extract('year' FROM timezone('UTC', date_heure)))
+               max(annee_locale)
         FROM '{parquet.as_posix()}'""").fetchone()
     h = _texte_note_elec()
     for valeur in (heures, estimees):

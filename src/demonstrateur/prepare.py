@@ -145,28 +145,102 @@ def courbe_corse_to_parquet(dest: str) -> None:
 
     Colonnes Outre-mer vides (bagasse/geothermie/stockage) et coût (hors périmètre)
     écartées. `micro_hydraulique_mw` gardée brute + coalescée dans l'ENR (cf. audit).
+
+    **L'étiquette `+00:00` de ce jeu est fausse : il porte l'heure légale corse.**
+    Établi le 23/08/2026 par trois mesures indépendantes du code (cf.
+    `docs/VERIF_ENTSOE_TERNA.md` § 5 et `tests/test_horodatage_corse.py`) :
+
+    1. contre le pyranomètre `GLO` de Météo-France — autre producteur, autre instrument,
+       même soleil — la série demande 0 h de décalage l'hiver et −1 h l'été, quand le
+       témoin sarde (ENTSO-E, UTC déclaré) demande +1 h dans les deux régimes ;
+    2. autour des dix bascules d'heure légale de 2020-2024, ce décalage saute d'exactement
+       une heure d'un week-end à l'autre — trois semaines d'écart, même parc, même soleil.
+       Le témoin sarde ne bouge pas de plus de 0,3 h ;
+    3. signature structurelle, sans le soleil : sur 52 608 heures, les **trois seules**
+       lignes à production nulle tombent à 02 h des dimanches de passage à l'heure d'été.
+       C'est l'heure qui n'existe pas en heure légale. Une série réellement en UTC n'a
+       aucune heure singulière ce jour-là.
+
+    Le jeu voisin `edf_mix_temps_reel`, du même producteur, est lui bien en UTC (pic
+    d'étiquette brute à 11 h 30, midi solaire 11 h 28 UTC) : la convention se vérifie par
+    jeu, jamais par producteur.
+
+    Conséquence sur les colonnes — le brut se conserve À CÔTÉ de l'interprété, et la
+    convention s'écrit plutôt qu'elle ne se suppose :
+
+    - `horodatage_publie` : l'étiquette exactement comme EDF la publie, suffixe compris.
+      C'est la seule chose qu'on tienne du producteur ; elle ne se perd pas.
+    - `date_heure_locale` : cette étiquette lue littéralement, **en heure légale corse**.
+      Colonne de référence, et celle dont dérivent heure, mois et année.
+    - `date_heure_utc` : l'instant, obtenu en déclarant l'heure légale puis en convertissant.
+      C'est l'INTERPRÉTATION ; elle se vérifie contre le soleil, elle ne se déclare pas.
+
+    On ne « retire pas une heure l'été » dans une figure : la correction est ici, une fois,
+    et les figures lisent une heure déjà juste. `date_heure` a été RENOMMÉE à dessein —
+    tout consommateur doit choisir explicitement entre l'instant et l'heure légale.
+
+    Deux gardes tiennent la lecture. Le suffixe est vérifié : le jour où EDF corrigera son
+    étiquetage, `strptime` sur les dix-neuf premiers caractères deviendrait faux en
+    silence, donc un suffixe autre que `+00:00` fait ÉCHOUER. Et les heures qui n'existent
+    PAS en heure légale (02 h du dimanche de printemps) sont retirées — détectées par
+    aller-retour heure légale -> instant -> heure légale, jamais par une liste de dates
+    écrite à la main. EDF les remplit : à zéro sur les deux années validées, mais à
+    200-250 MW sur 2021, 2022 et 2023, toutes estimées. Une heure qui n'a pas eu lieu ne
+    se date pas.
     """
     con = duckdb.connect()
-    src = f"read_csv_auto('{COURBE}', delim=';', header=true)"
-    # `production_totale_mw > 0` retire 3 lignes à 0 MW (heure fantôme des passages à
-    # l'heure d'été 2019, 2020 et 2024) : 52 605 h traitées sur les 52 608 h du brut.
-    # Écart documenté (cf. RECONNAISSANCE.md) — c'est le dénominateur de tous les ratios.
-    corse = f"(SELECT * FROM {src} WHERE territoire='Corse' AND production_totale_mw > 0)"
+    # `types=` force l'étiquette en VARCHAR : sans quoi le sniffer la typerait en
+    # TIMESTAMPTZ sur la foi du suffixe, et toute relecture dépendrait du fuseau de la
+    # machine. Aucune sortie de cette fonction ne doit varier avec `TZ`.
+    src = (f"read_csv('{COURBE}', delim=';', header=true, "
+           "types={'date_heure':'VARCHAR'})")
+    corse = f"(SELECT * FROM {src} WHERE territoire='Corse')"
 
-    _auditer_null(con, corse, GRANDES_FILIERES, "courbe Corse")  # micro exemptée (doc)
+    # Garde 1 : le suffixe. Il est faux, on le sait, et c'est précisément pour cela qu'il
+    # doit rester tel quel — s'il change, notre lecture change de sens.
+    n_autres, exemple = con.execute(
+        f"SELECT count(*), min(date_heure) FROM {corse} WHERE date_heure NOT LIKE '%+00:00'"
+    ).fetchone()
+    if n_autres:
+        raise ValueError(
+            f"courbe Corse : {n_autres} étiquette(s) sans suffixe '+00:00' (ex. "
+            f"{exemple!r}) — EDF a changé son étiquetage. La lecture en heure légale "
+            "repose sur ce suffixe erroné : re-vérifier la convention contre le "
+            "pyranomètre AVANT de republier une heure de la journée."
+        )
+
+    lu = "strptime(substr(date_heure, 1, 19), '%Y-%m-%dT%H:%M:%S')"
+    instant = f"timezone('Europe/Paris', {lu})"        # heure légale -> instant
+    retour = f"timezone('Europe/Paris', {instant})"    # instant -> heure légale
+    base = f"(SELECT *, {lu} AS dhl, {instant} AS dhi, {retour} AS dhr FROM {corse})"
+
+    # Garde 2 : les heures inexistantes. L'aller-retour ne retombe pas sur ses pieds pour
+    # une heure sautée au passage à l'heure d'été — c'est la seule détection qui ne
+    # vieillit pas (une liste de dimanches, si).
+    fantomes = con.execute(f"SELECT count(*) FROM {base} WHERE dhr <> dhl").fetchone()[0]
+    reel = f"(SELECT * FROM {base} WHERE dhr = dhl AND production_totale_mw > 0)"
+    nulles = con.execute(
+        f"SELECT count(*) FROM {base} WHERE dhr = dhl AND production_totale_mw <= 0"
+    ).fetchone()[0]
+
+    _auditer_null(con, reel, GRANDES_FILIERES, "courbe Corse")  # micro exemptée (doc)
 
     enr = "(photovoltaique_mw+eolien_mw+bioenergies_mw+coalesce(micro_hydraulique_mw,0))"
     con.execute(
         f"""
         COPY (
-          SELECT date_heure, statut,
-            extract('hour'  FROM timezone('Europe/Paris', date_heure)) AS heure_locale,
-            extract('month' FROM timezone('Europe/Paris', date_heure)) AS mois_local,
+          SELECT date_heure               AS horodatage_publie,
+            dhl                           AS date_heure_locale,
+            timezone('UTC', dhi)          AS date_heure_utc,
+            statut,
+            extract('hour'  FROM dhl)     AS heure_locale,
+            extract('month' FROM dhl)     AS mois_local,
+            extract('year'  FROM dhl)     AS annee_locale,
             production_totale_mw, thermique_mw, hydraulique_mw, micro_hydraulique_mw,
             photovoltaique_mw, eolien_mw, bioenergies_mw, importations_mw,
             {enr}                                       AS enr_distrib_mw,
             round(100.0*{enr}/production_totale_mw, 2)  AS part_enr_distrib
-          FROM {corse}
+          FROM {reel}
         ) TO '{dest}' (FORMAT PARQUET)
         """
     )
@@ -174,7 +248,7 @@ def courbe_corse_to_parquet(dest: str) -> None:
     # sous-ensemble solaire — c'est l'invariant qui a révélé le bug NULL 2024. (Au niveau
     # ligne, la production nette nocturne peut être < 0 et le violer légitimement —
     # auxiliaires, convention EDF. Deux périmètres à ne pas confondre : PAR FILIÈRE,
-    # c'est fréquent (PV < 0 : 20 429 h, soit 38,8 % ; éolien 13 017 ; bio 4 856 ;
+    # c'est fréquent (PV < 0 : 20 426 h, soit 38,8 % ; éolien 13 015 ; bio 4 856 ;
     # micro 2 233) ; l'AGRÉGAT enr_distrib_mw < 0 est rare car les termes se
     # compensent : 2 750 h (5,2 %), part minimale −1,39 %. Sans objet à l'agrégat
     # horaire ; les figures clampent à 0 via greatest().)
@@ -186,8 +260,22 @@ def courbe_corse_to_parquet(dest: str) -> None:
     ).fetchone()[0]
     if viol:
         raise ValueError(f"courbe Corse : {viol} heures ENR<solaire (agrégat) — cohérence rompue.")
-    n = con.execute(f"SELECT count(*) FROM '{dest}'").fetchone()[0]
-    print(f"[ok] {Path(dest).name} — {n:,} heures (Corse 2019-2024) — garde ENR>=solaire OK")
+    # Garde de sortie : l'instant est une CLÉ, l'heure légale non — celle du retour à
+    # l'heure d'hiver a lieu deux fois. Un doublon d'instant dirait que la grille de 24 h
+    # par jour du producteur a gardé les deux, et fausserait toute jointure.
+    n, uniq, a1, a2 = con.execute(
+        f"SELECT count(*), count(DISTINCT date_heure_utc), min(annee_locale), "
+        f"max(annee_locale) FROM '{dest}'"
+    ).fetchone()
+    if n != uniq:
+        raise ValueError(
+            f"courbe Corse : {n - uniq} instant(s) en double — deux étiquettes d'heure "
+            "légale retombent sur le même instant (retour à l'heure d'hiver conservé en "
+            "double par le producteur ?). L'axe UTC ne peut plus servir de clé."
+        )
+    print(f"[ok] {Path(dest).name} — {n:,} heures (Corse {int(a1)}-{int(a2)}, heure légale) "
+          f"— {fantomes} heure(s) inexistante(s) et {nulles} ligne(s) à 0 MW retirées "
+          f"— gardes ENR>=solaire et unicité d'instant OK")
 
 
 def ecretement_corse_to_parquet(dest: str) -> None:

@@ -184,15 +184,20 @@ les résultats tiennent, on durcit fraîcheur, non-régression et formulations.
   **confondu avec la période** (2019-2020 vs 2021-2024, parc ENR en croissance) — il
   démontre que les directions tiennent, il n'isole PAS un effet de la qualité de mesure.
 
-### Volume traité : 52 605 h (et non 52 608)
+### Volume traité : 52 602 h (et non 52 608)
 
-Le brut Corse compte 52 608 h ; `prepare` retire **3 lignes à 0 MW** (heure fantôme des
-passages à l'heure d'été 2019, 2020 et 2024) via `production_totale_mw > 0`. Tout chiffre
-« sur 2019-2024 » a donc pour dénominateur **52 605 heures**.
+Le brut Corse compte 52 608 h ; `prepare` retire les **6 heures qui n'existent pas en heure
+légale corse** — 02 h des six dimanches de passage à l'heure d'été. Tout chiffre « sur
+2019-2024 » a donc pour dénominateur **52 602 heures**.
+
+Trois de ces six lignes sont à 0 MW (2019, 2020, 2024) et tombaient déjà sous
+`production_totale_mw > 0` ; les trois autres (2021, 2022, 2023, années estimées) portent
+246, 253 et 200 MW. Depuis le 23/08/2026 la détection ne repose plus sur la valeur mais sur
+un aller-retour heure légale -> instant -> heure légale, qui ne vieillit pas.
 
 ### Filières négatives la nuit (auxiliaires, convention EDF) — deux périmètres
 
-- **Par filière** (fréquent) : PV < 0 sur 20 429 h (38,8 %), éolien 13 017, bio 4 856,
+- **Par filière** (fréquent) : PV < 0 sur 20 426 h (38,8 %), éolien 13 015, bio 4 856,
   micro 2 233.
 - **Agrégat** `ENR_sym` < 0 (rare, les termes se compensent) : **2 750 h (5,2 %)**,
   part minimale **−1,39 %**. Sans objet à l'agrégat horaire ; clampé à 0 dans les figures.

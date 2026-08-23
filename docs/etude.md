@@ -13,6 +13,13 @@
   titre en T5, catalogue ENTSO-E sans zone corse en T6). Les chiffres cités sont
   inchangés — ce sont ceux que verrouillent les tests. Hors passe à ce jour : la
   section 4 (six amorces en gras d'affilée).
+  Passe du 23/08/2026 sur les chapitres « midi » (ex-« 14 heures »), T3 et T2b : la courbe
+  horaire d'EDF porte l'heure légale corse sous une étiquette `+00:00`, ce qui décalait
+  toute heure de la journée d'une heure l'hiver et de deux l'été. Sept verrous de texte ont
+  cassé ; les fenêtres ont été REMESURÉES sur la donnée corrigée, jamais translatées — la
+  nuit va désormais de 23 h à 7 h, la mi-journée d'été de 12 h à 13 h, le soir d'été de
+  18 h à 21 h, et « l'heure la plus verte » devient un créneau, les deux définitions du
+  renouvelable ne culminant pas à la même heure.
   Conventions de compilation :
     - {{visuel:nom}}  -> iframe de outputs/nom.html (plotly.min.js mutualisé)
     - blockquote débutant par **Pour aller plus loin** -> encadré repliable (couche initié)
@@ -33,9 +40,10 @@
   combustible.
 - À midi, le soleil fournit jusqu'à un tiers du courant. Mais à aucune heure moyenne
   d'été il ne dépasse le thermique.
-- L'heure la plus verte pour consommer, c'est **14 heures**. C'est aussi l'heure où
-  l'île dépend le moins de ses câbles.
-- En juillet, la demande grimpe d'un cinquième par rapport à juin — surtout le soir.
+- Le créneau le plus vert pour consommer, c'est **midi, de 12 à 13 heures**. C'est
+  aussi le moment où l'île dépend le moins de ses câbles.
+- En juillet, la demande grimpe d'un cinquième par rapport à juin — surtout de
+  l'après-midi au début de soirée.
   Pourtant, la pointe de l'année reste l'hiver.
 - Au printemps, l'île bride parfois son propre solaire, faute de pouvoir l'absorber :
   le trop-plein d'énergie verte existe déjà.
@@ -116,8 +124,8 @@ elle dépasse souvent le tiers ; une fois la nuit tombée, elle revient à zéro
 système que racontent les chapitres suivants, saisi à un instant.
 
 Un coup d'œil pour rendre le système tangible. Mais pour savoir *quand* décaler ce
-qui peut l'être, ne vous fiez pas à cette seule photo : le rythme fiable — l'heure la
-plus verte — se lit au chapitre « 14 heures », sur six ans de moyennes.
+qui peut l'être, ne vous fiez pas à cette seule photo : le rythme fiable — le créneau
+le plus vert — se lit au chapitre « midi », sur six ans de moyennes.
 
 > **Pour aller plus loin — ce que compte exactement la jauge.** Le chiffre reprend
 > la convention d'EDF pour le renouvelable « distribué » en direct : soleil, vent,
@@ -143,12 +151,13 @@ somme fait le courant appelé à cette heure-là.
 
 {{visuel:t3_profil_horaire}}
 
-À la mi-journée, le solaire atteint son maximum, 35 % du courant corse. C'est aussi
-le moment où le thermique descend le plus bas, à 43 % — et il reste devant. Sur une
-journée d'été moyenne, le soleil ne passe en tête à aucune heure.
+À la mi-journée — de 12 à 13 heures —, le solaire atteint son maximum, 36 % du
+courant corse. C'est aussi le moment où le thermique descend le plus bas, à 43 % — et
+il reste devant. Sur une journée d'été moyenne, le soleil ne passe en tête à aucune
+heure.
 
-Le soir, il retombe à 6 %. Le thermique remonte à 58 %, les câbles à 25 % : moteurs
-et câbles fournissent alors plus de huit dixièmes du courant. C'est le moment de la
+De 18 à 21 heures, il est retombé à 6 %. Le thermique remonte à 58 %, les câbles à
+25 % : moteurs et câbles fournissent alors plus de huit dixièmes du courant. C'est le moment de la
 journée où l'électricité corse est la moins insulaire et la moins renouvelable.
 
 (Moyennes de juin à août, 2019-2024.)
@@ -161,14 +170,14 @@ journée où l'électricité corse est la moins insulaire et la moins renouvelab
 > qui s'applique est resté 35 %. Au-delà, le gestionnaire déconnecte des producteurs,
 > selon la règle du « dernier arrivé, premier déconnecté » : c'est l'écrêtement, que
 > raconte le chapitre du printemps. Les installations couplées à des batteries, elles,
-> échappent au plafond. Notre pic d'été à ~35 % évolue au voisinage de ce seuil, mais
+> échappent au plafond. Notre pic d'été à ~36 % évolue au voisinage de ce seuil, mais
 > les périmètres de calcul diffèrent : cette proximité n'a pas valeur de démonstration.
 >
 > **Attention au changement de focale.** Ce chapitre décrit l'été. Le suivant se
 > calcule sur toute l'année, et les pourcentages ne se comparent pas d'un chapitre à
 > l'autre.
 
-#### 14 heures : l'heure la plus verte — et la plus corse
+#### Midi : le créneau le plus vert — et le plus corse
 
 *Si vous pouviez choisir l'heure du chauffe-eau, d'une lessive ou d'une recharge,
 laquelle faudrait-il viser ?*
@@ -180,52 +189,58 @@ haut les câbles sous-marins.
 
 {{visuel:t4_heure_verte}}
 
-Quatorze heures. Sur six ans de moyennes, c'est le moment où l'électricité corse est
-la plus verte : 34 % viennent du soleil, du vent, des bioénergies et des petites
-centrales au fil de l'eau, 48 % si l'on ajoute les grands barrages. Le classement ne
-bouge pas : 14 heures, puis 15, puis 13. Il résiste au changement de définition du
-renouvelable comme au changement de période, puisque 14 heures ressort aussi bien
-sur 2019-2020 que sur 2021-2024.
+Midi. Sur six ans de moyennes, c'est le moment où l'électricité corse est la plus
+verte : de 12 à 13 heures, 35 % du courant viennent du soleil, du vent, des
+bioénergies et des petites centrales au fil de l'eau, 48 % si l'on ajoute les grands
+barrages.
 
-Reste à mesurer ce que « la plus verte » veut dire. Entre son maximum de 5 heures du
-matin et 14 heures, le thermique ne recule que de 44 à 36 %, soit près d'un cinquième
-de moins. Il reste la première source de la journée : à aucune heure de l'année
-moyenne, le renouvelable décentralisé ne passe devant lui. Ce n'est qu'en comptant les
-grands barrages que le total renouvelable le dépasse, entre 11 heures et 16 heures.
+Un créneau, et non une heure : le sommet se dédouble selon la définition qu'on retient
+du renouvelable. Il tombe à 13 heures pour le décentralisé, à 12 heures dès qu'on
+ajoute les barrages, et treize centièmes de point séparent les deux premières heures.
+Nous ne trancherons pas entre elles — cet écart d'une heure est un résultat, pas une
+gêne à masquer par un choix arbitraire. Il ne dépend pas non plus de la période : les
+deux heures ressortent séparément sur les années validées comme sur les estimées.
 
-C'est aussi l'heure où votre kilowattheure vient le plus de l'île, à condition de
-s'entendre sur le mot. Regardez la bande du haut, celle des câbles sous-marins :
-elle tombe à 15 % à 14 heures, son minimum de la journée, alors qu'elle dépasse le
-tiers en pleine nuit. Les 84 % restants sortent bien de machines installées en
+Reste à mesurer ce que « le plus vert » veut dire. Entre son maximum du cœur de la
+nuit et le créneau de midi, le thermique ne recule que de 44 à 36 %, soit près d'un
+cinquième de moins. Il reste la première source de la journée : à aucune heure de
+l'année moyenne, le renouvelable décentralisé ne passe devant lui. Ce n'est qu'en
+comptant les grands barrages que le total renouvelable le dépasse, de 9 heures à
+15 heures.
+
+C'est aussi le moment où votre kilowattheure vient le plus de l'île, à condition de
+s'entendre sur le mot. Regardez la bande du haut, celle des câbles sous-marins : elle
+tombe à 15 % sur le créneau, son minimum de la journée, alors qu'elle dépasse le tiers
+de 23 heures à 7 heures. Les 84 % restants sortent bien de machines installées en
 Corse. Mais 36 de ces 84 points sont thermiques, et le fioul qu'ils brûlent arrive
 lui aussi par bateau. Si l'on ne compte que ce qui est produit avec des ressources
 de l'île, il reste les 48 % de renouvelables et de barrages.
 
-Décaler vers le début d'après-midi ce qui peut l'être, c'est consommer plus
+Décaler vers le milieu de journée ce qui peut l'être, c'est consommer plus
 renouvelable et plus local.
 
 > **Pour aller plus loin — deux chiffres plutôt qu'un.** Le « renouvelable
-> décentralisé » (34 %) regroupe le soleil, le vent, les bioénergies et la
+> décentralisé » (35 %) regroupe le soleil, le vent, les bioénergies et la
 > micro-hydraulique : des productions dispersées que personne ne pilote, qui donnent
 > ce que la météo donne. Les grands barrages, eux, sont renouvelables mais
 > pilotables : on les turbine quand le réseau en a besoin, et ils pèsent 14 % du mix
-> à cette heure. Les compter à part évite de gonfler le chiffre. Vous ne lirez
+> sur ce créneau. Les compter à part évite de gonfler le chiffre. Vous ne lirez
 > jamais ici « renouvelable » tout court.
 >
-> Le calcul est simple : la part d'une filière à 14 heures, c'est tout ce qu'elle a
-> produit à cette heure-là en six ans, divisé par toute l'électricité appelée à cette
-> heure-là. Soit 52 605 heures de données EDF, validées sur 2019-2020 et estimées à
-> partir de 2021.
+> Le calcul est simple : la part d'une filière à midi, c'est tout ce qu'elle a produit
+> à ces heures-là en six ans, divisé par toute l'électricité appelée à ces heures-là.
+> Soit 52 602 heures de données EDF, validées sur 2019-2020 et estimées à partir
+> de 2021.
 >
-> Une hypothèse nous est restée sur les bras. Nous pensions qu'à 14 heures les
-> moteurs des centrales tournaient au ralenti, et nous nous apprêtions à l'écrire. Le
-> calcul dit l'inverse : en volume, le thermique est au plus bas vers 5 heures du
-> matin, et il tient en journée un socle presque constant, autour de 104 MW. En part
-> du mix, il frôle son plus bas à 14 heures : 36 %, contre 44 % à l'aube. Ce que
-> le soleil de la mi-journée remplace d'abord, ce sont les importations. Entre
-> 9 heures et 14 heures, elles reculent de 80 à 44 MW pendant que le thermique ne
-> bouge pas. Ce qui s'améliore à 14 heures, c'est la composition de votre
-> kilowattheure, pas l'activité de la centrale. Consommer à cette heure-là, c'est
+> Une hypothèse nous est restée sur les bras. Nous pensions qu'à midi les moteurs des
+> centrales tournaient au ralenti, et nous nous apprêtions à l'écrire. Le calcul dit
+> l'inverse : en volume, le thermique est au plus bas au cœur de la nuit, vers 3 ou
+> 4 heures, et il tient en journée un socle presque constant, autour de 107 MW. En part
+> du mix, il frôle son plus bas sur le créneau de midi : 36 %, contre 44 % au creux de
+> la nuit. Ce que le soleil de la mi-journée remplace d'abord, ce sont les
+> importations. Entre 8 heures et 13 heures, elles reculent de 77 à 43 MW pendant que
+> le thermique ne bouge pas. Ce qui s'améliore à midi, c'est la composition de votre
+> kilowattheure, pas l'activité de la centrale. Consommer à ce moment-là, c'est
 > surtout consommer moins de câble.
 
 ### Au fil des saisons
@@ -250,14 +265,16 @@ compris. L'île a deux pointes, et la plus haute est celle du froid.
 > moyennes : quand un chiffre de puissance circule, vérifiez toujours de quelle
 > famille il est, moyenne ou pointe, mois ou saison, et sur quelle période.
 
-#### Ce surcroît se joue surtout le soir
+#### Ce surcroît se joue de l'après-midi au début de soirée
 
 {{visuel:t2b_surcroit_horaire}}
 
 Chaque heure de juillet comparée à la même heure de juin : le surcroît est présent
-aux 24 heures de la journée. Il varie fortement selon l'heure, culmine entre 16 h et
-22 h et reste élevé en pleine nuit — c'est-à-dire quand le solaire ne produit plus,
-et que le mix corse est au plus loin du renouvelable.
+aux 24 heures de la journée. Il forme un plateau de 14 h à 20 h, culmine à 17 h, et ne
+retombe vraiment qu'au petit matin — son creux est à 7 h. Il commence donc pendant que
+le solaire produit encore, et se prolonge longtemps après qu'il s'est éteint : la part
+qui déborde sur la soirée et la nuit est celle que le mix corse couvre au plus loin du
+renouvelable.
 
 > **Pour aller plus loin — pourquoi nous ne nommons pas la cause.** Touristes ?
 > Climatisation nocturne ? Les deux arrivent ensemble en juillet, et ces données ne
@@ -351,7 +368,7 @@ environ 200 000 tonnes par an, sera importé : « la Corse seule ne dispose pas 
 ressources nécessaires », reconnaît EDF. Au même moment, le câble qui relie l'île à
 la Sardaigne est renforcé, pour 300 à 400 millions d'euros. Le mix se verdit donc
 sans que la dépendance aux approvisionnements extérieurs recule d'autant. C'est le
-partage du chapitre « 14 heures » qui se rejoue : produit sur l'île ne veut pas dire
+partage du chapitre « midi » qui se rejoue : produit sur l'île ne veut pas dire
 produit avec l'île.
 
 L'air, lui, se joue à l'échelle du quartier. Remplacer une centrale au fioul lourd
@@ -421,9 +438,11 @@ conservée telle quelle — jamais de fichier à moitié remplacé.
 
 **Chaque chiffre publié est verrouillé.** Tous les chiffres de ce document et des
 visuels sont couverts par des tests automatiques : si une mise à jour des données
-déplace un résultat — l'heure la plus verte cesse d'être 14 h, le bond de juillet
+déplace un résultat — le créneau le plus vert quitte midi, le bond de juillet
 quitte les 22 % — la publication échoue, et l'écart doit être examiné avant toute
-remise en ligne. Un chiffre affiché ici est revérifié à chaque rafraîchissement,
+remise en ligne. C'est ce qui s'est passé le 23 août 2026, non sur une mise à jour
+mais sur une correction de notre propre chaîne : sept verrous ont cassé d'un coup, et
+ce chapitre a changé d'heure. Un chiffre affiché ici est revérifié à chaque rafraîchissement,
 pas relevé une fois pour toutes.
 
 **Les sources.**
@@ -444,8 +463,8 @@ Ce que ce document ne dit pas est aussi cadré que ce qu'il dit. Les limites
 ci-dessous ne sont pas des excuses : ce sont les bornes de validité exactes de
 chaque affirmation.
 
-**« Renouvelable » : toujours qualifié.** Le renouvelable décentralisé (34 % à
-14 heures) regroupe solaire, éolien, bioénergies et petite hydraulique. Les grands
+**« Renouvelable » : toujours qualifié.** Le renouvelable décentralisé (35 % sur le
+créneau de midi) regroupe solaire, éolien, bioénergies et petite hydraulique. Les grands
 barrages, renouvelables mais pilotables, sont comptés à part (48 % en les
 ajoutant). Ce document ne dit jamais « renouvelable » tout court : selon la
 définition, le chiffre change presque du simple au double.
@@ -455,18 +474,31 @@ part est « produite sur l'île », il parle de l'endroit où tournent les machi
 pas de l'origine de l'énergie : les centrales thermiques corses brûlent un
 combustible importé. Trois périmètres coexistent donc, et ce document les nomme à
 chaque fois : ce qui arrive par les câbles, ce qui est produit sur l'île, ce qui
-est produit avec les ressources de l'île. À 14 heures, cela donne 15 %, 84 % et
-48 %.
+est produit avec les ressources de l'île. Sur le créneau de midi, cela donne 15 %,
+84 % et 48 %.
 
 **Données validées, données estimées.** EDF classe son historique : 2019-2020
 « validé », 2021-2024 « estimé » — les deux tiers des heures. Contrôle fait : les
 conclusions directionnelles tiennent dans les deux sous-ensembles (le bond de
-juillet et le 14 heures ressortent des deux côtés). Chaque visuel historique porte
+juillet et le créneau de midi ressortent des deux côtés). Chaque visuel historique porte
 la mention.
 
-**52 605 heures.** Les moyennes 2019-2024 reposent sur 52 605 heures : les 52 608
-du fichier brut, moins trois lignes fantômes à zéro créées par les changements
-d'heure (2019, 2020, 2024).
+**L'heure de la journée est l'heure légale corse, et il a fallu l'établir.** La
+courbe horaire d'EDF est étiquetée `+00:00`, c'est-à-dire en temps universel, et elle
+ne l'est pas : elle porte l'heure légale de l'île. Nous l'avons d'abord lue au mot, et
+ce chapitre a annoncé « 14 heures » pendant plusieurs semaines au lieu de midi. La
+convention est aujourd'hui établie contre trois repères extérieurs à la chaîne —
+le rayonnement mesuré aux pyranomètres de Météo-France, le comportement de la série
+aux dix changements d'heure de 2020-2024, et la structure même du fichier — et quatre
+verrous automatiques la tiennent. Le détail est dans `docs/VERIF_ENTSOE_TERNA.md`. Le
+jeu voisin du temps réel, lui, est bien en temps universel : une convention se vérifie
+par jeu de données, jamais par producteur.
+
+**52 602 heures.** Les moyennes 2019-2024 reposent sur 52 602 heures : les 52 608 du
+fichier brut, moins les six 2 heures du matin des dimanches de passage à l'heure
+d'été — une heure qui n'existe pas en heure légale. EDF les publie quand même, à zéro
+en 2019, 2020 et 2024, mais garnies de 200 à 250 MW en 2021, 2022 et 2023, trois
+années estimées.
 
 **La petite hydraulique manque en 2024.** La colonne micro-hydraulique disparaît
 des données EDF sur toute l'année 2024 (environ 8 783 heures). Elle est traitée

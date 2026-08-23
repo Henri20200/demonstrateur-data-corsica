@@ -64,7 +64,7 @@ est un MWh **net**. C'est ce que fait `entsoe_sardaigne_to_parquet`, et le total
 brute : la convention est confirmée par la mesure, pas seulement par le texte.
 
 Côté corse, la convention est la même — la courbe EDF est nette des auxiliaires, ce que
-signale d'ailleurs le photovoltaïque négatif sur 20 429 heures. Les deux barres de T6 sont
+signale d'ailleurs le photovoltaïque négatif sur 20 426 heures. Les deux barres de T6 sont
 donc bien du net contre du net.
 
 La ligne « couverture complète supposée » du §4 de la pré-inscription est levée : le Parquet
@@ -151,7 +151,7 @@ L'éolien, lui, tient à 0,4 % et 1,0 % : il est fait de parcs, pas de toitures.
 
 ### 3.5 Ce qui est symétrique, et qu'il n'était pas acquis de trouver tel
 
-Le photovoltaïque corse est négatif 20 429 heures sur 52 605 — consommation des auxiliaires
+Le photovoltaïque corse est négatif 20 426 heures sur 52 602 — consommation des auxiliaires
 la nuit. On pouvait craindre que la barre corse soit du net d'auxiliaires face à un sarde
 brut. Elle ne l'est pas : la part solaire corse vaut **15,46 % en net contre 15,58 % en ne
 comptant que les heures positives**, soit 0,12 point. L'asymétrie existe, elle est mesurée,
@@ -253,39 +253,69 @@ La Corse, seule, se déplace d'exactement **une heure entre l'hiver et l'été**
 orientation, ni ombrage de relief ne produit un saut discret calé sur un changement d'heure
 légale : c'est une convention humaine, donc un traitement d'horodatage.
 
-**Ce qui est établi, et qui suffit** — formulé sobrement, parce qu'il ne faut pas prétendre
-en savoir plus qu'on n'en sait :
+**Ce qui était établi le 22/08, et ce qui l'est depuis le 23.** Ce paragraphe s'arrêtait
+volontairement à un constat sobre — un décalage saisonnier face à une ancre indépendante — et
+rangeait la cause parmi les hypothèses : que la courbe EDF porte de l'heure locale sous un
+suffixe `+00:00`. Deux mesures faites le lendemain l'en sortent.
 
-> La série EDF présente, face à une ancre solaire indépendante, un décalage saisonnier d'une
-> heure que le témoin sarde ne présente pas. Une propriété physique du parc n'explique pas un
-> saut discret aligné sur le changement d'heure légale. Donc **`heure_locale`, telle qu'elle
-> est calculée aujourd'hui, ne peut pas servir à publier une heure de la journée.**
+**Le saut est discret, et il l'est dix fois.** Trois semaines avant, trois semaines après
+chacune des dix bascules d'heure légale de 2020-2024 : le décalage optimal corse saute de
+∓1 h à chaque fois (0,66 à 1,11 h ; moyenne 0,95 h), le témoin sarde de ±0,1 h. Même saison,
+même parc, même soleil de part et d'autre du week-end. Une propriété du parc ne se
+synchronise pas dix fois de suite sur une convention humaine.
 
-C'est la conclusion opérante, et elle ne dépend d'aucune hypothèse sur la cause. Une
-explication plus précise se propose — que la courbe EDF porte de l'heure locale sous un
-suffixe `+00:00`, ce qui rendrait compte exactement de l'écart, une heure l'hiver et deux
-l'été — mais elle reste une **hypothèse**, et la réparation ne doit pas en dépendre. En
-particulier, on ne « retire pas une heure l'été » dans une figure : ce serait enfouir
-l'hypothèse dans la sortie. La correction se fait là où la convention temporelle est
-interprétée, et le brut se conserve à côté de l'interprété.
+**Et la structure du fichier le dit sans le soleil.** Sur 52 608 heures, les *trois seules*
+lignes à production nulle tombent à 02 h des dimanches de passage à l'heure d'été — l'heure
+qui n'existe pas en heure légale. Une série réellement en UTC n'a rien de singulier ce
+jour-là.
 
-Deux conséquences, de portée très différente. **T6 n'est pas concernée** : elle somme des
-années entières, et un décalage d'une à deux heures sur 8 760 ne déplace rien. En revanche
-**T2b, T3 et le « l'heure la plus verte est 14 h » de T4 lisent `heure_locale`** — donc une
-heure qui, si l'interprétation tient, est en retard d'une à deux heures selon la saison.
-Cela n'entre pas dans le périmètre de ce document, qui porte sur la comparaison sarde, mais
-cela ne peut pas rester non écrit.
+Le témoin sarde fixe le reste. ENTSO-E date par le début de l'intervalle, Météo-France par la
+fin : d'où le +1 h constant de la Sardaigne. La Corse demande 0 h l'hiver et −1 h l'été,
+c'est-à-dire exactement ce que donne une étiquette d'heure légale, datée par le début de
+l'intervalle, une fois ramenée en UTC. Aucune autre convention à décalage fixe ne rend compte
+des deux régimes à la fois.
+
+> **La courbe horaire d'EDF porte l'heure légale corse ; son suffixe `+00:00` est faux.**
+
+La réparation reste celle qui avait été arrêtée *avant* cette conclusion, et c'est bon
+signe : la correction se fait là où la convention est interprétée — dans `prepare` —, le brut
+se conserve à côté de l'interprété, et on ne « retire pas une heure l'été » dans une figure.
+`edf_courbe_corse.parquet` porte désormais `horodatage_publie` (l'étiquette telle qu'EDF la
+publie), `date_heure_locale` (l'heure légale, colonne de référence) et `date_heure_utc`
+(l'instant, c'est-à-dire l'interprétation). Deux gardes : un suffixe autre que `+00:00` fait
+échouer la préparation, et les heures inexistantes sont retirées par aller-retour heure légale
+-> instant -> heure légale, jamais par une liste de dimanches écrite à la main.
+
+**Le périmètre est plus étroit qu'annoncé.** Le jeu voisin `edf_mix_temps_reel`, du même
+producteur, est bien en UTC : son pic d'étiquette brute tombe à 11 h 30 pour un midi solaire
+à 11 h 28 UTC. T1 n'a jamais été fausse. Une convention se vérifie par jeu de données, jamais
+par producteur — c'est le corollaire de tout ce document.
+
+**Quatre verrous indépendants** tiennent maintenant la lecture, dans
+`tests/test_horodatage_corse.py`, choisis pour que leur erreur ne puisse pas être corrélée à
+celle de la chaîne : le comportement aux bascules d'heure légale ; la stabilité sous un fuseau
+de session hostile (UTC, Kiritimati, Niue) ; la cohérence au pyranomètre, témoin sarde
+compris ; le midi solaire calculé en astronomie pure. Le premier test du fichier juge
+l'**ancre** et non la courbe — le pyranomètre doit tomber sur le midi solaire, mesuré à 0,13 h
+près sur douze mois — pour qu'un repère faux n'accuse jamais une série juste.
+
+**Ce que cela déplace.** T6 n'est pas concernée : elle somme des années entières. T2b, T3 et
+T4, si. Le zénith solaire d'été passe de 15 h à 13 h — le midi solaire corse en heure d'été
+est à 13 h 25 —, « l'heure la plus verte est 14 h » devient un créneau de 12 à 13 heures, et
+sept verrous de texte ont cassé d'un coup. Les fenêtres de l'étude ont été **remesurées** et
+non translatées : la nuit va de 23 h à 7 h, la mi-journée d'été de 12 h à 13 h, le soir d'été
+de 18 h à 21 h.
+
+Un point du 22/08 est en revanche devenu faux et se corrige ici : « la fenêtre corse de T6
+n'est bornée nulle part dans le code ». Elle l'est depuis `fe4ee87` — `FENETRE_T6` borne les
+deux côtés et un verrou casse si les deux périodes divergent. L'heure de 2025 qui traînait
+dans le Parquet a d'ailleurs disparu d'elle-même : elle était l'artefact de la conversion
+corrigée ici, la dernière heure de 2024 basculant au 1ᵉʳ janvier suivant.
 
 Dernier point, qui appartient au chantier suivant : **ce déplacement est identique avant et
 après la bascule « Estimé »** — optimum 0 h l'hiver et −1 h l'été aussi bien sur l'année
-validée 2020 que sur les quatre années estimées. Il ne dit donc rien du statut, et le statut
-n'en explique rien.
-
-En revanche, **la fenêtre corse de T6 n'est bornée nulle part dans le code**. La requête
-agrège tout `edf_courbe_corse.parquet`, qui contient déjà une heure de 2025. Aujourd'hui
-l'effet est nul au centième de point. Le jour où EDF publiera 2025, la figure comparera
-silencieusement une Corse 2019-2025 à une Sardaigne 2019-2024, sans que rien ne le signale,
-son sous-titre continuant d'annoncer « moyenne 2019-2024 ».
+validée 2020 que sur les quatre années estimées. Il ne dit donc rien du statut. L'heure
+inexistante, elle, en dit quelque chose : cf. § 8.
 
 ---
 
@@ -354,17 +384,19 @@ sur 6 654, soit 0,04 % du solaire sarde.
 
 ## 7. Ce que la vérification change dans ce qui est publié
 
-Rien de ceci n'est appliqué à ce stade — c'est la liste de ce qui suit, avec son coût.
+Les quatre premiers points sont **appliqués** sur cette branche ; les deux derniers restent
+ouverts.
 
-1. **`B20` → `thermique`** dans `PSR_VERS_FILIERE`. Le thermique sarde passe de 65,09 à
-   69,06 %, la filière `autre` disparaît de la figure. Le verrou
-   `test_sardaigne_thermique_domine` attend 65,1 ± 1,0 et doit suivre.
-2. **La fenêtre corse de T6 à borner** à 2019-2024, avec un verrou qui casse si les deux
-   périodes divergent — la propriété à tenir est que les deux barres couvrent la même
-   période, pas que la requête soit juste aujourd'hui.
-3. **« La Sardaigne (10× plus grande) »**, dans la note de T6, n'a pas de référent mesuré.
-   Les trois rapports disponibles sont **7,4×** en génération électrique (mesuré ici, moyenne
-   six ans), **4,5×** en population et **2,8×** en superficie. Aucun ne vaut 10.
+1. **`B20` → `thermique`** dans `PSR_VERS_FILIERE` — fait (`fe4ee87`). Le thermique sarde
+   passe de 65,09 à 69,06 %, la filière `autre` disparaît de la figure, et le verrou
+   `test_sardaigne_thermique_domine` a suivi.
+2. **La fenêtre corse de T6 bornée** à 2019-2024 — fait (`fe4ee87`). `FENETRE_T6` borne les
+   deux côtés et un verrou casse si les deux périodes divergent : la propriété tenue est que
+   les deux barres couvrent la même période, pas que la requête soit juste aujourd'hui.
+3. **« La Sardaigne (10× plus grande) »** — retiré (`69c4dc5`), sans remplaçant chiffré. Les
+   trois rapports disponibles sont **7,4×** en génération électrique (mesuré ici, moyenne six
+   ans), **4,5×** en population et **2,8×** en superficie. Aucun ne vaut 10, et aucun
+   multiplicateur unique ne décrit cet écart : la note est redevenue qualitative.
 4. **« Elle a 15 fois plus d'éolien »** tient : 15,6× en part de mix, ce qui est bien ce que
    la figure donne à lire. En énergie absolue, le rapport est de 115×.
 5. **La barre hydraulique sarde** mélange 2,14 % de production et 1,52 % de stockage rendu,
@@ -389,7 +421,7 @@ son Parquet plutôt que par appartenance à la lignée du build courant.
   du bilan Terna, sur deux années ; ce qui brûle exactement ne l'est pas. Le flux
   « génération par unité de production » (art. 16.1.a) le dirait, il n'a pas été interrogé.
 - **Le statut « estimé » de la courbe corse n'est pas levé — c'est une limite explicite.**
-  Il couvre 2021 à 2024, soit 35 063 heures sur 52 605, **66,7 % de la barre corse**. La
+  Il couvre 2021 à 2024, soit 35 060 heures sur 52 602, **66,7 % de la barre corse**. La
   limite, telle qu'elle doit être portée :
 
   > La cohérence horaire du photovoltaïque EDF classé « Estimé » est confirmée par
@@ -408,6 +440,17 @@ son Parquet plutôt que par appartenance à la lignée du build courant.
   00 h), et les tests de signature — granularité, valeurs distinctes, répétitions, part de
   négatifs — ne trouvent aucune trace de reconstruction grossière. Absence de rupture visible
   n'est pas validation : des estimations ne se contrôlent pas avec elles-mêmes.
+
+  **Un fait nouveau, du 23/08/2026, et il ne porte pas sur les niveaux mais sur la grille du
+  temps.** Les six dimanches de passage à l'heure d'été portent chacun une ligne étiquetée
+  02 h — une heure qui n'existe pas en heure légale corse. EDF la publie à **zéro** en 2019,
+  2020 et 2024 ; il la publie **remplie**, à 246, 253 et 200 MW, en 2021, 2022 et 2023, trois
+  années estimées. Trois heures sur 35 060 ne déplacent aucun total : ce n'est pas une preuve
+  que les niveaux annuels soient faux. C'est la preuve que l'estimation **intervient sur la
+  structure temporelle de la série** et produit une valeur là où il n'y a pas eu d'heure.
+  Elle interdit donc de lever le verrou par simple ressemblance statistique : une série qui
+  ressemble à la réalité aux endroits où on la regarde peut avoir été fabriquée aux endroits
+  où on ne la regarde pas. Le recoupement annuel indépendant reste le seul chemin.
 - **Terna révise ses statistiques régionales.** Les chiffres 2023 utilisés ici sont ceux de
   l'édition 2023 ; une édition ultérieure peut les corriger.
 - **Les données de puissance installée (art. 14.1.a) n'ont pas été touchées** — le dépôt ne
