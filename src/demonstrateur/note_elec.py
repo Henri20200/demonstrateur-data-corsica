@@ -43,23 +43,24 @@ SARD_PATH = DATA_PROCESSED / "entsoe_sardaigne.parquet"
 
 def _chiffres() -> dict:
     con = duckdb.connect()
-    # Millésimes forcés en UTC — le fuseau des sources, et celui des bornes annoncées par
-    # l'étude. Deux raisons de ne pas laisser faire : convertie en heure locale, la
-    # dernière heure de l'historique bascule au 1er janvier suivant et annoncerait une
-    # année de plus que celle que couvrent les visuels ; et `extract` sur un horodatage à
-    # fuseau suit le fuseau de la SESSION — UTC sur le runner, Paris sur un poste français,
-    # soit deux notes différentes pour la même donnée.
+    # Millésimes lus dans `annee_locale`, écrite par prepare depuis l'heure légale corse
+    # établie contre le soleil (cf. sa docstring). Ni `extract` sur un horodatage à fuseau
+    # — qui suivrait le fuseau de la SESSION, UTC sur le runner et Paris sur un poste
+    # français, soit deux notes différentes pour la même donnée — ni une conversion écrite
+    # ici : la convention se décide une fois, en préparation. Les heures couvertes se
+    # comptent sur l'axe UTC, le seul où une heure vaut une heure : l'axe local en compte
+    # 23 le dimanche de printemps et 25 celui d'automne.
     heures, an1, an2, estimees, sans_micro, couvertes = con.execute(f"""
         SELECT count(*),
-               min(extract('year' FROM timezone('UTC', date_heure))),
-               max(extract('year' FROM timezone('UTC', date_heure))),
+               min(annee_locale),
+               max(annee_locale),
                count(*) FILTER (WHERE lower(statut) LIKE 'estim%'),
                count(*) FILTER (WHERE micro_hydraulique_mw IS NULL),
                -- Heures que la période couvre, bornes comprises. C'est à elle que se
                -- compare le nombre de lignes retenues, et l'écart EST la limite publiée
                -- juste en dessous : écrit à la main, il se figerait le jour où la
                -- période s'allonge, dans une note qui promet de tout lire.
-               datediff('hour', min(date_heure), max(date_heure)) + 1
+               datediff('hour', min(date_heure_utc), max(date_heure_utc)) + 1
         FROM '{COURBE}'""").fetchone()
     pas, mix_d1, mix_d2 = con.execute(f"""
         SELECT count(*),
@@ -86,8 +87,17 @@ def _chiffres() -> dict:
     # elle disparaît alors du tableau plutôt que d'y figurer sans chiffres (comme
     # `figures` saute T6). Une ligne de tableau vide serait un sourçage qui ment.
     if SARD_PATH.exists():
+        # PAS `min/max(annee)` : cette colonne porte l'année LOCALE (Rome), et la
+        # dernière heure de 2024 en UTC y bascule au 1er janvier suivant. La note
+        # annoncerait « 2019 à 2025 » pour une source qui couvre six années pleines —
+        # exactement la confusion de bord corrigée côté corse le 23/08/2026. On lit donc
+        # l'axe de la SOURCE, qu'ENTSO-E publie en UTC. `tests/test_provenance.py` relie
+        # cette annonce au périmètre analytique (`figures.FENETRE_T6`) : c'est lui qui
+        # fait foi, pas un extremum d'horodatage.
         n, sa1, sa2 = con.execute(
-            f"SELECT count(*), min(annee), max(annee) FROM '{SARD_PATH.as_posix()}'"
+            f"""SELECT count(*), min(extract('year' FROM date_heure)),
+                       max(extract('year' FROM date_heure))
+                FROM '{SARD_PATH.as_posix()}'"""
         ).fetchone()
         c["sard"] = dict(heures=n, an1=int(sa1), an2=int(sa2),
                          collecte=date_collecte("entsoe_sardaigne_2024"))

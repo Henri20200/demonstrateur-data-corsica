@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "cd6af241de05f7fc34af9509bfd51a27b743158d2c9541290298ddd84b9a68b3",
+    "sha256": "9d06d07829a0b3056a8a69008cedfe9bec65bda95828cbd7dca5b1cd5eb77919",
     "date_collecte": "2026-08-23",
-    "taille_octets": 397200
+    "taille_octets": 397198
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -195,9 +195,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "e69e441ce4883137b5cf87e6326c543604f0a8a1aca2589246dd434c0308860d",
+    "sha256": "c9f49d67095b1e4ac0ec6f9d1ffd5dffd69a0d45824d1bcdbdc6c7ad02d6c794",
     "date_collecte": "2026-08-23",
-    "taille_octets": 248627
+    "taille_octets": 248641
   },
   "aee_o3_ajaccio_confina2_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_7.parquet",
@@ -217,9 +217,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "ea3cd99f8fd4099a04d37563b34aa58d92e346fbb4cb3d09a9c2a291db14815a",
+    "sha256": "3d544dbad2a975dee62a496e68df89b1ea6ab61910619d5bca0f84fc8f595236",
     "date_collecte": "2026-08-23",
-    "taille_octets": 249977
+    "taille_octets": 249988
   },
   "aee_o3_bastia_giraud_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_7.parquet",
@@ -239,9 +239,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "032f842c369785fb8962170211cdbd59468355172a6fb8ed071193746f1d9a67",
+    "sha256": "8d472725c9a8bdaea31bc0f26f78fb05daff475d7f88aba1fbf47bbbe0d35937",
     "date_collecte": "2026-08-23",
-    "taille_octets": 243732
+    "taille_octets": 243752
   },
   "aee_o3_bastia_montesoro_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_7.parquet",
@@ -261,9 +261,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "5c44579387096a76edea1d3648230f7104386310d2b5d363976d8244943f409e",
+    "sha256": "9ce6a95fc2e1b0cdcf6a61cd068a49f2b9d64b20135a3312fffa634b59068df5",
     "date_collecte": "2026-08-23",
-    "taille_octets": 246649
+    "taille_octets": 246668
   },
   "aee_o3_bastia_marana_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_7.parquet",
@@ -283,9 +283,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "0bbf03055fcc30c542537e65215188cd8a35d6059a649d28be0e58dbd0c6c712",
+    "sha256": "65de8a712cfaf8e652cc79ed5c9f90f22d6f1a30eaf26a143ba9f7fc5fcf4d41",
     "date_collecte": "2026-08-23",
-    "taille_octets": 251064
+    "taille_octets": 251084
   },
   "aee_o3_venaco_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41024_7.parquet",
@@ -327,9 +327,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "b5c4c6fd3ca041e69ea985241677afa35f570918648cf8df84cbe4fccdc7e31f",
+    "sha256": "3dfcc1d4ea0818c1b959ad017c047da2982f3e97ec34bfc213d20f61d7d4205f",
     "date_collecte": "2026-08-23",
-    "taille_octets": 245248
+    "taille_octets": 245264
   },
   "aee_no2_ajaccio_confina2_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_8.parquet",
@@ -349,9 +349,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "fdb3e49e52d27c7deb72ea5866151e184fe133826716acf620d11bb8804519c9",
+    "sha256": "a813675aa09abfa3a7d732b3fe14894c649b660f47bc847b89354756881774a4",
     "date_collecte": "2026-08-23",
-    "taille_octets": 241772
+    "taille_octets": 241784
   },
   "aee_no2_bastia_giraud_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_8.parquet",
@@ -371,9 +371,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "e222599be52bd245f1657658d6f284ec44a4236612ac50c8adaa603bb7e5618b",
+    "sha256": "1a4d8ae39129410c14efdf4b84e96b11a34f378b708ce0026fe6fe7e487ffdc1",
     "date_collecte": "2026-08-23",
-    "taille_octets": 231647
+    "taille_octets": 231661
   },
   "aee_no2_bastia_montesoro_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_8.parquet",
@@ -393,9 +393,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "f989ceb375a11085c13fdfb60bb6cc83f9c2ce9f56fde128f73978aa84f327a2",
+    "sha256": "c84dab5b29e52b1a5f2bf369805cc84e61ad6e0fdb9999a4049f50572fb1a8bf",
     "date_collecte": "2026-08-23",
-    "taille_octets": 228543
+    "taille_octets": 228555
   },
   "aee_no2_bastia_marana_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_8.parquet",
@@ -415,9 +415,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "a9ee31ec4192b9c856ed38d24903f0d098069d614aaa956b1f3b717c9c2331ad",
+    "sha256": "d6ff9dce0c0fde711d79f2ea4878f4423f0df979425db19bab5b569ffc85b6b0",
     "date_collecte": "2026-08-23",
-    "taille_octets": 227561
+    "taille_octets": 227574
   },
   "meteo_horaire_corse_2020_2024": {
     "url": "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_previous-2020-2024.csv.gz",
@@ -443,5 +443,106 @@
     },
     "date_collecte": "2026-08-23",
     "taille_octets": 4984
+  },
+  "entsoe_sarco_2020_entrant": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A74G&in_Domain=10Y1001A1001A885&periodStart=202001010000&periodEnd=202101010000",
+    "filename": "entsoe_sarco_2020_entrant.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Sardaigne -> Corse",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "a1b28acb3f79708f90695fda8701c7788a52c5bb5dee975a1420c5057c22b41a",
+    "empreinte_ignore_xml": [
+      "Publication_MarketDocument/mRID",
+      "Publication_MarketDocument/createdDateTime"
+    ],
+    "date_collecte": "2026-08-23",
+    "taille_octets": 986439
+  },
+  "entsoe_sarco_2020_sortant": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A885&in_Domain=10Y1001A1001A74G&periodStart=202001010000&periodEnd=202101010000",
+    "filename": "entsoe_sarco_2020_sortant.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Corse -> Sardaigne",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "4b2899671c242f43b03c8f411ff5750cac5152792bd34c423d688b64ac334a68",
+    "empreinte_ignore_xml": [
+      "Publication_MarketDocument/mRID",
+      "Publication_MarketDocument/createdDateTime"
+    ],
+    "date_collecte": "2026-08-23",
+    "taille_octets": 76379
+  },
+  "entsoe_sarco_2021_entrant": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A74G&in_Domain=10Y1001A1001A885&periodStart=202101010000&periodEnd=202201010000",
+    "filename": "entsoe_sarco_2021_entrant.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Sardaigne -> Corse",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "14e9d463a38e92e8f35e0739e147697ec3ad7baa016c519022ab232c3c581d56",
+    "empreinte_ignore_xml": [
+      "Publication_MarketDocument/mRID",
+      "Publication_MarketDocument/createdDateTime"
+    ],
+    "date_collecte": "2026-08-23",
+    "taille_octets": 1013185
+  },
+  "entsoe_sarco_2021_sortant": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A885&in_Domain=10Y1001A1001A74G&periodStart=202101010000&periodEnd=202201010000",
+    "filename": "entsoe_sarco_2021_sortant.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Corse -> Sardaigne",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "f86350b9805537dff4f6ea852122b5a2c0af58657063325f52938578a72f2608",
+    "empreinte_ignore_xml": [
+      "Publication_MarketDocument/mRID",
+      "Publication_MarketDocument/createdDateTime"
+    ],
+    "date_collecte": "2026-08-23",
+    "taille_octets": 39249
+  },
+  "entsoe_sarco_2023_entrant": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A74G&in_Domain=10Y1001A1001A885&periodStart=202301010000&periodEnd=202401010000",
+    "filename": "entsoe_sarco_2023_entrant.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Sardaigne -> Corse",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "6d24ec534452d37ac2962f000285c610788694458356ee1522d8be42d29ac56c",
+    "empreinte_ignore_xml": [
+      "Publication_MarketDocument/mRID",
+      "Publication_MarketDocument/createdDateTime"
+    ],
+    "date_collecte": "2026-08-23",
+    "taille_octets": 1034772
+  },
+  "entsoe_sarco_2023_sortant": {
+    "url": "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A885&in_Domain=10Y1001A1001A74G&periodStart=202301010000&periodEnd=202401010000",
+    "filename": "entsoe_sarco_2023_sortant.xml",
+    "producteur": "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Corse -> Sardaigne",
+    "licence": "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)",
+    "format": "xml",
+    "content_type": "text/xml",
+    "sha256": "6553c842fc19bcd7fff99d0b4d4b227519e2c0a593b5a0088ef7cb40c2b47fea",
+    "empreinte_ignore_xml": [
+      "Publication_MarketDocument/mRID",
+      "Publication_MarketDocument/createdDateTime"
+    ],
+    "date_collecte": "2026-08-23",
+    "taille_octets": 40280
+  },
+  "seqe_emissions_verifiees": {
+    "url": "https://static.data.gouv.fr/resources/emissions-de-gaz-a-effet-de-serre-des-installations-soumises-a-quota-de-lue/20260621-121420/emissions.csv",
+    "filename": "seqe_emissions_verifiees.csv",
+    "producteur": "Commission européenne — EUTL, émissions vérifiées SEQE-UE (republiées sur data.gouv.fr par un contributeur individuel)",
+    "licence": "CC-BY 4.0 — republication data.gouv.fr des données du journal des transactions de l'Union européenne (EUTL)",
+    "format": "csv",
+    "content_type": "text/csv",
+    "sha256": "bf543fbcfca564f5b33f452742ce238a37c80b7acab6f99277cd23a19ca024a5",
+    "date_collecte": "2026-08-23",
+    "taille_octets": 85831854
   }
 }

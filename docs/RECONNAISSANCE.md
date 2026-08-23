@@ -49,7 +49,9 @@ respectés. Tous les chiffres ont été vérifiés empiriquement (DuckDB sur le 
   l'import) : bagasse_charbon, geothermie, **stockage** → à caster/ignorer dans `prepare`.
 - **`micro_hydraulique_mw` : rupture de série** — présente 2019-2023 (0 NULL), **absente
   en 2024** (NULL sur ~toute l'année). Voir « Données manquantes » ci-dessous.
-- **Profondeur Corse** : horaire, **2019-01-01 00:00 → 2024-12-31 23:00 UTC**, 52 608 h (6 ans).
+- **Profondeur Corse** : horaire, **2019-01-01 00:00 → 2024-12-31 23:00 en heure légale
+  corse**, 52 608 h (6 ans). L'étiquette `+00:00` du fichier est fausse — établi le
+  23/08/2026, cf. `docs/VERIF_ENTSOE_TERNA.md` § 5.
 - **Statut Corse** : `Validé` 17 544 (~2 ans) + `Estimé` 35 064 (~4 ans).
 - `cout_moyen_de_production_eur_mwh` : **hors périmètre** (cf. « vague 2 »).
 
@@ -68,6 +70,10 @@ Sur le temps réel (écart max mesuré = 0.0000 sauf mention) :
   où `total` seul est corrompu (348,8 au lieu de ~450 ; filières saines, ni négatif).
   → geste `prepare` : **dropper la ligne via le bouclage > 50 MW** (robuste au fuseau).
 - **Fuseau = UTC**, prouvé par la physique : pic PV à **11 h UTC = 13 h local** (été).
+  **Cette preuve ne vaut que pour le temps réel.** Elle a été étendue par analogie à la
+  courbe horaire du jeu 2, qui est du même producteur et porte le même suffixe `+00:00` —
+  et qui, elle, est en heure légale. Une convention se vérifie par JEU, jamais par
+  producteur (23/08/2026).
 
 ### ENR de comparaison « maintenant vs historique » — définition SYMÉTRIQUE
 
@@ -184,15 +190,20 @@ les résultats tiennent, on durcit fraîcheur, non-régression et formulations.
   **confondu avec la période** (2019-2020 vs 2021-2024, parc ENR en croissance) — il
   démontre que les directions tiennent, il n'isole PAS un effet de la qualité de mesure.
 
-### Volume traité : 52 605 h (et non 52 608)
+### Volume traité : 52 602 h (et non 52 608)
 
-Le brut Corse compte 52 608 h ; `prepare` retire **3 lignes à 0 MW** (heure fantôme des
-passages à l'heure d'été 2019, 2020 et 2024) via `production_totale_mw > 0`. Tout chiffre
-« sur 2019-2024 » a donc pour dénominateur **52 605 heures**.
+Le brut Corse compte 52 608 h ; `prepare` retire les **6 heures qui n'existent pas en heure
+légale corse** — 02 h des six dimanches de passage à l'heure d'été. Tout chiffre « sur
+2019-2024 » a donc pour dénominateur **52 602 heures**.
+
+Trois de ces six lignes sont à 0 MW (2019, 2020, 2024) et tombaient déjà sous
+`production_totale_mw > 0` ; les trois autres (2021, 2022, 2023, années estimées) portent
+246, 253 et 200 MW. Depuis le 23/08/2026 la détection ne repose plus sur la valeur mais sur
+un aller-retour heure légale -> instant -> heure légale, qui ne vieillit pas.
 
 ### Filières négatives la nuit (auxiliaires, convention EDF) — deux périmètres
 
-- **Par filière** (fréquent) : PV < 0 sur 20 429 h (38,8 %), éolien 13 017, bio 4 856,
+- **Par filière** (fréquent) : PV < 0 sur 20 426 h (38,8 %), éolien 13 015, bio 4 856,
   micro 2 233.
 - **Agrégat** `ENR_sym` < 0 (rare, les termes se compensent) : **2 750 h (5,2 %)**,
   part minimale **−1,39 %**. Sans objet à l'agrégat horaire ; clampé à 0 dans les figures.

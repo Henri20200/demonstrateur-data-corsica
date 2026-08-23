@@ -77,7 +77,8 @@ def fig_t1_soleil() -> tuple[go.Figure, str, str, float]:
 # On montre le fait (+22 %) sans lui coller de cause : « touristes + climatiseurs »
 # agrège deux effets non désagrégeables avec les seules données EDF (production par
 # filière ≠ décomposition de la demande). Le « quand » — indice de la cause — est laissé
-# à fig_t2b_surcroit_horaire (surcroît concentré le soir), à chacun d'en tirer sa lecture.
+# à fig_t2b_surcroit_horaire (surcroît concentré l'après-midi et en début de soirée),
+# à chacun d'en tirer sa lecture.
 def fig_t2_demande_mensuelle() -> go.Figure:
     con = _con()
     df = con.execute(
@@ -110,9 +111,13 @@ def fig_t2_demande_mensuelle() -> go.Figure:
     return fig
 
 
-# --- Titre 2b : le « quand » — le surcroît de juillet se joue le soir ----------
-# Écart horaire juillet − juin de la demande moyenne : la bosse est le soir (16-22h)
-# et la nuit, pas un pic de milieu de journée. On donne l'indice, pas la conclusion.
+# --- Titre 2b : le « quand » — de l'après-midi au début de soirée -------------
+# Le surcroît de juillet forme un plateau, et ce plateau n'est plus écrit à la main : il
+# sort de la courbe (heures à 97 % du maximum) et le titre casse s'il quitte l'après-midi.
+# Jusqu'au 23/08/2026 la figure disait « le soir » et surlignait 16-22 h — une fenêtre en
+# partie fabriquée par l'ancien horodatage, qui décalait la journée d'une à deux heures.
+# On ne la reconstitue pas par translation : la correction a le droit de redécouper la
+# journée. On donne le quand, jamais le pourquoi (résidents, tourisme, climatisation).
 def fig_t2b_surcroit_horaire() -> go.Figure:
     con = _con()
     df = con.execute(
@@ -122,20 +127,37 @@ def fig_t2b_surcroit_horaire() -> go.Figure:
             FROM '{COURBE}' GROUP BY 1 ORDER BY 1"""
     ).df()
     delta = df["delta"].round(0)
-    soir = df["h"].between(16, 22)
-    couleurs = [PALETTE["accent"] if s else PALETTE["muted"] for s in soir]
+
+    # Le plateau, mesuré : les heures qui restent à 97 % du maximum. Le seuil est un
+    # choix, la fenêtre non — et les deux gardes ci-dessous tiennent le titre.
+    plateau = sorted(df.loc[df["delta"] >= 0.97 * df["delta"].max(), "h"].astype(int))
+    h1, h2 = plateau[0], plateau[-1]
+    if plateau != list(range(h1, h2 + 1)):
+        raise ValueError(
+            f"T2b : le surcroît ne forme plus un plateau d'un seul tenant ({plateau}) — "
+            "surligner un intervalle raconterait une continuité qui n'existe pas."
+        )
+    if not (12 <= h1 and h2 <= 21):
+        raise ValueError(
+            f"T2b : le plateau du surcroît va de {h1} h à {h2} h — il déborde de "
+            "l'après-midi et du début de soirée, titre et annotation à revoir."
+        )
+
+    dans = df["h"].between(h1, h2)
+    couleurs = [PALETTE["accent"] if d else PALETTE["muted"] for d in dans]
     fig = go.Figure(go.Bar(
         x=df["h"], y=delta, marker_color=couleurs,
         hovertemplate="%{x}h : %{y:+.0f} MW<extra></extra>",
     ))
     fig.add_annotation(
-        x=19, y=float(delta.max()), yshift=22, text="<b>le soir (16-22 h)</b>",
+        x=(h1 + h2) / 2, y=float(delta.max()), yshift=22,
+        text=f"<b>après-midi et début de soirée ({h1}-{h2} h)</b>",
         showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
         font=dict(family=SANS, size=18, color=PALETTE["accent"]),
     )
     fig.update_layout(
-        title=dict(text="Ce surcroît se joue surtout le soir"),
-        xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
+        title=dict(text="Ce surcroît se joue de l'après-midi au début de soirée"),
+        xaxis=dict(title="Heure légale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
         yaxis=dict(title="Surcroît juillet − juin (MW)"),
         bargap=0.2, height=560,
     )
@@ -195,7 +217,7 @@ def fig_t3_profil() -> go.Figure:
     fig.add_vline(x=h_pic, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
     fig.update_layout(
         title=dict(text="Même à son zénith, le soleil ne détrône pas le fossile"),
-        xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h"),
+        xaxis=dict(title="Heure légale", dtick=3, ticksuffix="h"),
         yaxis=dict(title="Part du mix (%)", ticksuffix=" %"),
         # Marge haute élargie : la légende (au-dessus du tracé) a SA bande, sous le
         # sous-titre — sans quoi les deux se recouvrent en iframe étroite.
@@ -206,7 +228,14 @@ def fig_t3_profil() -> go.Figure:
     return fig
 
 
-# --- Titre 4 : « l'heure la plus verte = 14h » -------------------------------
+# --- Titre 4 : « le créneau le plus vert se situe autour de midi » -----------
+# Cette figure a nommé UNE heure — 14 h — jusqu'au 23/08/2026, et les deux définitions du
+# renouvelable la désignaient ensemble. L'heure était fausse : l'heure légale corse était
+# relue comme de l'UTC. Corrigée, elle se dédouble — 13 h pour le renouvelable
+# décentralisé, 12 h avec la grande hydraulique — et 0,13 point sépare les deux premières
+# heures du décentralisé. Nommer une heure serait plus précis que le signal ne le permet.
+# On publie donc le créneau, et l'écart d'une heure entre les deux définitions s'écrit
+# (dans le sous-titre) au lieu d'être masqué par un choix arbitraire entre 12 et 13.
 def fig_t4_heure_verte() -> go.Figure:
     con = _con()
     df = con.execute(f"""
@@ -218,6 +247,24 @@ def fig_t4_heure_verte() -> go.Figure:
         FROM '{COURBE}' GROUP BY 1 ORDER BY 1
     """).df()
     h = df["h"]
+
+    # Les deux définitions donnent chacune leur heure ; le créneau est ce qu'elles
+    # bornent. Deux gardes le tiennent — au-delà d'une heure d'écart il n'y a plus de
+    # créneau à surligner, et hors de la mi-journée le titre ne veut plus rien dire.
+    h_dec = int(df.loc[df["decentralise"].idxmax(), "h"])
+    h_tot = int(df.loc[(df["decentralise"] + df["grande_hydro"]).idxmax(), "h"])
+    if abs(h_dec - h_tot) > 1:
+        raise ValueError(
+            f"T4 : les deux définitions du renouvelable culminent à {h_dec} h et {h_tot} h — "
+            "elles ne bornent plus un créneau, la figure doit dire autre chose."
+        )
+    h1, h2 = min(h_dec, h_tot), max(h_dec, h_tot)
+    if not (11 <= h1 and h2 <= 14):
+        raise ValueError(
+            f"T4 : le créneau le plus vert va de {h1} h à {h2} h — il n'est plus « autour "
+            "de midi », titre et repère à revoir."
+        )
+
     # ordre d'empilement bas -> haut ; l'hydro (claire) est bordée de foncés.
     couches = [
         ("Renouvelable décentralisé", df["decentralise"], PALETTE["renouv"]),
@@ -232,26 +279,33 @@ def fig_t4_heure_verte() -> go.Figure:
             stackgroup="mix", fillcolor=col,
             hovertemplate=nom + " : %{y:.0f} %<extra></extra>",
         ))
-    # repère 14h : cadre net (sans ombre ni trame), étendu au-dessus de la pile pour ressortir
-    vert14 = float(df["decentralise"][df["h"] == 14].iloc[0])
-    tot14 = vert14 + float(df["grande_hydro"][df["h"] == 14].iloc[0])
-    fig.add_shape(type="rect", x0=13.45, x1=14.55, y0=0, y1=110,
+    # Repère du créneau : cadre net (sans ombre ni trame), étendu au-dessus de la pile
+    # pour ressortir. Les chiffres affichés sont ceux du créneau ENTIER — la part d'une
+    # heure isolée dirait un maximum, pas ce que le cadre entoure.
+    creneau = con.execute(f"""
+        SELECT 100.0*sum(enr_distrib_mw)/sum(production_totale_mw)                AS dec,
+               100.0*sum(enr_distrib_mw+hydraulique_mw)/sum(production_totale_mw) AS tot
+        FROM '{COURBE}' WHERE heure_locale BETWEEN {h1} AND {h2}
+    """).df().iloc[0]
+    milieu = (h1 + h2) / 2
+    fig.add_shape(type="rect", x0=h1 - 0.55, x1=h2 + 0.55, y0=0, y1=110,
                   line=dict(color=PALETTE["accent"], width=2.8),
                   fillcolor="rgba(0,0,0,0)", layer="above")
     # Libellé (décision du 19/07/2026, post-audit) : le chiffre principal reste l'ENR
     # décentralisée, TOUJOURS qualifiée — jamais « renouvelable » seul ; le total avec
     # la grande hydraulique (déjà dans la pile) est donné juste dessous.
-    fig.add_annotation(x=14, y=110, yshift=16,
-                       text=f"<b>14 h · {vert14:.0f} % renouvelable décentralisé</b>",
+    fig.add_annotation(x=milieu, y=110, yshift=16,
+                       text=f"<b>{h1}-{h2} h · {creneau['dec']:.0f} % renouvelable "
+                            "décentralisé</b>",
                        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
                        font=dict(family=SANS, size=18, color=PALETTE["accent"]))
-    fig.add_annotation(x=14, y=110, yanchor="top", yshift=-6,
-                       text=f"{tot14:.0f} % avec la grande hydraulique",
+    fig.add_annotation(x=milieu, y=110, yanchor="top", yshift=-6,
+                       text=f"{creneau['tot']:.0f} % avec la grande hydraulique",
                        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=3,
                        font=dict(family=SANS, size=16, color=PALETTE["ink"]))
     fig.update_layout(
-        title=dict(text="L'heure la plus verte pour consommer en Corse"),
-        xaxis=dict(title="Heure locale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
+        title=dict(text="Le créneau le plus vert se situe autour de midi"),
+        xaxis=dict(title="Heure légale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
         yaxis=dict(title="Part du mix (%)", range=[0, 122], ticksuffix=" %"),
         # Marge haute élargie : à 4 entrées la légende se replie sur 2 rangées en
         # iframe étroite — il lui faut sa bande entière sous le sous-titre.
@@ -327,15 +381,37 @@ def fig_t5_ecretement() -> go.Figure:
 
 
 # --- Titre 6 : « deux îles thermiques, mais la Sardaigne brûle du charbon » ---
-def fig_t6_corse_sardaigne() -> go.Figure:
-    """Barres 100 % empilées : mix de génération local, Corse vs Sardaigne (2019-2024).
+# Fenêtre de la comparaison, bornée des DEUX côtés. La courbe corse déborde déjà de son
+# millésime — elle porte une heure de 2025 — et EDF publiera 2025 en entier : sans borne,
+# la figure comparerait une Corse 2019-2025 à une Sardaigne 2019-2024 sans que rien ne le
+# signale, sous un sous-titre qui annonce « moyenne 2019-2024 ». Le côté sarde n'en a pas
+# besoin aujourd'hui (le Parquet ne contient que ces six années), mais la borne y est
+# répétée pour que la propriété tenue soit « les deux barres couvrent la même période », et
+# non « la requête est juste aujourd'hui ». Cf. docs/VERIF_ENTSOE_TERNA.md § 5.
+FENETRE_T6 = (2019, 2024)
 
-    Comparaison honnête = GÉNÉRATION seule : on exclut les imports corses (27,8 % de la
-    demande) et on renormalise, car la Sardaigne (exportatrice) n'a pas de poste import
-    dans les données ENTSO-E. Les deux îles sont thermiques (~55 / 65 %), mais la Sardaigne
-    brûle du charbon (+ gaz de synthèse IGCC) quand la Corse tient au fioul + grande hydro.
+# Une année civile LOCALE des deux côtés, et dite explicitement. Le côté corse la porte
+# désormais en colonne (`annee_locale`, écrite par prepare depuis l'heure légale établie
+# contre le soleil) ; le côté sarde porte un TIMESTAMP naïf d'UTC, qu'il faut déclarer
+# avant de convertir — sans quoi `extract('year')` se lirait dans le fuseau de la MACHINE,
+# et la borne découperait autrement ici et sur le runner CI, qui tourne en UTC. Les deux
+# îles étant à la même longitude et dans le même fuseau, l'année locale est la seule
+# définition qui vaille pour les deux.
+_AN_CORSE = "annee_locale"
+_AN_SARD = "extract('year' FROM (date_heure AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Rome')"
+
+
+def mix_t6() -> tuple:
+    """Les deux mix de T6, avec la période effectivement couverte de chaque côté.
+
+    Renvoie (corse, sardaigne, span_corse, span_sard) — les deux `span` étant des couples
+    (année min, année max). Ils sortent d'ici plutôt que d'être supposés : c'est ce qui
+    permet à un test de casser si une des deux bornes disparaît (cf. `FENETRE_T6`).
     """
     con = _con()
+    a, b = FENETRE_T6
+    borne_c = f"WHERE {_AN_CORSE} BETWEEN {a} AND {b}"
+    borne_s = f"WHERE {_AN_SARD} BETWEEN {a} AND {b}"
     sard = con.execute(f"""
       SELECT 'Sardaigne' AS ile,
         100.0*sum(thermique_mw)/sum(production_totale_mw)   AS thermique,
@@ -343,27 +419,49 @@ def fig_t6_corse_sardaigne() -> go.Figure:
         100.0*sum(solaire_mw)/sum(production_totale_mw)     AS solaire,
         100.0*sum(eolien_mw)/sum(production_totale_mw)      AS eolien,
         100.0*sum(bioenergies_mw)/sum(production_totale_mw) AS bioenergies,
-        100.0*sum(autre_mw)/sum(production_totale_mw)       AS autre
-      FROM '{SARD}'""").df().iloc[0]
+        100.0*sum(autre_mw)/sum(production_totale_mw)       AS autre,
+        min({_AN_SARD})::INT                                AS an_min,
+        max({_AN_SARD})::INT                                AS an_max
+      FROM '{SARD}' {borne_s}""").df().iloc[0]
     corse = con.execute(f"""
       WITH b AS (
         SELECT sum(thermique_mw) th,
                sum(hydraulique_mw+coalesce(micro_hydraulique_mw,0)) hy,
-               sum(photovoltaique_mw) so, sum(eolien_mw) eo, sum(bioenergies_mw) bi
-        FROM '{COURBE}')
+               sum(photovoltaique_mw) so, sum(eolien_mw) eo, sum(bioenergies_mw) bi,
+               min({_AN_CORSE})::INT an_min,
+               max({_AN_CORSE})::INT an_max
+        FROM '{COURBE}' {borne_c})
       SELECT 100.0*th/(th+hy+so+eo+bi) thermique, 100.0*hy/(th+hy+so+eo+bi) hydraulique,
              100.0*so/(th+hy+so+eo+bi) solaire, 100.0*eo/(th+hy+so+eo+bi) eolien,
-             100.0*bi/(th+hy+so+eo+bi) bioenergies, 0.0 autre
+             100.0*bi/(th+hy+so+eo+bi) bioenergies, 0.0 autre, an_min, an_max
       FROM b""").df().iloc[0]
+    return (corse, sard,
+            (int(corse["an_min"]), int(corse["an_max"])),
+            (int(sard["an_min"]), int(sard["an_max"])))
+
+
+def fig_t6_corse_sardaigne() -> go.Figure:
+    """Barres 100 % empilées : mix de génération local, Corse vs Sardaigne (2019-2024).
+
+    Comparaison honnête = GÉNÉRATION seule : on exclut les imports corses (27,8 % de la
+    demande) et on renormalise, car la Sardaigne (exportatrice) n'a pas de poste import
+    dans les données ENTSO-E. Les deux îles sont thermiques (~55 / 69 %), mais la Sardaigne
+    brûle du charbon (+ gaz de synthèse IGCC) quand la Corse tient au fioul + grande hydro.
+    """
+    corse, sard, _, _ = mix_t6()
 
     # Ordre d'empilement : deux verts (hydro sauge / éolien forêt) jamais adjacents.
+    # Plus de segment « Autre » depuis le reclassement de B20 (22/08/2026) : il vaut zéro
+    # des deux côtés, et une clé de légende qui ne montre aucun segment pose au lecteur une
+    # question que la figure ne répond pas. Ce qui garantit qu'on ne perd rien en le
+    # retirant n'est pas ce commentaire, c'est `test_sardaigne_thermique_domine`, qui tient
+    # ce poste à zéro : s'il redevient non nul, la suite casse avant la publication.
     filieres = [
         ("thermique",   "Thermique",   PALETTE["thermique"]),
         ("hydraulique", "Gde hydraulique", PALETTE["hydro"]),
         ("solaire",     "Solaire",     PALETTE["solaire"]),
         ("eolien",      "Éolien",      PALETTE["renouv"]),
         ("bioenergies", "Bioénergies", PALETTE["accent"]),
-        ("autre",       "Autre",       PALETTE["imports"]),
     ]
     iles = ["Corse", "Sardaigne"]
     fig = go.Figure()
@@ -564,7 +662,7 @@ def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
     con = _con()
     df = con.execute(f"""
       WITH h AS (
-        SELECT extract('year' FROM timezone('Europe/Paris', date_heure)) AS annee,
+        SELECT annee_locale AS annee,
                100.0*(greatest(photovoltaique_mw,0)+greatest(eolien_mw,0))
                     /production_totale_mw AS part
         FROM '{COURBE}')
@@ -634,10 +732,10 @@ def fig_t8_seuil_deconnexion() -> tuple[go.Figure, int, int]:
 def fig_t9_hydro_secheresse() -> go.Figure:
     con = _con()
     df = con.execute(
-        f"""SELECT extract(year from date_heure)::INTEGER AS annee,
+        f"""SELECT annee_locale::INTEGER AS annee,
               100.0*sum(hydraulique_mw)/sum(production_totale_mw) AS hydro,
               100.0*sum(thermique_mw)/sum(production_totale_mw)   AS thermique
-            FROM '{COURBE}' WHERE extract(year from date_heure) BETWEEN 2019 AND 2024
+            FROM '{COURBE}' WHERE annee_locale BETWEEN 2019 AND 2024
             GROUP BY 1 ORDER BY 1"""
     ).df()
     # Invariant qui fonde le titre : d'une année à l'autre, part hydraulique et part
@@ -733,11 +831,12 @@ def main() -> int:
                 note=NOTE_ESTIME)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
                 sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
-                           "2019-2024.<br>Interconnexions = câbles SACOI (Italie via la Sardaigne).",
+                           "2019-2024.<br>Interconnexions = liaisons SACOI + SARCO.",
                 note=NOTE_ESTIME)
     export_html(fig_t4_heure_verte(), "t4_heure_verte", SRC_HIST, d_hist,
                 sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024."
-                           "<br>Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro.",
+                           "<br>Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro."
+                           "<br>Maximum à 13 h pour lui, à 12 h avec les grands barrages : d'où un créneau.",
                 note=NOTE_ESTIME)
     export_html(fig_t5_ecretement(), "t5_ecretement_solaire", SRC_ECRET,
                 date_collecte("edf_ecretement_corse"),
@@ -793,10 +892,20 @@ def main() -> int:
                                "périmètre égal :<br>génération locale seule (les 27,8 % d'imports "
                                "corses sont exclus et le reste<br>renormalisé ; la Sardaigne, "
                                "exportatrice, n'importe pas).",
-                    note="La Sardaigne (10× plus grande) fait 32 % de son courant au charbon et "
-                         "32 % au gaz de synthèse (IGCC), quasi absents en Corse ;<br>elle a 15 "
-                         "fois plus d'éolien. La Corse compense par la grande hydraulique et les "
-                         "câbles. Corse estimée à partir de 2021.",
+                    # Plus de « 10× plus grande » : aucun multiplicateur unique ne décrit
+                    # cet écart de taille — 4,5× en population, 2,8× en superficie, 7,4× en
+                    # production. Un raccourci chiffré sans dénominateur est exactement ce
+                    # que le §8 de l'orientation interdit. La formule redevient qualitative ;
+                    # si un rapport compte pour une comparaison précise, on donnera celui-là.
+                    # Elle s'arrête à deux qualificatifs, et c'est une contrainte mesurée :
+                    # « dotée d'un système électrique de plus grande taille » porte le pied
+                    # à 8 lignes, soit 354 px de marge basse pour 350 disponibles. On coupe
+                    # le texte plutôt que de pousser `b` et `height` — la place manque au
+                    # pied, pas dans la prose de l'étude, qui peut porter la phrase entière.
+                    note="La Sardaigne, plus vaste et plus peuplée, fait 32 % de son courant "
+                         "au charbon et 32 % au gaz de synthèse (IGCC), quasi absents en "
+                         "Corse ;<br>elle a 15 fois plus d'éolien. La Corse compense par la "
+                         "grande hydraulique et les câbles. Corse estimée à partir de 2021.",
                     pied_decalage_px=-170)
         print("\n9 visuels exportés dans outputs/")
     else:
