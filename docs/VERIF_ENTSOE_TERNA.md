@@ -420,9 +420,21 @@ son Parquet plutôt que par appartenance à la lignée du build courant.
 - **Le contenu réel de `B20` n'est pas nommé.** Qu'il soit thermique est établi par le solde
   du bilan Terna, sur deux années ; ce qui brûle exactement ne l'est pas. Le flux
   « génération par unité de production » (art. 16.1.a) le dirait, il n'a pas été interrogé.
-- **Le statut « estimé » de la courbe corse n'est pas levé — c'est une limite explicite.**
-  Il couvre 2021 à 2024, soit 35 060 heures sur 52 602, **66,7 % de la barre corse**. La
-  limite, telle qu'elle doit être portée :
+- **Le statut « estimé » de la courbe corse reste une limite explicite — mais elle n'est
+  plus d'un seul bloc.** Il couvre 2021 à 2024, soit 35 060 heures sur 52 602, **66,7 % de
+  la barre corse**. Au 23/08/2026 le vocabulaire binaire « verrou levé / pas levé » ne
+  convient plus : trois niveaux de preuve distincts coexistent.
+
+  1. **La forme horaire** du photovoltaïque des années estimées suit indépendamment le
+     rayonnement mesuré (ci-dessous).
+  2. **La production thermique** — environ la moitié de la génération locale que lit T6 — ne
+     présente aucune rupture détectable face à une contrainte physique extérieure (§ 10).
+  3. **Les niveaux absolus de toutes les filières**, hydraulique en tête, ne disposent
+     toujours d'aucune validation extérieure indépendante.
+
+  On a donc des raisons quantitatives de penser que l'estimation ne produit pas certains
+  types d'erreurs, sans avoir démontré qu'elle n'en produit aucune. La limite, telle qu'elle
+  doit être portée :
 
   > La cohérence horaire du photovoltaïque EDF classé « Estimé » est confirmée par
   > comparaison au rayonnement solaire mesuré indépendamment par Météo-France. Cette
@@ -450,7 +462,8 @@ son Parquet plutôt que par appartenance à la lignée du build courant.
   structure temporelle de la série** et produit une valeur là où il n'y a pas eu d'heure.
   Elle interdit donc de lever le verrou par simple ressemblance statistique : une série qui
   ressemble à la réalité aux endroits où on la regarde peut avoir été fabriquée aux endroits
-  où on ne la regarde pas. Le recoupement annuel indépendant reste le seul chemin.
+  où on ne la regarde pas. Le recoupement annuel indépendant a été cherché : les §§ 9 et 10
+  disent ce qu'il a rendu, et ce qu'il n'a pas rendu.
 - **Terna révise ses statistiques régionales.** Les chiffres 2023 utilisés ici sont ceux de
   l'édition 2023 ; une édition ultérieure peut les corriger.
 - **Les données de puissance installée (art. 14.1.a) n'ont pas été touchées** — le dépôt ne
@@ -566,7 +579,99 @@ entrer.
 
 ---
 
-## 10. Refaire la vérification
+## 10. Une contrainte physique sur le thermique : les émissions vérifiées
+
+Le §9 a trouvé un témoin extérieur pour les liaisons, pas pour la génération locale — les
+70,2 % de l'offre que compare T6. Ce paragraphe est **la seule tentative** faite sur cette
+génération, et elle visait la plus grosse composante : le thermique, 36,0 % de l'offre 2020,
+soit un peu plus de la moitié de ce que T6 lit.
+
+### 10.1 Ce que le registre des quotas apporte
+
+Les trois installations thermiques corses sont soumises au système d'échange de quotas
+d'émission : `EDF - Vazzio` (eutl_id 1040), `EDF - Lucciana` (1041) et `EDF PEI HAUTE
+CORSE`, Lucciana B (206030). Leur découpage recouvre exactement celui des bilans EDF SEI —
+diesel et TAC du Vazzio, TAC de Lucciana, diesel de Lucciana exploité par EDF PEI.
+
+Leurs émissions annuelles sont **vérifiées par une tierce partie accréditée** et portent une
+conséquence financière : l'exploitant restitue des quotas à hauteur de ce qui est déclaré.
+C'est donc une contrainte physique **extérieure à la série de production**, produite par une
+chaîne de déclaration distincte de la comptabilité électrique.
+
+Le mot « extérieure » est à prendre au pied de la lettre, et pas plus loin. L'indépendance
+porte sur la vérification, pas nécessairement sur la mesure amont : les deux chaînes peuvent
+reposer sur le même comptage de combustible à la centrale. Cette part-là de l'indépendance
+**reste inconnue**, et c'est ce qui borne la conclusion.
+
+### 10.2 Le rapport, année par année
+
+| Année | Statut EDF | Émissions vérifiées | Thermique déclaré | tCO₂ / GWh |
+|---|---|---:|---:|---:|
+| 2019 | Validé | 673 731 t | 971,5 GWh | **693,5** |
+| 2020 | Validé | 552 473 t | 795,2 GWh | **694,8** |
+| 2021 | Estimé | 647 292 t | 931,5 GWh | **694,9** |
+| 2022 | Estimé | 763 551 t | 1 115,9 GWh | **684,2** |
+| 2023 | Estimé | 545 805 t | 788,0 GWh | **692,6** |
+| 2024 | Estimé | 623 870 t | 902,5 GWh | **691,3** |
+
+Moyenne des années validées : **694,1**. Moyenne des années estimées : **690,8**. Écart
+relatif : **−0,49 %**.
+
+> **Ce qui est établi.** Les émissions vérifiées du SEQE-UE fournissent une contrainte
+> physique extérieure sur la production thermique corse. De 2019 à 2024, le rapport entre
+> émissions et production reste compris entre **684 et 695 tCO₂/GWh** ; aucune rupture
+> n'apparaît lors du passage du statut Validé au statut Estimé. Ce résultat rend peu
+> compatible l'hypothèse d'une forte discontinuité propre aux années estimées sur la filière
+> thermique. Il ne constitue toutefois pas une validation indépendante de son niveau
+> absolu : les deux chaînes peuvent partager une même mesure de combustible en amont.
+
+Deux précisions de méthode, pour que la phrase ci-dessus ne soit pas lue plus fort qu'elle
+n'est écrite. Les bornes 684-695 sont **l'amplitude observée**, pas une borne statistique
+fixée d'avance : on constate qu'aucune rupture n'est détectable, on ne démontre pas qu'un
+écart d'une taille donnée serait exclu. Et un biais **constant sur les six années** ne
+laisserait aucune signature dans ce rapport — il serait entièrement absorbé.
+
+### 10.3 Deux lectures plausibles, tenues à l'écart du verrou
+
+Le rapport observé permet de calculer un **rendement implicite** : avec un facteur
+d'émission de 3,15 tCO₂ par tonne de fioul et un pouvoir calorifique inférieur de
+40,5 GJ/t — valeurs de littérature, pas celles des installations —, les six années donnent
+40,3 % à 40,9 %. C'est exactement l'ordre de grandeur d'une centrale diesel semi-rapide, ce
+qui est une vérification de plausibilité rassurante. Elle **n'entre pas dans le verrou** :
+elle dépend d'hypothèses que nous ne mesurons pas, et l'inscrire comme résultat laisserait
+croire qu'on connaît le rendement réel du parc.
+
+Le seul point qui s'écarte, 2022 à 684,2, est l'année de sécheresse où le thermique monte à
+1 116 GWh. Un meilleur rendement à charge élevée en rendrait compte, et c'est une lecture
+plausible — mais le mix des groupes appelés ou celui des combustibles peut tout aussi bien
+avoir bougé. On la donne comme interprétation, pas comme mécanisme confirmé.
+
+### 10.4 La provenance, en deux temps
+
+La donnée qui fait foi est celle du **journal des transactions de l'Union européenne**
+(EUTL), publié par la Commission. Son portail est une application JavaScript sans
+téléchargement statique : notre chaîne ne sait pas l'atteindre. La source déclarée est donc
+la republication sur `data.gouv.fr` — aplatie et géocodée —, dont l'auteur est un
+**contributeur individuel** et non une organisation. La transformation entre l'EUTL et ce
+fichier n'est pas vérifiée par nous. C'est une limite déclarée, au même titre que les
+autres.
+
+Une seule entrée au registre des sources, et c'est délibéré : le fichier 2005-2025 porte les
+trois installations et les six années. Le découper par millésime ou par site fabriquerait
+dix-huit entrées pour dix-huit cellules.
+
+### 10.5 Et on s'arrête là
+
+Cette tentative était la seule prévue sur la génération locale, avec un critère d'arrêt fixé
+avant de commencer : trouver une source qui mesure, ou contraigne quantitativement, le
+combustible effectivement consommé — sinon renoncer. Le critère est rempli, avec la réserve
+d'indépendance amont ci-dessus. **Aucune autre piste ne sera ouverte** pour tenter de faire
+disparaître cette réserve : à ce stade, la discipline est de conserver la limite, pas de la
+poursuivre.
+
+---
+
+## 11. Refaire la vérification
 
 Les mesures de ce document se rejouent depuis les bruts empreintés, sans réseau :
 

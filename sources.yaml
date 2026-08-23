@@ -287,6 +287,46 @@ sources:
     racine_attendue: Publication_MarketDocument
     empreinte_ignore_xml: ["Publication_MarketDocument/mRID", "Publication_MarketDocument/createdDateTime"]
 
+  # --- Émissions vérifiées SEQE-UE : contrainte physique sur le thermique corse ---
+  # Ce que ce jeu apporte, et ce qu'il n'apporte pas. Les trois installations thermiques
+  # corses — EDF Vazzio (eutl_id 1040), EDF Lucciana (1041) et EDF PEI Haute-Corse,
+  # Lucciana B (206030) — déclarent chaque année leurs émissions au titre du système
+  # d'échange de quotas. Ces émissions sont VÉRIFIÉES par une tierce partie accréditée et
+  # portent une conséquence financière : EDF restitue des quotas à hauteur du déclaré.
+  # C'est une chaîne de déclaration distincte de sa comptabilité de production, donc une
+  # contrainte physique EXTÉRIEURE à la série que nous contrôlons — cf. § 10 de
+  # docs/VERIF_ENTSOE_TERNA.md pour ce qu'elle permet de conclure, et surtout pour la
+  # réserve : les deux chaînes peuvent partager la même mesure de combustible en amont,
+  # auquel cas l'indépendance s'arrête au vérificateur.
+  #
+  # UNE seule entrée, à dessein. Le fichier 2005-2025 porte les trois installations ET les
+  # six années : découper par millésime ou par site fabriquerait dix-huit entrées pour
+  # dix-huit cellules. Il pèse 82 Mo pour dix-huit lignes utiles, et c'est le bon
+  # arbitrage — un registre de sources se lit, un dossier de bruts non versionné non.
+  #
+  # PROVENANCE EN DEUX TEMPS, à ne pas confondre. La donnée qui fait foi est celle du
+  # journal des transactions de l'Union européenne (EUTL, union-registry-data.ec.europa.eu),
+  # publié par la Commission. Ce portail est une application JavaScript sans téléchargement
+  # statique : notre chaîne ne sait pas l'atteindre. On passe donc par la republication
+  # data.gouv.fr — aplatie et géocodée — dont l'auteur est un CONTRIBUTEUR INDIVIDUEL et
+  # non une organisation. La transformation entre les deux n'est pas vérifiée par nous ;
+  # c'est une limite déclarée, pas un détail. L'url porte un instantané daté (20260621),
+  # donc stable : source figée, empreintée une fois puis re-vérifiée à chaque run.
+  seqe_emissions_verifiees:
+    url: "https://static.data.gouv.fr/resources/emissions-de-gaz-a-effet-de-serre-des-installations-soumises-a-quota-de-lue/20260621-121420/emissions.csv"
+    filename: "seqe_emissions_verifiees.csv"
+    licence: "CC-BY 4.0 — republication data.gouv.fr des données du journal des transactions de l'Union européenne (EUTL)"
+    producteur: "Commission européenne — EUTL, émissions vérifiées SEQE-UE (republiées sur data.gouv.fr par un contributeur individuel)"
+    format: csv
+    delimiter: ","
+    colonnes_attendues: [country_code, eutl_id, name, year, emissions_tco2e]
+    notes: >
+      Émissions vérifiées par installation, 2005-2025, toutes installations françaises et
+      européennes présentes dans l'extraction. Seules trois lignes par an nous servent :
+      les eutl_id 1040, 1041 et 206030, à filtrer AVEC country_code = 'FR' — ces
+      identifiants ne sont pas uniques hors de France, et sans le filtre pays on ramasse
+      une brasserie allemande et un regazéificateur espagnol.
+
   # --- Qualité de l'air : concentrations horaires de polluants réglementés ---
   # Flux « temps réel » national du LCSQA (format E2, celui du rapportage européen).
   # Aucune url stable : un fichier PAR JOUR, d'où les jetons {AAAA}/{MM}/{JJ} et

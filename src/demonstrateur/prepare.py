@@ -41,6 +41,13 @@ MIX = (DATA_RAW / "edf_mix_temps_reel.csv").as_posix()
 COURBE = (DATA_RAW / "edf_courbe_charge_horaire.csv").as_posix()
 ECRET = (DATA_RAW / "edf_ecretement_corse.csv").as_posix()
 AIR = (DATA_RAW / "lcsqa_temps_reel.csv").as_posix()
+SEQE = (DATA_RAW / "seqe_emissions_verifiees.csv").as_posix()
+# Les trois installations thermiques corses au registre SEQE-UE. Le filtre pays est
+# INDISPENSABLE : ces identifiants ne sont pas uniques hors de France, et 1040/1041/206030
+# désignent aussi une brasserie allemande, un regazéificateur espagnol et une distillerie
+# écossaise. Constaté le 23/08/2026 en oubliant le filtre.
+SEQE_CORSE = {1040: "EDF Vazzio", 1041: "EDF Lucciana", 206030: "EDF PEI Haute-Corse"}
+SEQE_ANNEES = range(2019, 2025)  # fenêtre de la courbe corse
 # Les deux tranches Météo-France : la close 2020-2024 et la glissante 2025-2026.
 METEO = (DATA_RAW / "meteo_horaire_corse*.csv.gz").as_posix()
 METEO_SOURCES = ["meteo_horaire_corse_2020_2024", "meteo_horaire_corse"]
@@ -580,6 +587,58 @@ def sarco_flux_to_parquet(dest: str) -> None:
     detail = " ; ".join(f"{int(a)} : {v:.1f} GWh" for a, v in net)
     print(f"[ok] {Path(dest).name} — {n:,} points ({int(a1)}-{int(a2)}, deux sens) "
           f"— solde net SARCO {detail}")
+
+
+def seqe_corse_to_parquet(dest: str) -> None:
+    """Émissions vérifiées SEQE-UE des trois installations thermiques corses.
+
+    Contrainte physique EXTÉRIEURE à la série de production : ces émissions sont vérifiées
+    par une tierce partie accréditée et engagent financièrement l'exploitant, dans une
+    chaîne de déclaration distincte de sa comptabilité électrique. Ce qu'elles permettent
+    de conclure — et la réserve qui subsiste, les deux chaînes pouvant partager la même
+    mesure de combustible en amont — est au § 10 de `docs/VERIF_ENTSOE_TERNA.md`.
+
+    On ne stocke QUE les émissions. Le rapport aux GWh thermiques est un calcul de
+    comparaison, il appartient à qui compare (`tests/test_seqe_thermique.py`) : mêler ici
+    la grandeur mesurée et la grandeur déclarée par EDF ferait perdre la trace de ce qui
+    vient d'où — même règle que pour les deux sens de SARCO.
+    """
+    con = duckdb.connect()
+    ids = ", ".join(str(i) for i in SEQE_CORSE)
+    a, b = SEQE_ANNEES[0], SEQE_ANNEES[-1]
+    con.execute(
+        f"""COPY (
+              SELECT year AS annee, eutl_id, name AS installation,
+                     TRY_CAST(emissions_tco2e AS DOUBLE) AS tco2
+              FROM read_csv_auto('{SEQE}')
+              WHERE country_code = 'FR' AND eutl_id IN ({ids})
+                AND year BETWEEN {a} AND {b}
+              ORDER BY annee, eutl_id
+            ) TO '{dest}' (FORMAT PARQUET)"""
+    )
+
+    # Garde : les trois installations, toutes les années. Un identifiant retiré du registre
+    # ou renuméroté ferait autrement disparaître une centrale en silence, et le rapport
+    # émissions/production chuterait sans que rien ne le signale.
+    attendu = len(SEQE_CORSE) * len(SEQE_ANNEES)
+    n, sites, a1, a2 = con.execute(
+        f"SELECT count(*), count(DISTINCT eutl_id), min(annee), max(annee) FROM '{dest}'"
+    ).fetchone()
+    if (n, sites, a1, a2) != (attendu, len(SEQE_CORSE), a, b):
+        raise ValueError(
+            f"SEQE Corse : {n} ligne(s) pour {sites} installation(s) sur {a1}-{a2} — "
+            f"attendu {attendu} lignes, {len(SEQE_CORSE)} installations, {a}-{b}. "
+            "Vérifier les eutl_id et le filtre country_code avant toute comparaison."
+        )
+    vides = con.execute(f"SELECT count(*) FROM '{dest}' WHERE tco2 IS NULL OR tco2 <= 0").fetchone()[0]
+    if vides:
+        raise ValueError(
+            f"SEQE Corse : {vides} déclaration(s) nulle(s) ou vide(s) — une centrale à zéro "
+            "émission fausserait le rapport aux GWh sans être une donnée manquante."
+        )
+    total = con.execute(f"SELECT sum(tco2)/1000 FROM '{dest}'").fetchone()[0]
+    print(f"[ok] {Path(dest).name} — {n} déclarations vérifiées ({sites} installations, "
+          f"{int(a1)}-{int(a2)}) — {total:,.0f} ktCO2 cumulées")
 
 
 def air_corse_to_parquet(dest: str) -> None:
@@ -1291,7 +1350,7 @@ _SORTIES_FIXES = [
 
 def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
                        meteo_ok: bool = False, aee_ok: bool = False,
-                       sarco_ok: bool = False) -> list:
+                       sarco_ok: bool = False, seqe_ok: bool = False) -> list:
     plan = list(_SORTIES_FIXES)
     if sardaigne_ok:
         plan.append((
@@ -1303,6 +1362,8 @@ def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
             "entsoe_sarco.parquet", sarco_flux_to_parquet,
             [f"entsoe_sarco_{an}_{sens}" for an in SARCO_ANNEES for sens in SARCO_SENS],
         ))
+    if seqe_ok:
+        plan.append(("seqe_corse.parquet", seqe_corse_to_parquet, ["seqe_emissions_verifiees"]))
     if air_ok:
         plan.append(("air_corse.parquet", air_corse_to_parquet, ["lcsqa_temps_reel"]))
     if aee_ok:
@@ -1431,7 +1492,8 @@ def main() -> int:
     aee_ok = len(list(DATA_RAW.glob("aee_*.parquet"))) == len(AEE_SOURCES)
     sarco_ok = all((DATA_RAW / f"entsoe_sarco_{an}_{sens}.xml").exists()
                    for an in SARCO_ANNEES for sens in SARCO_SENS)
-    plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok, aee_ok, sarco_ok)
+    seqe_ok = Path(SEQE).exists()
+    plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok, aee_ok, sarco_ok, seqe_ok)
     source_ids = [sid for _, _, sids in plan for sid in sids]
 
     entrees = _verifier_bruts(source_ids)
@@ -1440,6 +1502,8 @@ def main() -> int:
         print("[=] entsoe_sardaigne : fichiers annuels absents (jeton ENTSO-E ?) — étape sautée.")
     if not sarco_ok:
         print("[=] entsoe_sarco : flux SARCO absents (jeton ENTSO-E ?) — étape sautée.")
+    if not seqe_ok:
+        print("[=] seqe_emissions_verifiees : brut absent — étape sautée (lancer fetch-data).")
     if not air_ok:
         print("[=] lcsqa_temps_reel : brut absent — étape air sautée (lancer fetch-data).")
     if not meteo_ok:
