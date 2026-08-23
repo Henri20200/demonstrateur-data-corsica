@@ -215,6 +215,78 @@ sources:
     racine_attendue: GL_MarketDocument
     empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
 
+  # --- Flux physiques SARCO (ENTSO-E / Terna) : la SEULE contrainte extérieure ---
+  # Pourquoi ces six-là et pas la série complète 2019-2024. La liaison SARCO relie le
+  # réseau sarde au réseau corse ; ENTSO-E publie ses flux physiques mesurés du côté
+  # ITALIEN — autre opérateur, autre pays, autres compteurs. C'est la seule mesure de
+  # l'approvisionnement corse trouvée le 23/08/2026 dont l'erreur ne puisse pas être
+  # corrélée à celle d'EDF (cf. docs/VERIF_ENTSOE_TERNA.md § 9 : ni l'OREGES ni RTE ne
+  # le permettent, et les bilans EDF SEI sont la même comptabilité sous une autre forme).
+  # On ne déclare QUE 2020, 2021 et 2023 : ce sont les trois seuls millésimes pour
+  # lesquels EDF SEI publie de son côté le solde de cette liaison, donc les trois seuls
+  # qui portent la conclusion. 2019, 2022 et 2024 se mesurent aussi bien, mais sans
+  # contrepartie à confronter ils n'ajouteraient aucune force — et un dépôt maintenu seul
+  # n'entretient pas de dépendances qui ne servent rien.
+  #
+  # Zones : IT-Sardinia 10Y1001A1001A74G ; SARCO (liaison AC) 10Y1001A1001A885. Ce sont
+  # les zones dites « virtuelles » que le bloc entsoe_sardaigne dit d'ignorer — à raison,
+  # elles n'ont AUCUNE génération. Elles portent en revanche des FLUX, et c'est tout
+  # l'objet ici. La liaison SACOI (10Y1001A1001A893, courant continu) n'est PAS déclarée :
+  # multiterminale Toscane-Corse-Sardaigne, l'injection toscane n'est pas le soutirage
+  # corse, et le couple Sardaigne <-> SACODC ne renvoie aucun point.
+  #
+  # documentType=A11 (Physical Flows). Un sens par entrée, JAMAIS un solde : EDF SEI
+  # publie un net, ENTSO-E deux bruts, et c'est la chaîne qui fait la soustraction — sans
+  # quoi on ne saurait plus ce qui est mesuré et ce qui est calculé.
+  entsoe_sarco_2020_entrant:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A74G&in_Domain=10Y1001A1001A885&periodStart=202001010000&periodEnd=202101010000"
+    filename: "entsoe_sarco_2020_entrant.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Sardaigne -> Corse"
+    format: xml
+    racine_attendue: Publication_MarketDocument
+    empreinte_ignore_xml: ["Publication_MarketDocument/mRID", "Publication_MarketDocument/createdDateTime"]
+  entsoe_sarco_2020_sortant:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A885&in_Domain=10Y1001A1001A74G&periodStart=202001010000&periodEnd=202101010000"
+    filename: "entsoe_sarco_2020_sortant.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Corse -> Sardaigne"
+    format: xml
+    racine_attendue: Publication_MarketDocument
+    empreinte_ignore_xml: ["Publication_MarketDocument/mRID", "Publication_MarketDocument/createdDateTime"]
+  entsoe_sarco_2021_entrant:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A74G&in_Domain=10Y1001A1001A885&periodStart=202101010000&periodEnd=202201010000"
+    filename: "entsoe_sarco_2021_entrant.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Sardaigne -> Corse"
+    format: xml
+    racine_attendue: Publication_MarketDocument
+    empreinte_ignore_xml: ["Publication_MarketDocument/mRID", "Publication_MarketDocument/createdDateTime"]
+  entsoe_sarco_2021_sortant:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A885&in_Domain=10Y1001A1001A74G&periodStart=202101010000&periodEnd=202201010000"
+    filename: "entsoe_sarco_2021_sortant.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Corse -> Sardaigne"
+    format: xml
+    racine_attendue: Publication_MarketDocument
+    empreinte_ignore_xml: ["Publication_MarketDocument/mRID", "Publication_MarketDocument/createdDateTime"]
+  entsoe_sarco_2023_entrant:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A74G&in_Domain=10Y1001A1001A885&periodStart=202301010000&periodEnd=202401010000"
+    filename: "entsoe_sarco_2023_entrant.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Sardaigne -> Corse"
+    format: xml
+    racine_attendue: Publication_MarketDocument
+    empreinte_ignore_xml: ["Publication_MarketDocument/mRID", "Publication_MarketDocument/createdDateTime"]
+  entsoe_sarco_2023_sortant:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A885&in_Domain=10Y1001A1001A74G&periodStart=202301010000&periodEnd=202401010000"
+    filename: "entsoe_sarco_2023_sortant.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — flux SARCO, Corse -> Sardaigne"
+    format: xml
+    racine_attendue: Publication_MarketDocument
+    empreinte_ignore_xml: ["Publication_MarketDocument/mRID", "Publication_MarketDocument/createdDateTime"]
+
   # --- Qualité de l'air : concentrations horaires de polluants réglementés ---
   # Flux « temps réel » national du LCSQA (format E2, celui du rapportage européen).
   # Aucune url stable : un fichier PAR JOUR, d'où les jetons {AAAA}/{MM}/{JJ} et

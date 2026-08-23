@@ -45,6 +45,13 @@ AIR = (DATA_RAW / "lcsqa_temps_reel.csv").as_posix()
 METEO = (DATA_RAW / "meteo_horaire_corse*.csv.gz").as_posix()
 METEO_SOURCES = ["meteo_horaire_corse_2020_2024", "meteo_horaire_corse"]
 ENTSOE_ANNEES = range(2019, 2025)  # fenêtre alignée sur la courbe corse
+SARCO_ANNEES = (2020, 2021, 2023)  # les seuls millésimes qu'EDF SEI publie aussi
+SARCO_SENS = ("entrant", "sortant")  # entrant = Sardaigne -> Corse ; sortant = l'inverse
+# Solde SARCO publié par EDF SEI, en GWh, avec l'édition du bilan prévisionnel qui le
+# porte. Recopié à la main parce que ces PDF ne sont pas une source machine : c'est la
+# valeur À CONFRONTER, pas une valeur calculée. Le § 9 de docs/VERIF_ENTSOE_TERNA.md
+# donne la page de chacune.
+SARCO_EDF_SEI_GWH = {2020: 393, 2021: 418, 2023: 396}
 
 # Codes qualité Météo-France (H_descriptif_champs.csv, relevé le 01/08/2026). Pendant
 # exact de la `validité` du LCSQA. On garde ce qui a passé au moins les contrôles de
@@ -447,6 +454,132 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
         f"SELECT count(*), min(annee), max(annee) FROM '{dest}'"
     ).fetchone()
     print(f"[ok] {Path(dest).name} — {n:,} heures (Sardaigne {a}-{b}) — génération par filière")
+
+
+def _points_flux_entsoe(path) -> list[dict]:
+    """Points d'un Publication_MarketDocument A11 (flux physiques), un par position.
+
+    Trois pièges, tous constatés sur SARCO 2019-2024 le 23/08/2026 :
+
+     - **résolution mixte.** 2024 mêle PT60M et PT15M (bascule italienne au quart
+       d'heure). Un parseur qui compterait « un point = une heure » surestimerait de
+       trois quarts d'heure par point de 15 min. On porte donc la DURÉE de chaque point,
+       et l'énergie se calcule avec, jamais avec un comptage de lignes.
+     - **curveType A03.** Les positions absentes d'une `Period` reconduisent la dernière
+       valeur connue. On les matérialise avec `declare = False` plutôt que de choisir à
+       la place du lecteur : les deux lectures — positions déclarées seules, ou report
+       appliqué — se recalculent ensuite depuis la même table. Sur nos trois millésimes
+       elles ne diffèrent que de 0,1 à 0,5 GWh, et `tests/test_sarco.py` tient ce fait.
+     - **plusieurs `Period` par document**, chacune avec son propre intervalle et sa
+       propre résolution ; le report ne franchit pas la frontière d'une Period.
+
+    Ne PAS confondre avec `_lignes_entsoe_horaires`, qui lit des GL_MarketDocument (A75,
+    génération par filière) : autre racine, autre structure, autre règle de direction.
+    """
+    nom = lambda t: t.split("}")[-1]  # noqa: E731
+    pas_minutes = {"PT60M": 60, "PT15M": 15}
+    racine = ET.parse(path).getroot()
+    out = []
+    for periode in racine.iter():
+        if nom(periode.tag) != "Period":
+            continue
+        res = next(c.text for c in periode if nom(c.tag) == "resolution")
+        if res not in pas_minutes:
+            raise ValueError(
+                f"{Path(path).name} : résolution ENTSO-E inconnue {res!r} — ni PT60M ni "
+                "PT15M. Une durée de point non reconnue fausserait l'énergie en silence."
+            )
+        minutes = pas_minutes[res]
+        bornes = next(c for c in periode if nom(c.tag) == "timeInterval")
+        debut = datetime.fromisoformat(
+            next(c.text for c in bornes if nom(c.tag) == "start").replace("Z", "+00:00"))
+        fin = datetime.fromisoformat(
+            next(c.text for c in bornes if nom(c.tag) == "end").replace("Z", "+00:00"))
+        n_positions = int((fin - debut) / timedelta(minutes=minutes))
+        declares = {}
+        for pt in periode:
+            if nom(pt.tag) != "Point":
+                continue
+            pos = int(next(c.text for c in pt if nom(c.tag) == "position"))
+            declares[pos] = float(next(c.text for c in pt if nom(c.tag) == "quantity"))
+        courant = None
+        for pos in range(1, n_positions + 1):
+            declare = pos in declares
+            if declare:
+                courant = declares[pos]
+            if courant is None:  # rien avant le premier point déclaré : pas de report
+                continue
+            out.append({
+                "date_heure_utc": (debut + timedelta(minutes=minutes * (pos - 1)))
+                                  .replace(tzinfo=None),
+                "minutes": minutes,
+                "mw": courant,
+                "declare": declare,
+            })
+    return out
+
+
+def sarco_flux_to_parquet(dest: str) -> None:
+    """Parquet des flux physiques de la liaison SARCO, mesurés du côté italien.
+
+    C'est la SEULE contrainte extérieure à EDF trouvée sur l'approvisionnement corse
+    (cf. docs/VERIF_ENTSOE_TERNA.md § 9). On garde les deux sens SÉPARÉS et on ne
+    stocke aucun solde : EDF SEI publie un net, ENTSO-E deux bruts, et la soustraction
+    appartient à qui compare — sinon on ne sait plus ce qui est mesuré et ce qui est
+    calculé. Trois millésimes seulement, ceux qu'EDF SEI publie également.
+    """
+    lignes = []
+    for an in SARCO_ANNEES:
+        for sens in SARCO_SENS:
+            src = DATA_RAW / f"entsoe_sarco_{an}_{sens}.xml"
+            if not src.exists():
+                raise FileNotFoundError(
+                    f"{src} manquant — lancer fetch-data (jeton ENTSO-E requis)")
+            for ligne in _points_flux_entsoe(src):
+                lignes.append({**ligne, "annee": an, "sens": sens})
+    brut = pd.DataFrame(lignes)
+
+    con = duckdb.connect()
+    con.register("brut", brut)
+    con.execute(
+        f"""COPY (SELECT annee, sens, date_heure_utc, minutes, mw, declare
+                  FROM brut ORDER BY annee, sens, date_heure_utc)
+            TO '{dest}' (FORMAT PARQUET)"""
+    )
+
+    # Garde de sortie : un flux physique ne change pas de signe — le sens EST la
+    # direction, et une valeur négative dirait que le document encode autre chose que ce
+    # qu'on croit lire. Le solde, lui, a le droit d'être de n'importe quel signe.
+    neg = con.execute(f"SELECT count(*) FROM '{dest}' WHERE mw < 0").fetchone()[0]
+    if neg:
+        raise ValueError(
+            f"SARCO : {neg} point(s) de flux négatif — un sens porterait un solde et non "
+            "un flux, la soustraction entrant−sortant compterait deux fois."
+        )
+    # Garde de sortie : les deux sens et les trois années doivent être là. Une requête
+    # ENTSO-E qui renverrait un document vide passerait sinon inaperçue.
+    # CROSS JOIN et non deux `unnest` dans le même SELECT : DuckDB les ZIPPE par
+    # position au lieu de les croiser, ce qui fabriquerait un couple (2023, NULL).
+    manquants = con.execute(
+        f"""SELECT count(*)
+            FROM (SELECT unnest({list(SARCO_ANNEES)}) AS a)
+            CROSS JOIN (SELECT unnest({list(SARCO_SENS)}) AS s)
+            WHERE NOT EXISTS (SELECT 1 FROM '{dest}' t
+                              WHERE t.annee = a AND t.sens = s)"""
+    ).fetchone()[0]
+    if manquants:
+        raise ValueError(f"SARCO : {manquants} couple(s) (année, sens) sans aucun point.")
+
+    n, a1, a2 = con.execute(
+        f"SELECT count(*), min(annee), max(annee) FROM '{dest}'").fetchone()
+    net = con.execute(
+        f"""SELECT annee,
+              sum(CASE WHEN sens='entrant' THEN mw ELSE -mw END * minutes/60.0)/1000
+            FROM '{dest}' WHERE declare GROUP BY 1 ORDER BY 1"""
+    ).fetchall()
+    detail = " ; ".join(f"{int(a)} : {v:.1f} GWh" for a, v in net)
+    print(f"[ok] {Path(dest).name} — {n:,} points ({int(a1)}-{int(a2)}, deux sens) "
+          f"— solde net SARCO {detail}")
 
 
 def air_corse_to_parquet(dest: str) -> None:
@@ -1157,12 +1290,18 @@ _SORTIES_FIXES = [
 
 
 def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
-                       meteo_ok: bool = False, aee_ok: bool = False) -> list:
+                       meteo_ok: bool = False, aee_ok: bool = False,
+                       sarco_ok: bool = False) -> list:
     plan = list(_SORTIES_FIXES)
     if sardaigne_ok:
         plan.append((
             "entsoe_sardaigne.parquet", entsoe_sardaigne_to_parquet,
             [f"entsoe_sardaigne_{an}" for an in ENTSOE_ANNEES],
+        ))
+    if sarco_ok:
+        plan.append((
+            "entsoe_sarco.parquet", sarco_flux_to_parquet,
+            [f"entsoe_sarco_{an}_{sens}" for an in SARCO_ANNEES for sens in SARCO_SENS],
         ))
     if air_ok:
         plan.append(("air_corse.parquet", air_corse_to_parquet, ["lcsqa_temps_reel"]))
@@ -1290,13 +1429,17 @@ def main() -> int:
     air_ok = Path(AIR).exists()
     meteo_ok = len(list(DATA_RAW.glob("meteo_horaire_corse*.csv.gz"))) == len(METEO_SOURCES)
     aee_ok = len(list(DATA_RAW.glob("aee_*.parquet"))) == len(AEE_SOURCES)
-    plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok, aee_ok)
+    sarco_ok = all((DATA_RAW / f"entsoe_sarco_{an}_{sens}.xml").exists()
+                   for an in SARCO_ANNEES for sens in SARCO_SENS)
+    plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok, aee_ok, sarco_ok)
     source_ids = [sid for _, _, sids in plan for sid in sids]
 
     entrees = _verifier_bruts(source_ids)
     sorties = construire(plan, entrees)
     if not sardaigne_ok:
         print("[=] entsoe_sardaigne : fichiers annuels absents (jeton ENTSO-E ?) — étape sautée.")
+    if not sarco_ok:
+        print("[=] entsoe_sarco : flux SARCO absents (jeton ENTSO-E ?) — étape sautée.")
     if not air_ok:
         print("[=] lcsqa_temps_reel : brut absent — étape air sautée (lancer fetch-data).")
     if not meteo_ok:

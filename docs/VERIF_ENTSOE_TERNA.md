@@ -459,7 +459,114 @@ son Parquet plutôt que par appartenance à la lignée du build courant.
 
 ---
 
-## 9. Refaire la vérification
+## 9. Une contrainte extérieure à EDF : la liaison SARCO
+
+Le §8 laisse une limite ouverte : les niveaux annuels par filière de la courbe corse ne
+sont recoupés par rien. Ce paragraphe raconte la recherche d'une source qui le permette, et
+ce qu'elle a rendu — moins que le bilan de Terna pour la Sardaigne, mais pas rien.
+
+### 9.1 Trois candidats écartés, et pourquoi
+
+La question à laquelle chacun devait répondre n'est pas « ce chiffre est-il proche du
+nôtre ? » mais « son erreur peut-elle être corrélée à celle d'EDF ? ». Un chiffre proche
+produit par la même comptabilité ne recoupe rien.
+
+**Les bilans prévisionnels d'EDF SEI** (éditions 2021, 2022, 2023 et 2024, portant les
+réalisés 2020, 2021, 2022 et 2023) donnent la production corse filière par filière. Ils
+tombent à **0,2 % de notre série sur cinq années et sept filières** — 2020 : thermique 796
+contre 795, hydraulique 438 contre 439, micro-hydraulique 62 contre 62, photovoltaïque 238
+contre 238, éolien 11 contre 11, biogaz 6 contre 6, liaisons 659 contre 658. Une
+concordance à ce point est la signature d'une **comptabilité unique exposée deux fois**, pas
+d'une mesure indépendante. Ils valident donc quelque chose de réel — que notre chaîne
+restitue correctement cette comptabilité, années « Estimé » comprises : intégration des MW
+horaires en énergie, reconnaissance des filières, traitement des liaisons. Ils ne valident
+pas les niveaux.
+
+**La Lettre d'information annuelle de l'OREGES** (AUE / Collectivité de Corse) le déclare
+elle-même en page 2 : « *Les données présentées ci-après sont issues des informations
+transmises ou publiées par les fournisseurs et les distributeurs d'énergie dont en
+particulier RTE, EDF SEI, ENGIE, DPLC, Antargaz, Butagaz.* » Ses parts 2020 — 34,2 %
+d'énergies renouvelables, 36 % de thermique, 29,8 % de liaisons — sont **identiques aux
+nôtres au dixième**. Troisième publication de la même comptabilité.
+
+**RTE ne couvre pas la Corse.** Le jeu `eco2mix-regional-cons-def` contient douze régions ;
+la treizième n'y est pas. C'est structurel : le réseau corse est exploité par EDF SEI, RTE
+n'y a aucun comptage. Sa mention dans la liste de sources de l'OREGES ne peut donc pas
+porter sur l'électricité insulaire.
+
+### 9.2 Ce qu'ENTSO-E mesure et qu'EDF ne mesure pas
+
+Le §4 de ce document dit d'ignorer les deux zones « virtuelles » `SACO*` d'ENTSO-E, et il a
+raison : elles n'ont **aucune génération**. Elles portent en revanche des **flux physiques**,
+mesurés du côté italien. La liaison SARCO, courant alternatif entre le réseau sarde et le
+réseau corse, y est publiée heure par heure (`documentType=A11`, zone `10Y1001A1001A885`
+contre `IT-Sardinia`). Autre opérateur, autre pays, autres compteurs : voilà une erreur qui
+ne peut pas être corrélée à celle d'EDF.
+
+Trois millésimes seulement se confrontent, parce qu'EDF SEI ne publie le solde de cette
+liaison que dans trois éditions de son bilan.
+
+| Année | Sardaigne → Corse | Corse → Sardaigne | Solde net | EDF SEI | Écart |
+|---|---:|---:|---:|---:|---:|
+| 2020 | 397,7 GWh (8 107 h) | 4,1 GWh (620 h) | **393,5** | 393 | **+0,14 %** |
+| 2021 | 418,5 GWh (8 325 h) | 1,6 GWh (313 h) | **416,9** | 418 | **−0,27 %** |
+| 2023 | 396,5 GWh (8 511 h) | 0,9 GWh (316 h) | **395,6** | 396 | **−0,11 %** |
+
+Les deux sens sont conservés séparés dans `entsoe_sarco.parquet`, et le solde est calculé
+par la chaîne : EDF SEI publie un net, ENTSO-E deux bruts, et confondre les deux ferait
+perdre la trace de ce qui est mesuré. C'est aussi ce qui interdit d'égaler naïvement ces
+flux à notre colonne `importations_mw` : Terna compte **620 heures** de flux Corse →
+Sardaigne sur SARCO seul en 2020, quand notre série montre 288 heures d'export net toutes
+liaisons confondues. La Corse peut exporter par un câble en important par l'autre.
+
+**La convention `curveType A03` ne décide rien ici**, et c'est un acquis à part entière. Les
+positions absentes d'une `Period` reconduisent la dernière valeur connue ; fallait-il les
+compter ? Les deux lectures donnent +0,14 / −0,27 / −0,11 % (positions déclarées) et
++0,16 / −0,16 / +0,03 % (report appliqué). L'écart entre conventions est plus petit que
+l'écart mesuré : la conclusion ne repose pas sur ce choix. `tests/test_sarco.py` tient ce
+fait, pour qu'une future correction du parseur ne transforme pas un choix indifférent en
+choix décisif sans qu'on le voie.
+
+### 9.3 Ce qui est établi, et ce qui ne l'est pas
+
+> Une composante de l'approvisionnement corse — la liaison SARCO, 17,8 % de l'offre en
+> 2020 — peut être recoupée par une chaîne de mesure indépendante d'EDF. Sur les trois
+> années pour lesquelles EDF SEI publie également le solde de cette liaison, l'écart avec
+> les flux physiques ENTSO-E/Terna est de **+0,14 % en 2020, −0,27 % en 2021 et −0,11 % en
+> 2023**. La concordance est donc du même ordre avant et après le changement de statut
+> Validé/Estimé. Elle ne valide ni les niveaux de génération locale ni la comparaison T6.
+
+Trois observations, dont **une seule** du côté « Validé » : on constate qu'aucun signe
+constant ne se dégage, on n'estime pas un biais.
+
+La décomposition de l'offre 2020 dit exactement ce qui reste sans témoin :
+
+| | GWh | Part de l'offre | Contrainte extérieure |
+|---|---:|---:|---|
+| SARCO | 393,5 | **17,8 %** | oui — compteurs Terna |
+| SACOI | 264,4 | **12,0 %** | non |
+| Génération locale | 1 551,1 | **70,2 %** | **non — et c'est ce que lit T6** |
+
+SACOI reste hors d'atteinte par cette route pour une raison de topologie : c'est une ligne à
+courant continu **multiterminale** Toscane – Corse – Sardaigne. L'injection depuis la
+Toscane vaut 221,5 GWh en 2020 quand EDF SEI déclare 266 GWh de soutirage corse — une part
+du flux poursuit vers la Sardaigne sans s'arrêter en Corse — et le couple Sardaigne ↔ zone
+DC ne renvoie aucun point. Son ordre de grandeur se retrouve par différence (nos liaisons
+moins le SARCO de Terna : 264,4 / 213,4 / 213,3 contre 266 / 213 / 213 publiés), mais ce
+calcul utilise notre propre série : il vérifie la cohérence de la décomposition, il
+n'ajoute aucune indépendance.
+
+**Pourquoi trois millésimes au registre et pas six.** 2019, 2022 et 2024 se mesurent aussi
+bien — respectivement 414,9, 437,1 et 386,0 GWh de solde net — mais aucun bilan EDF SEI ne
+publie leur contrepartie, donc ils n'ajoutent aucune force à ce qui précède. Les déclarer
+dans `sources.yaml` ferait passer le registre de 38 à 50 entrées pour conserver des données
+intéressantes et inutiles au produit. Elles restent dans le matériel de recherche ; le jour
+où une étude utilisera vraiment la série 2019-2024, ce sera la bonne raison de les faire
+entrer.
+
+---
+
+## 10. Refaire la vérification
 
 Les mesures de ce document se rejouent depuis les bruts empreintés, sans réseau :
 
