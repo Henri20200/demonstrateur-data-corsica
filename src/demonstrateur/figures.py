@@ -831,7 +831,7 @@ def main() -> int:
                 note=NOTE_ESTIME)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
                 sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
-                           "2019-2024.<br>Interconnexions = câbles SACOI (Italie via la Sardaigne).",
+                           "2019-2024.<br>Interconnexions = liaisons SACOI + SARCO.",
                 note=NOTE_ESTIME)
     export_html(fig_t4_heure_verte(), "t4_heure_verte", SRC_HIST, d_hist,
                 sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024."
