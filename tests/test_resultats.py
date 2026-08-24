@@ -320,27 +320,40 @@ def test_air_corse_ne_garde_que_des_mesures_valides(con):
     assert nulles == 0, f"{nulles} valeur(s) NULL ont franchi prepare"
 
 
-@besoin_air
-def test_air_corse_couvre_le_gradient_ville_campagne(con):
-    """L'ozone doit être mesuré en ville ET à la campagne, sinon le titre-affirmation
-    « l'air de campagne n'est pas meilleur » (BRIEF_AIR) n'est pas adossé à la donnée.
+# Le gradient ville/campagne ne se lit PAS sur le flux du jour (corrigé le 24/08/2026).
+# L'y avoir mis a bloqué la publication : VENACO, seule station rurale de l'île, s'est tue
+# le 21/08/2026 à 10 h — le site entier, ses trois polluants d'un coup — pendant que le
+# référentiel Geod'air la donne toujours « En service ». Une panne d'analyseur, pas un
+# périmètre qui bouge, et la série 2013 -> aujourd'hui n'en perd pas une heure. Même leçon
+# que le 19/08 pour BASTIA LA MARANA : ce que la journée fraîche sait dire n'est pas ce
+# qu'on lui demandait.
+#
+# L'affirmation « l'air de campagne n'est pas meilleur » se tient là où vit sa donnée, et
+# elle s'y tenait déjà : `test_l_air_de_campagne_n_est_pas_meilleur` la rejoue sur les étés
+# 2020-2025, `test_la_serie_couvre_les_six_stations_sur_douze_ans` garde les six stations,
+# et `tests/test_stations_air.py` confronte au référentiel le classement « Rurale
+# régionale » comme l'état en service — deux contrôles qui répondent analyseur éteint.
+# Il n'y avait donc rien à déplacer, seulement une copie de trop, et c'était la seule
+# qu'une panne de terrain pouvait casser.
 
-    Venaco est le SEUL site rural de l'île : sa disparition du flux ne doit pas passer
-    inaperçue. On vérifie aussi que les stations trafic restent hors du périmètre ozone
-    — près des moteurs, le monoxyde d'azote le détruit, et les mêler à une comparaison
-    ville/campagne mélangerait des populations non comparables.
+@besoin_air
+def test_air_corse_le_perimetre_ozone_reste_hors_trafic(con):
+    """Ce dont le flux du jour est le bon témoin : le périmètre, qui s'y montre en premier.
+
+    Près des moteurs, le monoxyde d'azote détruit l'ozone — aucune station trafic n'en
+    mesure. Si l'une s'y mettait, ou si une station changeait de classement, la journée
+    fraîche le dirait avant la série ; et la mêler à une comparaison ville/campagne
+    confondrait des populations non comparables.
+
+    Le décompte non nul garde l'autre bout : le jour où le producteur renomme son code
+    polluant, le flux continuerait de passer tous les autres contrôles en silence.
     """
     src = AIR.as_posix()
-    implantations = {
-        r[0] for r in con.execute(
-            f"SELECT DISTINCT implantation FROM '{src}' WHERE polluant = 'O3'"
-        ).fetchall()
-    }
-    assert "Rurale régionale" in implantations, "plus aucune station rurale d'ozone (Venaco ?)"
-    assert implantations & {"Urbaine", "Périurbaine"}, "plus aucune station urbaine d'ozone"
-    trafic = con.execute(
-        f"SELECT count(*) FROM '{src}' WHERE polluant = 'O3' AND influence = 'Trafic'"
-    ).fetchone()[0]
+    mesures, trafic = con.execute(
+        f"""SELECT count(*), count(*) FILTER (WHERE influence = 'Trafic')
+            FROM '{src}' WHERE polluant = 'O3'"""
+    ).fetchone()
+    assert mesures, "aucune mesure d'ozone dans le flux du jour — code polluant modifié ?"
     assert trafic == 0, "de l'ozone apparaît sur une station trafic — périmètre à revoir"
 
 
@@ -1186,18 +1199,22 @@ def test_le_total_affiche_compte_des_journees_et_non_des_couples(con):
     """Le chiffre mis en avant par A1 est un nombre de JOURNÉES du calendrier.
 
     Une journée chargée fait dépasser plusieurs stations à la fois : additionner les
-    barres donne un total de couples journée-station (173), très supérieur au nombre de
+    barres donne un total de couples journée-station (169), très supérieur au nombre de
     journées réellement concernées (106). Publier le premier en disant « journées »
-    laisserait entendre qu'il y a eu 173 jours de dépassement sur la période. Le test
+    laisserait entendre qu'il y a eu 169 jours de dépassement sur la période. Le test
     tient l'écart entre les deux : s'il disparaissait, c'est que le calcul a glissé.
+
+    Le décompte se fait sur le périmètre de la FIGURE (`OU_A1`, une station de fond de
+    moins depuis le 24/08/2026), parce que c'est ce que le lecteur a sous les yeux et
+    peut additionner. Recopier ici un périmètre voisin ferait comparer le total publié à
+    une somme que la figure ne montre pas.
     """
+    from demonstrateur.figures_air import OU_A1
+
     couples, journees = con.execute(
         f"""SELECT count(*) FILTER (WHERE mda8 > 120),
                    count(DISTINCT CASE WHEN mda8 > 120 THEN date_locale END)
-            FROM '{MDA8.as_posix()}'
-            WHERE valide AND influence = 'Fond'
-              AND extract('month' FROM date_locale) IN (6, 7, 8)
-              AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025"""
+            FROM '{MDA8.as_posix()}' WHERE {OU_A1}"""
     ).fetchone()
     assert journees < couples, (
         f"{journees} journées pour {couples} couples journée-station : les deux devraient "
@@ -1210,6 +1227,94 @@ def test_le_total_affiche_compte_des_journees_et_non_des_couples(con):
     assert any(f"{journees} journées" in t for t in textes), (
         f"A1 doit afficher les {journees} journées distinctes, jamais les {couples} "
         "couples journée-station"
+    )
+
+
+@besoin_serie
+def test_a1_ecarte_la_station_recente_sans_perdre_une_journee(con):
+    """A1 compte des journées : la longueur d'une barre y est l'affirmation.
+
+    Ajaccio Confina 2 mesure depuis janvier 2024, les quatre autres depuis 2006-2011.
+    Cumulés sur six étés, ses dépassements se lisaient sous ceux d'Ajaccio Canetto —
+    l'ordre inverse de celui qu'on obtient à armes égales. Elle est donc hors de A1
+    depuis le 24/08/2026 ; A4, qui compte en part des journées mesurées, la garde : là,
+    une fenêtre courte ne fausse plus rien.
+
+    Quatre choses à tenir, dont trois que la note publiée affirme au lecteur :
+      - l'exclusion ne coûte rien au chiffre mis en avant — la station n'apporte ni une
+        journée mesurée ni un dépassement que les autres n'aient déjà ;
+      - ce qui reste est comparable pour de bon, les quatre dénominateurs se tenant à
+        quelques pour cent quand la station écartée en était au tiers ;
+      - les effectifs cités par la note sont ceux de la donnée, pas ceux d'hier ;
+      - l'inversion existe encore. Le jour où elle cesse — la station accumule des étés
+        — l'exclusion n'a plus lieu d'être : c'est cette dernière assertion qui le dira,
+        et la bonne réponse sera de rejuger la figure, pas de desserrer le test.
+    """
+    from demonstrateur.figures_air import (
+        NOMBRES, OU_A1, RECENTE, fig_a1_depassements_sans_alerte, note_a1,
+    )
+
+    src = MDA8.as_posix()
+    fond = ("valide AND influence = 'Fond' "
+            "AND extract('month' FROM date_locale) IN (6, 7, 8) "
+            "AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025")
+    total = (f"""SELECT count(DISTINCT CASE WHEN mda8 > 120 THEN date_locale END),
+                        count(DISTINCT date_locale) FROM '{src}' WHERE """)
+
+    avec = con.execute(total + fond).fetchone()
+    sans = con.execute(total + OU_A1).fetchone()
+    assert avec == sans, (
+        f"retirer {RECENTE} déplace le total affiché : {avec} avec, {sans} sans. La note "
+        "dit que ses dépassements sont déjà comptés ailleurs — elle ne le dit plus"
+    )
+
+    jours = dict(con.execute(
+        f"SELECT station, count(*) FROM '{src}' WHERE {OU_A1} GROUP BY 1").fetchall())
+    assert len(jours) == 4, f"A1 devrait tracer quatre stations, pas {len(jours)}"
+    ecart = (max(jours.values()) - min(jours.values())) / max(jours.values())
+    assert ecart < 0.10, (
+        f"les dénominateurs de A1 s'écartent de {ecart:.0%} ({jours}) : des barres de "
+        "longueurs comparables ne comparent plus rien"
+    )
+
+    tracees = [str(y) for y in fig_a1_depassements_sans_alerte().data[0].y]
+    assert len(tracees) == 4 and not any(RECENTE.title() in y for y in tracees), (
+        f"{RECENTE} est de retour dans A1 : {tracees}"
+    )
+
+    recente = con.execute(
+        f"""SELECT count(*), count(*) FILTER (WHERE mda8 > 120) FROM '{src}'
+            WHERE {fond} AND station = '{RECENTE}'"""
+    ).fetchone()
+    profondeur = "SELECT count(DISTINCT extract('year' FROM date_locale)) FROM '%s'" % src
+    etes_recente, = con.execute(f"{profondeur} WHERE {fond} AND station = '{RECENTE}'").fetchone()
+    etes_tracees, = con.execute(f"{profondeur} WHERE {OU_A1}").fetchone()
+    note = note_a1()
+    attendus = [str(n) for n in (*recente, min(jours.values()), max(jours.values()))]
+    attendus += [NOMBRES[etes_recente].lower(), NOMBRES[etes_tracees].lower()]
+    for mention in attendus:
+        assert mention in note, (
+            f"la note de A1 ne porte plus « {mention} » : « {note} ». Les effectifs sont "
+            "l'argument de l'exclusion — une note qui ne les dit plus ne la justifie plus"
+        )
+
+    # À armes égales : 2024-2025, la fenêtre où les cinq stations existent toutes.
+    voisine = "AJACCIO CANETTO"
+    taux = dict(con.execute(
+        f"""SELECT station, 100.0 * count(*) FILTER (WHERE mda8 > 120) / count(*)
+            FROM '{src}' WHERE valide AND influence = 'Fond'
+              AND extract('month' FROM date_locale) IN (6, 7, 8)
+              AND extract('year' FROM date_locale) BETWEEN 2024 AND 2025
+            GROUP BY 1"""
+    ).fetchall())
+    brut = dict(con.execute(
+        f"""SELECT station, count(*) FILTER (WHERE mda8 > 120)
+            FROM '{src}' WHERE {fond} GROUP BY 1"""
+    ).fetchall())
+    assert taux[RECENTE] > taux[voisine] and brut[RECENTE] < brut[voisine], (
+        f"{RECENTE} : {taux[RECENTE]:.1f} % contre {taux[voisine]:.1f} % à armes égales, "
+        f"{brut[RECENTE]} dépassements contre {brut[voisine]} sur six étés cumulés — "
+        "l'inversion qui motivait l'exclusion a disparu, la figure est à rejuger"
     )
 
 # --- Verrous de l'étude en prose (docs/etude.md) -----------------------------
