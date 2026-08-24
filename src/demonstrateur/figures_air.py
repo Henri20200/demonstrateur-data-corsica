@@ -104,9 +104,36 @@ def stations_a3() -> list[str]:
 # individuels) et par `page_air` (page assemblée). Ils étaient recopiés dans les deux
 # modules : toute correction n'était appliquée que d'un côté, et les deux versions d'une
 # même figure se mettaient à raconter des choses différentes.
-ST_A1 = _sous_titre(
-    f"Objectif de qualité : {OBJECTIF_QUALITE} µg/m³ sur 8 heures. "
-    f"Information du public : {SEUIL_INFORMATION} µg/m³ sur une heure.")
+def st_a1() -> str:
+    """Sous-titre d'A1 — une fonction, comme `st_a3()`, et pour deux raisons.
+
+    A1 sort du périmètre commun (une station de fond de moins, cf. `OU_A1`), et la règle
+    du module veut qu'une figure qui en sort le dise ICI, pas seulement en pied : le
+    sous-titre se lit AVEC le titre, le pied se lit après — or c'est en lisant le titre
+    qu'on décide ce que la figure compare. Et ce qu'il annonce se compte dans la donnée,
+    sans quoi l'annonce survivrait à ce qu'elle décrit.
+    """
+    con = _con()
+    tracees, etes = con.execute(f"""
+        SELECT count(DISTINCT station), count(DISTINCT extract('year' FROM date_locale))
+        FROM '{MDA8}' WHERE {OU_A1}
+    """).fetchone()
+    fond, = con.execute(f"""
+        SELECT count(DISTINCT station) FROM '{MDA8}'
+        WHERE valide AND {ETES} AND {ANNEES} AND influence = 'Fond'
+    """).fetchone()
+    debut, etes_recente = con.execute(f"""
+        SELECT min(extract('year' FROM date_locale)),
+               count(DISTINCT extract('year' FROM date_locale))
+        FROM '{MDA8}'
+        WHERE valide AND {ETES} AND {ANNEES} AND station = '{RECENTE}'
+    """).fetchone()
+    return (_sous_titre(
+        f"Objectif de qualité : {OBJECTIF_QUALITE} µg/m³ sur 8 heures. "
+        f"Information du public : {SEUIL_INFORMATION} µg/m³ sur une heure.")
+        + f"<br>{NOMBRES[tracees]} stations sur {NOMBRES[fond].lower()} : "
+          f"{RECENTE.title()}, ouverte en {int(debut)}, ne couvre que "
+          f"{NOMBRES[etes_recente].lower()} de ces {NOMBRES[etes].lower()} étés.")
 ST_A2 = _sous_titre(
     "La température vient du poste météo le plus ressemblant, pas toujours le plus proche.")
 # Note tenue en lignes COURTES (< 90 signes) : le pied de figure est une annotation
@@ -138,36 +165,21 @@ def st_a3() -> str:
 
 
 def note_a1() -> str:
-    """Note de A1 — une fonction, pas une constante, pour la même raison que `st_a3()`.
+    """Note d'A1 : la seule objection que le sous-titre laisse ouverte.
 
-    Les effectifs qu'elle cite SONT l'argument de l'exclusion. Écrits à la main, ils
-    deviendraient faux au premier été de plus sans que rien ne le dise, et la note
-    défendrait alors une décision par des chiffres qui ne la fondent plus.
+    Le périmètre est annoncé plus haut depuis que la figure suit la règle du module. Ce
+    qu'il reste à dire tient en une ligne : l'écart de périmètre ne coûte rien au chiffre
+    mis en avant. Sans elle, un lecteur attentif peut croire qu'il manque des journées au
+    total de l'encart — et il aurait raison de se poser la question.
     """
     con = _con()
-    etes_recente, jours, depassements = con.execute(f"""
-        SELECT count(DISTINCT extract('year' FROM date_locale)), count(*),
-               count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE})
-        FROM '{MDA8}'
+    depassements, = con.execute(f"""
+        SELECT count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE}) FROM '{MDA8}'
         WHERE valide AND {ETES} AND {ANNEES} AND station = '{RECENTE}'
     """).fetchone()
-    etes, = con.execute(f"""
-        SELECT count(DISTINCT extract('year' FROM date_locale))
-        FROM '{MDA8}' WHERE {OU_A1}
-    """).fetchone()
-    mini, maxi = con.execute(f"""
-        SELECT min(n), max(n)
-        FROM (SELECT count(*) AS n FROM '{MDA8}' WHERE {OU_A1} GROUP BY station)
-    """).fetchone()
-    # Trois lignes une fois repliée à 64 signes (`viz.LARGEUR_PIED`), pas plus : le pied
-    # porte déjà trois lignes de source, et une note qui déborde se raccourcit — la marge
-    # basse d'une figure n'est pas une variable d'ajustement du texte. C'est ce qui a fait
-    # tomber la mention « la figure suivante, en part, la garde » : quatre lignes, et
-    # `verifier_pied` refusait. Cette moitié-là vit dans la note méthodologique.
-    return (f"{RECENTE.title()} n'est pas comptée ici : "
-            f"{NOMBRES[etes_recente].lower()} étés de mesures ({jours} journées) ne se "
-            f"comparent pas à {NOMBRES[etes].lower()} ({mini} à {maxi}). "
-            f"Ses {depassements} dépassements tombent tous des jours déjà comptés.")
+    # « ci-dessus » faisait 65 signes contre 64 disponibles, donc deux lignes de pied
+    # pour un mot : l'encart est juste au-dessus, il se désigne tout seul.
+    return f"Ses {depassements} dépassements tombent tous des jours déjà comptés."
 
 
 ST_A4 = _sous_titre(
@@ -249,11 +261,12 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
                                    f"{OBJECTIF_QUALITE} µg/m³ (six étés cumulés)",
                               font=AXE)),
         yaxis=dict(title=""),
-        # b et height relevés ensemble de 70 px (24/08/2026) : la note d'exclusion ajoute
-        # trois lignes au pied, et `verifier_pied` refuse une figure qui les rognerait.
-        # Les monter toutes deux garde la zone de tracé à sa hauteur.
-        margin=dict(t=170, b=240, l=250, r=90),
-        height=630,
+        # Le périmètre est passé du pied au sous-titre (24/08/2026) : une ligne de titre
+        # en plus, deux lignes de pied en moins. `t` couvrait déjà trois lignes de
+        # sous-titre, `b` redescend de 40 px — et `height` d'autant, pour que la zone de
+        # tracé retrouve la hauteur qu'elle avait, ni plus ni moins.
+        margin=dict(t=170, b=200, l=250, r=90),
+        height=590,
     )
     return fig
 
@@ -563,7 +576,7 @@ def main() -> int:
     d_meteo = date_collecte("meteo_horaire_corse")
 
     export_html(fig_a1_depassements_sans_alerte(), "a1_depassements_sans_alerte",
-                SRC_AIR, d_air, sous_titre=ST_A1, note=note_a1())
+                SRC_AIR, d_air, sous_titre=st_a1(), note=note_a1())
     export_html(fig_a2_ozone_et_chaleur(), "a2_ozone_et_chaleur",
                 SRC_AIR_METEO, d_meteo, sous_titre=ST_A2, note=NOTE_A2,
                 pied_decalage_px=PIED_A2)
