@@ -257,8 +257,17 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     )
     fig.update_layout(
         title=dict(text="Six étés de dépassements, et pas une seule alerte"),
-        xaxis=dict(title=dict(text=f"Journées où CETTE station dépasse "
-                                   f"{OBJECTIF_QUALITE} µg/m³ (six étés cumulés)",
+        # Libellé aligné sur celui d'A4 (24/08/2026), qui le suit dans la page et le disait
+        # juste : c'est L'OZONE qui dépasse, pas la station — laquelle ne dépasse rien, elle
+        # mesure. Le seuil est nommé et pas seulement chiffré : le sous-titre en annonce
+        # DEUX (objectif de qualité et information du public), et un « 120 µg/m³ » nu
+        # laissait au lecteur le soin d'apparier. « (six étés cumulés) » disparaît : la
+        # période est déjà dite trois fois sur cette figure — titre, et les deux dernières
+        # lignes du sous-titre. Reste à empêcher d'additionner les barres, ce que faisaient
+        # les capitales de « CETTE » ; « station par station » le dit sans crier, et
+        # l'encart tient l'autre bout avec ses journées distinctes.
+        xaxis=dict(title=dict(text=f"Journées où l'ozone dépasse l'objectif de qualité "
+                                   f"({OBJECTIF_QUALITE} µg/m³), station par station",
                               font=AXE)),
         yaxis=dict(title=""),
         # Le périmètre est passé du pied au sous-titre (24/08/2026) : une ligne de titre
