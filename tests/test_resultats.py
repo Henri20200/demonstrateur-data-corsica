@@ -320,27 +320,40 @@ def test_air_corse_ne_garde_que_des_mesures_valides(con):
     assert nulles == 0, f"{nulles} valeur(s) NULL ont franchi prepare"
 
 
-@besoin_air
-def test_air_corse_couvre_le_gradient_ville_campagne(con):
-    """L'ozone doit être mesuré en ville ET à la campagne, sinon le titre-affirmation
-    « l'air de campagne n'est pas meilleur » (BRIEF_AIR) n'est pas adossé à la donnée.
+# Le gradient ville/campagne ne se lit PAS sur le flux du jour (corrigé le 24/08/2026).
+# L'y avoir mis a bloqué la publication : VENACO, seule station rurale de l'île, s'est tue
+# le 21/08/2026 à 10 h — le site entier, ses trois polluants d'un coup — pendant que le
+# référentiel Geod'air la donne toujours « En service ». Une panne d'analyseur, pas un
+# périmètre qui bouge, et la série 2013 -> aujourd'hui n'en perd pas une heure. Même leçon
+# que le 19/08 pour BASTIA LA MARANA : ce que la journée fraîche sait dire n'est pas ce
+# qu'on lui demandait.
+#
+# L'affirmation « l'air de campagne n'est pas meilleur » se tient là où vit sa donnée, et
+# elle s'y tenait déjà : `test_l_air_de_campagne_n_est_pas_meilleur` la rejoue sur les étés
+# 2020-2025, `test_la_serie_couvre_les_six_stations_sur_douze_ans` garde les six stations,
+# et `tests/test_stations_air.py` confronte au référentiel le classement « Rurale
+# régionale » comme l'état en service — deux contrôles qui répondent analyseur éteint.
+# Il n'y avait donc rien à déplacer, seulement une copie de trop, et c'était la seule
+# qu'une panne de terrain pouvait casser.
 
-    Venaco est le SEUL site rural de l'île : sa disparition du flux ne doit pas passer
-    inaperçue. On vérifie aussi que les stations trafic restent hors du périmètre ozone
-    — près des moteurs, le monoxyde d'azote le détruit, et les mêler à une comparaison
-    ville/campagne mélangerait des populations non comparables.
+@besoin_air
+def test_air_corse_le_perimetre_ozone_reste_hors_trafic(con):
+    """Ce dont le flux du jour est le bon témoin : le périmètre, qui s'y montre en premier.
+
+    Près des moteurs, le monoxyde d'azote détruit l'ozone — aucune station trafic n'en
+    mesure. Si l'une s'y mettait, ou si une station changeait de classement, la journée
+    fraîche le dirait avant la série ; et la mêler à une comparaison ville/campagne
+    confondrait des populations non comparables.
+
+    Le décompte non nul garde l'autre bout : le jour où le producteur renomme son code
+    polluant, le flux continuerait de passer tous les autres contrôles en silence.
     """
     src = AIR.as_posix()
-    implantations = {
-        r[0] for r in con.execute(
-            f"SELECT DISTINCT implantation FROM '{src}' WHERE polluant = 'O3'"
-        ).fetchall()
-    }
-    assert "Rurale régionale" in implantations, "plus aucune station rurale d'ozone (Venaco ?)"
-    assert implantations & {"Urbaine", "Périurbaine"}, "plus aucune station urbaine d'ozone"
-    trafic = con.execute(
-        f"SELECT count(*) FROM '{src}' WHERE polluant = 'O3' AND influence = 'Trafic'"
-    ).fetchone()[0]
+    mesures, trafic = con.execute(
+        f"""SELECT count(*), count(*) FILTER (WHERE influence = 'Trafic')
+            FROM '{src}' WHERE polluant = 'O3'"""
+    ).fetchone()
+    assert mesures, "aucune mesure d'ozone dans le flux du jour — code polluant modifié ?"
     assert trafic == 0, "de l'ozone apparaît sur une station trafic — périmètre à revoir"
 
 
