@@ -46,7 +46,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             "a1",
             preparer_figure(
                 fa.fig_a1_depassements_sans_alerte(), fa.SRC_AIR, d_air,
-                sous_titre=fa.ST_A1, note=fa.note_a1(),
+                sous_titre=fa.st_a1(), note=fa.note_a1(),
             ),
         ),
         (

@@ -1251,7 +1251,7 @@ def test_a1_ecarte_la_station_recente_sans_perdre_une_journee(con):
         et la bonne réponse sera de rejuger la figure, pas de desserrer le test.
     """
     from demonstrateur.figures_air import (
-        NOMBRES, OU_A1, RECENTE, fig_a1_depassements_sans_alerte, note_a1,
+        NOMBRES, OU_A1, RECENTE, fig_a1_depassements_sans_alerte, note_a1, st_a1,
     )
 
     src = MDA8.as_posix()
@@ -1286,17 +1286,40 @@ def test_a1_ecarte_la_station_recente_sans_perdre_une_journee(con):
         f"""SELECT count(*), count(*) FILTER (WHERE mda8 > 120) FROM '{src}'
             WHERE {fond} AND station = '{RECENTE}'"""
     ).fetchone()
+    # L'écart de périmètre s'annonce dans le SOUS-TITRE (règle du module, appliquée le
+    # 24/08/2026) et le pied ne garde que ce qu'il ne dit pas : que l'écart ne coûte rien
+    # au total. Le verrou lit donc les deux, et exige que chaque nombre annoncé au lecteur
+    # se retrouve dans la donnée qui le fonde.
     profondeur = "SELECT count(DISTINCT extract('year' FROM date_locale)) FROM '%s'" % src
     etes_recente, = con.execute(f"{profondeur} WHERE {fond} AND station = '{RECENTE}'").fetchone()
     etes_tracees, = con.execute(f"{profondeur} WHERE {OU_A1}").fetchone()
-    note = note_a1()
-    attendus = [str(n) for n in (*recente, min(jours.values()), max(jours.values()))]
-    attendus += [NOMBRES[etes_recente].lower(), NOMBRES[etes_tracees].lower()]
-    for mention in attendus:
-        assert mention in note, (
-            f"la note de A1 ne porte plus « {mention} » : « {note} ». Les effectifs sont "
-            "l'argument de l'exclusion — une note qui ne les dit plus ne la justifie plus"
+    debut, = con.execute(
+        f"""SELECT min(extract('year' FROM date_locale)) FROM '{src}'
+            WHERE {fond} AND station = '{RECENTE}'"""
+    ).fetchone()
+    stations_fond, = con.execute(
+        f"SELECT count(DISTINCT station) FROM '{src}' WHERE {fond}").fetchone()
+
+    annonce = st_a1()
+    attendus = {
+        NOMBRES[len(jours)]: "le nombre de stations tracées",
+        NOMBRES[stations_fond].lower(): "le nombre de stations de fond",
+        str(int(debut)): "l'année d'ouverture de la station écartée",
+        NOMBRES[etes_recente].lower(): "sa profondeur en étés",
+        NOMBRES[etes_tracees].lower(): "celle des quatre autres",
+        RECENTE.title(): "son nom",
+    }
+    for mention, quoi in attendus.items():
+        assert mention in annonce, (
+            f"le sous-titre d'A1 ne porte plus {quoi} (« {mention} ») : « {annonce} ». "
+            "Une figure qui sort du périmètre commun le dit là, pas ailleurs"
         )
+
+    note = note_a1()
+    assert f"{recente[1]} dépassements" in note, (
+        f"la note d'A1 n'annonce plus les {recente[1]} dépassements de la station écartée "
+        f"« {note} » — c'est la seule chose qui réponde à « alors il en manque au total ? »"
+    )
 
     # À armes égales : 2024-2025, la fenêtre où les cinq stations existent toutes.
     voisine = "AJACCIO CANETTO"
