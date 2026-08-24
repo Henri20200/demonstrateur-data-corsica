@@ -185,8 +185,10 @@ côté air comme côté température.</p>
     Corte est plus près, mais sa cuvette encaissée creuse les écarts de température d'une
     façon qui fausserait la comparaison. Chaque figure nomme le poste utilisé.</li>
 <li><strong>Une station est récente.</strong> Ajaccio Confina 2 ne mesure que depuis
-    janvier 2024, quand les quatre autres remontent à 2006-2011. Ses effectifs sont donc plus
-    faibles, ce que les figures indiquent au survol.</li>
+    janvier 2024, quand les quatre autres remontent à 2006-2011. Le décompte en nombre de
+    journées l'écarte pour cette raison — deux étés ne se comparent pas à six en longueur de
+    barre — et la figure le dit sous elle. La comparaison en part des journées mesurées, elle,
+    la garde : c'est justement ce qu'une part permet.</li>
 <li><strong>Les figures portent toutes le même périmètre</strong> — étés 2020 à 2025,
     stations dites « de fond », journées valides — pour que deux chiffres pris sur deux
     figures puissent se lire l'un à côté de l'autre.</li>

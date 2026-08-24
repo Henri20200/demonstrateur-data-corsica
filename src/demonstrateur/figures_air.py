@@ -52,6 +52,19 @@ ANNEES = "extract('year' FROM date_locale) BETWEEN 2020 AND 2025"
 # sortir du filtre qui trace les courbes. Tant que ce nombre était une constante, il a
 # annoncé cinq stations là où le filtre en retient quatre.
 OU_A3 = f"influence = 'Fond' AND station <> 'VENACO' AND {ETES} AND {ANNEES}"
+# Périmètre de A1 (24/08/2026), plus court d'une station que le périmètre commun.
+# A1 compte des JOURNÉES : la longueur d'une barre y est l'affirmation, et une barre ne
+# se compare qu'à dénominateur comparable. Ajaccio Confina 2 est ouverte depuis le
+# 31/01/2024 — 180 journées d'été mesurées, contre 520 à 544 pour les quatre autres. Ses
+# 4 dépassements la plaçaient donc SOUS les 8 de Canetto, quand sur la fenêtre où les
+# cinq stations existent toutes (2024-2025) elle dépasse quatre fois plus souvent que
+# lui. La figure classait deux stations à l'envers. Écrire « 4 sur 180 » à côté de la
+# barre n'y aurait rien changé : c'est la longueur qu'on lit, pas l'étiquette.
+# Elle reste dans A4, qui compte en PART des journées mesurées — là, une fenêtre courte
+# ne fausse plus la comparaison, c'est même la raison d'être de cette figure-là.
+RECENTE = "AJACCIO CONFINA 2"
+OU_A1 = (f"valide AND {ETES} AND {ANNEES} AND influence = 'Fond' "
+         f"AND station <> '{RECENTE}'")
 # Périmètre dit en langue courante (04/08/2026) : « stations de fond, journées
 # réglementairement valides » est exact mais illisible pour qui n'est pas du métier — or
 # cette ligne est la SEULE que tous les lecteurs voient, sur les cinq figures. Renvoyer
@@ -122,6 +135,41 @@ def st_a3() -> str:
     return _sous_titre(
         f"{NOMBRES.get(n, str(n))} stations mesurant les deux polluants.<br>Chaque courbe "
         "est ramenée à son propre maximum : on compare des heures, pas des concentrations.")
+
+
+def note_a1() -> str:
+    """Note de A1 — une fonction, pas une constante, pour la même raison que `st_a3()`.
+
+    Les effectifs qu'elle cite SONT l'argument de l'exclusion. Écrits à la main, ils
+    deviendraient faux au premier été de plus sans que rien ne le dise, et la note
+    défendrait alors une décision par des chiffres qui ne la fondent plus.
+    """
+    con = _con()
+    etes_recente, jours, depassements = con.execute(f"""
+        SELECT count(DISTINCT extract('year' FROM date_locale)), count(*),
+               count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE})
+        FROM '{MDA8}'
+        WHERE valide AND {ETES} AND {ANNEES} AND station = '{RECENTE}'
+    """).fetchone()
+    etes, = con.execute(f"""
+        SELECT count(DISTINCT extract('year' FROM date_locale))
+        FROM '{MDA8}' WHERE {OU_A1}
+    """).fetchone()
+    mini, maxi = con.execute(f"""
+        SELECT min(n), max(n)
+        FROM (SELECT count(*) AS n FROM '{MDA8}' WHERE {OU_A1} GROUP BY station)
+    """).fetchone()
+    # Trois lignes une fois repliée à 64 signes (`viz.LARGEUR_PIED`), pas plus : le pied
+    # porte déjà trois lignes de source, et une note qui déborde se raccourcit — la marge
+    # basse d'une figure n'est pas une variable d'ajustement du texte. C'est ce qui a fait
+    # tomber la mention « la figure suivante, en part, la garde » : quatre lignes, et
+    # `verifier_pied` refusait. Cette moitié-là vit dans la note méthodologique.
+    return (f"{RECENTE.title()} n'est pas comptée ici : "
+            f"{NOMBRES[etes_recente].lower()} étés de mesures ({jours} journées) ne se "
+            f"comparent pas à {NOMBRES[etes].lower()} ({mini} à {maxi}). "
+            f"Ses {depassements} dépassements tombent tous des jours déjà comptés.")
+
+
 ST_A4 = _sous_titre(
     "En part des journées mesurées, et non en nombre de jours — "
     "une station de campagne, quatre de ville.")
@@ -142,8 +190,7 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     con = _con()
     df = con.execute(f"""
         WITH j AS (
-          SELECT date_locale, station, mda8 FROM '{MDA8}'
-          WHERE valide AND {ETES} AND {ANNEES} AND influence = 'Fond'),
+          SELECT date_locale, station, mda8 FROM '{MDA8}' WHERE {OU_A1}),
         h AS (SELECT date_locale, station, max(valeur) AS horaire_max
               FROM '{SERIE}' WHERE polluant = 'O3' GROUP BY 1, 2)
         SELECT j.station,
@@ -154,13 +201,16 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     """).df()
     # Le total affiché compte des JOURNÉES DISTINCTES, jamais la somme des barres : une
     # journée chargée déclenche plusieurs stations à la fois, et additionner les colonnes
-    # donnerait 173 « journées » là où le calendrier n'en compte que 106 — un lecteur
-    # comprendrait qu'il y a eu 173 jours de dépassement sur la période. Les barres, elles,
+    # donnerait 169 « journées » là où le calendrier n'en compte que 106 — un lecteur
+    # comprendrait qu'il y a eu 169 jours de dépassement sur la période. Les barres, elles,
     # comptent bien des journées PAR STATION : chacune est juste dans son périmètre.
+    # Ce total est celui des quatre stations tracées, et il vaut celui des cinq : Confina 2
+    # n'apporte ni une journée mesurée ni un dépassement que les autres n'aient déjà. La
+    # note le dit au lecteur, un test le tient.
     journees, mesurees = con.execute(f"""
         SELECT count(DISTINCT CASE WHEN mda8 > {OBJECTIF_QUALITE} THEN date_locale END),
                count(DISTINCT date_locale)
-        FROM '{MDA8}' WHERE valide AND {ETES} AND {ANNEES} AND influence = 'Fond'
+        FROM '{MDA8}' WHERE {OU_A1}
     """).fetchone()
     alertes = int(df["alertes"].sum())
     if alertes:
@@ -199,8 +249,11 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
                                    f"{OBJECTIF_QUALITE} µg/m³ (six étés cumulés)",
                               font=AXE)),
         yaxis=dict(title=""),
-        margin=dict(t=170, b=170, l=250, r=90),
-        height=560,
+        # b et height relevés ensemble de 70 px (24/08/2026) : la note d'exclusion ajoute
+        # trois lignes au pied, et `verifier_pied` refuse une figure qui les rognerait.
+        # Les monter toutes deux garde la zone de tracé à sa hauteur.
+        margin=dict(t=170, b=240, l=250, r=90),
+        height=630,
     )
     return fig
 
@@ -510,7 +563,7 @@ def main() -> int:
     d_meteo = date_collecte("meteo_horaire_corse")
 
     export_html(fig_a1_depassements_sans_alerte(), "a1_depassements_sans_alerte",
-                SRC_AIR, d_air, sous_titre=ST_A1)
+                SRC_AIR, d_air, sous_titre=ST_A1, note=note_a1())
     export_html(fig_a2_ozone_et_chaleur(), "a2_ozone_et_chaleur",
                 SRC_AIR_METEO, d_meteo, sous_titre=ST_A2, note=NOTE_A2,
                 pied_decalage_px=PIED_A2)

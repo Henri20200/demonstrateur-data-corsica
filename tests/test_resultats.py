@@ -1199,18 +1199,22 @@ def test_le_total_affiche_compte_des_journees_et_non_des_couples(con):
     """Le chiffre mis en avant par A1 est un nombre de JOURNÉES du calendrier.
 
     Une journée chargée fait dépasser plusieurs stations à la fois : additionner les
-    barres donne un total de couples journée-station (173), très supérieur au nombre de
+    barres donne un total de couples journée-station (169), très supérieur au nombre de
     journées réellement concernées (106). Publier le premier en disant « journées »
-    laisserait entendre qu'il y a eu 173 jours de dépassement sur la période. Le test
+    laisserait entendre qu'il y a eu 169 jours de dépassement sur la période. Le test
     tient l'écart entre les deux : s'il disparaissait, c'est que le calcul a glissé.
+
+    Le décompte se fait sur le périmètre de la FIGURE (`OU_A1`, une station de fond de
+    moins depuis le 24/08/2026), parce que c'est ce que le lecteur a sous les yeux et
+    peut additionner. Recopier ici un périmètre voisin ferait comparer le total publié à
+    une somme que la figure ne montre pas.
     """
+    from demonstrateur.figures_air import OU_A1
+
     couples, journees = con.execute(
         f"""SELECT count(*) FILTER (WHERE mda8 > 120),
                    count(DISTINCT CASE WHEN mda8 > 120 THEN date_locale END)
-            FROM '{MDA8.as_posix()}'
-            WHERE valide AND influence = 'Fond'
-              AND extract('month' FROM date_locale) IN (6, 7, 8)
-              AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025"""
+            FROM '{MDA8.as_posix()}' WHERE {OU_A1}"""
     ).fetchone()
     assert journees < couples, (
         f"{journees} journées pour {couples} couples journée-station : les deux devraient "
@@ -1223,6 +1227,94 @@ def test_le_total_affiche_compte_des_journees_et_non_des_couples(con):
     assert any(f"{journees} journées" in t for t in textes), (
         f"A1 doit afficher les {journees} journées distinctes, jamais les {couples} "
         "couples journée-station"
+    )
+
+
+@besoin_serie
+def test_a1_ecarte_la_station_recente_sans_perdre_une_journee(con):
+    """A1 compte des journées : la longueur d'une barre y est l'affirmation.
+
+    Ajaccio Confina 2 mesure depuis janvier 2024, les quatre autres depuis 2006-2011.
+    Cumulés sur six étés, ses dépassements se lisaient sous ceux d'Ajaccio Canetto —
+    l'ordre inverse de celui qu'on obtient à armes égales. Elle est donc hors de A1
+    depuis le 24/08/2026 ; A4, qui compte en part des journées mesurées, la garde : là,
+    une fenêtre courte ne fausse plus rien.
+
+    Quatre choses à tenir, dont trois que la note publiée affirme au lecteur :
+      - l'exclusion ne coûte rien au chiffre mis en avant — la station n'apporte ni une
+        journée mesurée ni un dépassement que les autres n'aient déjà ;
+      - ce qui reste est comparable pour de bon, les quatre dénominateurs se tenant à
+        quelques pour cent quand la station écartée en était au tiers ;
+      - les effectifs cités par la note sont ceux de la donnée, pas ceux d'hier ;
+      - l'inversion existe encore. Le jour où elle cesse — la station accumule des étés
+        — l'exclusion n'a plus lieu d'être : c'est cette dernière assertion qui le dira,
+        et la bonne réponse sera de rejuger la figure, pas de desserrer le test.
+    """
+    from demonstrateur.figures_air import (
+        NOMBRES, OU_A1, RECENTE, fig_a1_depassements_sans_alerte, note_a1,
+    )
+
+    src = MDA8.as_posix()
+    fond = ("valide AND influence = 'Fond' "
+            "AND extract('month' FROM date_locale) IN (6, 7, 8) "
+            "AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025")
+    total = (f"""SELECT count(DISTINCT CASE WHEN mda8 > 120 THEN date_locale END),
+                        count(DISTINCT date_locale) FROM '{src}' WHERE """)
+
+    avec = con.execute(total + fond).fetchone()
+    sans = con.execute(total + OU_A1).fetchone()
+    assert avec == sans, (
+        f"retirer {RECENTE} déplace le total affiché : {avec} avec, {sans} sans. La note "
+        "dit que ses dépassements sont déjà comptés ailleurs — elle ne le dit plus"
+    )
+
+    jours = dict(con.execute(
+        f"SELECT station, count(*) FROM '{src}' WHERE {OU_A1} GROUP BY 1").fetchall())
+    assert len(jours) == 4, f"A1 devrait tracer quatre stations, pas {len(jours)}"
+    ecart = (max(jours.values()) - min(jours.values())) / max(jours.values())
+    assert ecart < 0.10, (
+        f"les dénominateurs de A1 s'écartent de {ecart:.0%} ({jours}) : des barres de "
+        "longueurs comparables ne comparent plus rien"
+    )
+
+    tracees = [str(y) for y in fig_a1_depassements_sans_alerte().data[0].y]
+    assert len(tracees) == 4 and not any(RECENTE.title() in y for y in tracees), (
+        f"{RECENTE} est de retour dans A1 : {tracees}"
+    )
+
+    recente = con.execute(
+        f"""SELECT count(*), count(*) FILTER (WHERE mda8 > 120) FROM '{src}'
+            WHERE {fond} AND station = '{RECENTE}'"""
+    ).fetchone()
+    profondeur = "SELECT count(DISTINCT extract('year' FROM date_locale)) FROM '%s'" % src
+    etes_recente, = con.execute(f"{profondeur} WHERE {fond} AND station = '{RECENTE}'").fetchone()
+    etes_tracees, = con.execute(f"{profondeur} WHERE {OU_A1}").fetchone()
+    note = note_a1()
+    attendus = [str(n) for n in (*recente, min(jours.values()), max(jours.values()))]
+    attendus += [NOMBRES[etes_recente].lower(), NOMBRES[etes_tracees].lower()]
+    for mention in attendus:
+        assert mention in note, (
+            f"la note de A1 ne porte plus « {mention} » : « {note} ». Les effectifs sont "
+            "l'argument de l'exclusion — une note qui ne les dit plus ne la justifie plus"
+        )
+
+    # À armes égales : 2024-2025, la fenêtre où les cinq stations existent toutes.
+    voisine = "AJACCIO CANETTO"
+    taux = dict(con.execute(
+        f"""SELECT station, 100.0 * count(*) FILTER (WHERE mda8 > 120) / count(*)
+            FROM '{src}' WHERE valide AND influence = 'Fond'
+              AND extract('month' FROM date_locale) IN (6, 7, 8)
+              AND extract('year' FROM date_locale) BETWEEN 2024 AND 2025
+            GROUP BY 1"""
+    ).fetchall())
+    brut = dict(con.execute(
+        f"""SELECT station, count(*) FILTER (WHERE mda8 > 120)
+            FROM '{src}' WHERE {fond} GROUP BY 1"""
+    ).fetchall())
+    assert taux[RECENTE] > taux[voisine] and brut[RECENTE] < brut[voisine], (
+        f"{RECENTE} : {taux[RECENTE]:.1f} % contre {taux[voisine]:.1f} % à armes égales, "
+        f"{brut[RECENTE]} dépassements contre {brut[voisine]} sur six étés cumulés — "
+        "l'inversion qui motivait l'exclusion a disparu, la figure est à rejuger"
     )
 
 # --- Verrous de l'étude en prose (docs/etude.md) -----------------------------
