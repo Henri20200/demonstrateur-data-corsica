@@ -342,6 +342,10 @@ directement la quantité d'électricité qui aurait pu être produite en plus.
 En Corse, le gestionnaire peut limiter certaines productions solaires et éoliennes sans
 stockage afin de maintenir leur part instantanée sous le seuil réglementaire de 35 %.
 
+Les données disponibles ne permettent pas d'isoler exactement ces installations. Nous
+mesurons donc un indicateur plus large : la part cumulée de l'ensemble du solaire et de
+l'éolien.
+
 En 2024, la part cumulée du solaire et de l'éolien a dépassé 35 % pendant environ 15 % des
 heures en Corse. En Sardaigne, selon le dénominateur retenu, cette proportion se situe
 entre 36 et 52 %. Les épisodes sardes ne sont pas de simples pointes : ils durent huit
@@ -349,20 +353,18 @@ heures en médiane, et le plus long de 2024 a duré plus de trois jours.
 
 Les deux îles ne fonctionnent pas de la même manière. La Sardaigne produit chaque année
 environ 45 % de plus qu'elle ne consomme, alors que la Corse reçoit plus du quart de son
-électricité par les câbles sous-marins. La Sardaigne reste aussi plus thermique que la
-Corse sur chacune des six années étudiées. Mais l'écart varie beaucoup selon les années :
-ce n'est pas le résultat principal de cette comparaison.
+électricité par les câbles sous-marins.
 
-La Corse tire environ un quart de son courant de ses barrages, la Sardaigne presque rien
-; l'éolien fait l'inverse, 2 % d'un côté contre 16 % de l'autre. Le solaire, lui, occupe
-une place très proche dans les deux cas : 16 % en Corse, 14 % en Sardaigne. Cette
-différence se retrouve aussi dans la façon dont les deux îles utilisent leurs
-interconnexions.
+La Corse tire environ un quart de sa production locale de ses barrages, contre presque
+rien en Sardaigne. À l'inverse, l'éolien représente environ 16 % en Sardaigne contre 2 %
+en Corse. Le solaire occupe une place proche dans les deux cas : 16 % en Corse et 14 % en
+Sardaigne.
 
-Pendant les heures où solaire et éolien dépassent 35 %, SAPEI est en export 96 % du temps.
-Le flux moyen atteint 530 mégawatts, contre 86 pendant les autres heures, tandis que la
-consommation sarde varie peu. Une partie de la production supplémentaire est donc évacuée
-vers le continent.
+Les flux de SAPEI montrent aussi ce qui se passe pendant les périodes de forte production
+solaire et éolienne. Pendant les heures où solaire et éolien dépassent 35 %, SAPEI est en
+export 96 % du temps. Le flux moyen atteint 530 MW, contre 86 MW pendant les autres
+heures, tandis que la consommation sarde varie peu. Une partie de la production
+supplémentaire est donc évacuée vers le continent.
 
 Cette comparaison ne montre pas que la Corse pourrait relever son seuil à conditions
 inchangées. Les deux réseaux diffèrent notamment par leurs interconnexions et par leur
