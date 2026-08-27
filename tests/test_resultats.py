@@ -10,7 +10,7 @@ pas passer inaperçue. Nécessite le pipeline : `fetch-data` puis
 import duckdb
 import pytest
 
-from demonstrateur.config import DATA_PROCESSED, DATA_RAW
+from demonstrateur.config import DATA_PROCESSED, DATA_RAW, OUTPUTS
 from demonstrateur.prepare import APPARIEMENT_AIR_METEO, STATIONS_AIR
 
 COURBE = DATA_PROCESSED / "edf_courbe_corse.parquet"
@@ -204,8 +204,13 @@ def test_sardaigne_thermique_domine(con):
                    100.0*sum(autre_mw)/sum(production_totale_mw)
             FROM '{SARD.as_posix()}'"""
     ).fetchone()
-    assert s[0] == pytest.approx(69.1, abs=1.0), (
-        f"thermique sarde = {s[0]:.1f} % — le titre « deux îles thermiques » de T6 à revoir"
+    # Plus de seuil sur la MOYENNE six ans : elle ne décrit aucune année (le thermique
+    # sarde va de 73,3 à 65,9 %) et T6 ne la publie plus. Ce qui est verrouillé est
+    # l'invariant qui fonde le titre, et il est annuel — cf.
+    # test_sardaigne_plus_thermique_chaque_annee.
+    assert 60.0 <= s[0] <= 80.0, (
+        f"thermique sarde = {s[0]:.1f} % — hors de tout ordre de grandeur plausible, "
+        "la correspondance des codes PSR est à revoir avant publication"
     )
     # Le poste « autre » sarde n'a AUCUNE contrepartie corse (T6 code un « autre » corse à
     # 0,0 en dur). S'il redevient non nul, la figure recommence à empiler un bloc qui n'a
@@ -272,6 +277,279 @@ def test_heure_locale_sarde_est_bien_locale(con):
         )
 
 
+@besoin_sard
+@besoin_courbe
+def test_sardaigne_plus_thermique_chaque_annee(con):
+    """T6 : l'invariant du titre est ANNUEL, et c'est le seul qui résiste.
+
+    La moyenne six ans donnait 13,7 points d'écart entre les deux îles. L'écart réel va
+    de 6,8 (2022) à 20,8 points (2020) : cette magnitude n'est pas un résultat, c'est un
+    artefact de moyenne. Ce qui tient, année après année, est l'ORDRE — et c'est ce que
+    la figure affiche depuis le 27/08/2026.
+    """
+    from demonstrateur.figures import mix_t6_annuel
+
+    annees, corse, sard = mix_t6_annuel()
+    assert len(annees) == 6, f"T6 ne couvre plus six années mais {annees}"
+    inversions = [a for a, c, s in zip(annees, corse, sard) if s <= c]
+    assert not inversions, (
+        f"la Corse atteint ou dépasse la Sardaigne en {inversions} — le titre de T6 "
+        "« plus thermique que la Corse, chaque année » ne tient plus"
+    )
+    # Les deux formes, qui justifient de tracer une série plutôt qu'une barre : la
+    # Sardaigne baisse franchement, la Corse ne baisse pas — elle oscille avec l'eau.
+    assert sard[0] - sard[-1] >= 5.0, (
+        f"thermique sarde {sard[0]:.1f} % -> {sard[-1]:.1f} % — la baisse annoncée par la "
+        "figure a disparu ; une série annuelle ne se justifie plus de la même façon"
+    )
+    assert max(corse) - min(corse) >= 10.0, (
+        f"thermique corse dans une plage de {max(corse)-min(corse):.1f} points — la forte "
+        "variabilité interannuelle corse, second message de la figure, ne tient plus"
+    )
+
+
+@besoin_sard
+def test_la_step_sarde_est_hors_de_l_hydraulique_et_hors_du_total(con):
+    """La restitution de STEP est isolée, et n'entre dans aucun dénominateur.
+
+    Confondue avec l'hydraulique jusqu'au 27/08/2026, elle en formait 42 % de la barre
+    et invitait à comparer 3,65 % sardes aux 28 % corses, qui sont de la production pure
+    — la Corse n'a aucune STEP. Ce verrou tient les deux moitiés de la correction :
+    `step_mw` existe et n'est pas vide, et `production_totale_mw` ne le compte pas.
+    """
+    step, hyd, tot, somme = con.execute(
+        f"""SELECT sum(step_mw), sum(hydraulique_mw), sum(production_totale_mw),
+                   sum(thermique_mw + hydraulique_mw + solaire_mw + eolien_mw
+                       + bioenergies_mw + autre_mw)
+            FROM '{SARD.as_posix()}'"""
+    ).fetchone()
+    assert step > 0, "step_mw est vide — B10 est retombé dans une autre filière"
+    assert tot == pytest.approx(somme, rel=1e-9), (
+        "production_totale_mw ne vaut plus la somme des six filières — un poste s'y est "
+        "glissé, la STEP peut-être"
+    )
+    assert 100.0 * step / tot == pytest.approx(1.5, abs=0.3), (
+        f"restitution de STEP = {100*step/tot:.2f} % de la génération sarde — l'ordre de "
+        "grandeur mesuré (1,52 %) a bougé, vérifier ce que B10 contient"
+    )
+    assert 100.0 * hyd / tot < 3.0, (
+        f"hydraulique sarde = {100*hyd/tot:.2f} % — au-dessus de 3 %, elle a repris du "
+        "turbinage de pompage ; l'hydraulique naturelle vaut 2,14 %"
+    )
+
+
+@besoin_sard
+@besoin_courbe
+def test_t6_le_mix_2024_oppose_l_eau_au_vent(con):
+    """T6, figure d'ouverture : les trois contrastes du millésime 2024.
+
+    Le chapitre écrit « un quart contre presque rien » pour l'hydraulique, « 2 % contre
+    16 % » pour l'éolien, et surtout « 16 contre 14 % » pour le solaire — c'est cette
+    QUASI-ÉGALITÉ qui porte la phrase « ce qui les sépare n'est pas le soleil ». Elle est
+    la plus fragile des trois : deux points d'écart suffisent à la défaire.
+    """
+    from demonstrateur.figures import ANNEE_MIX_T6
+
+    hy_s, so_s, eo_s = con.execute(
+        f"""SELECT 100.0*sum(hydraulique_mw)/sum(production_totale_mw),
+                   100.0*sum(solaire_mw)/sum(production_totale_mw),
+                   100.0*sum(eolien_mw)/sum(production_totale_mw)
+            FROM '{SARD.as_posix()}' WHERE annee = {ANNEE_MIX_T6}"""
+    ).fetchone()
+    hy_c, so_c, eo_c = con.execute(
+        f"""WITH b AS (SELECT sum(thermique_mw) th,
+              sum(hydraulique_mw + coalesce(micro_hydraulique_mw, 0)) hy,
+              sum(photovoltaique_mw) so, sum(eolien_mw) eo, sum(bioenergies_mw) bi
+            FROM '{COURBE.as_posix()}' WHERE annee_locale = {ANNEE_MIX_T6})
+          SELECT 100*hy/(th+hy+so+eo+bi), 100*so/(th+hy+so+eo+bi), 100*eo/(th+hy+so+eo+bi)
+          FROM b"""
+    ).fetchone()
+    assert round(hy_c) == 26 and round(hy_s) == 1, (
+        f"hydraulique {hy_c:.1f} % / {hy_s:.1f} % — l'étude écrit « un quart » contre "
+        "« presque rien »"
+    )
+    assert round(eo_c) == 2 and round(eo_s) == 16, (
+        f"éolien {eo_c:.1f} % / {eo_s:.1f} % — l'étude écrit 2 % contre 16 %"
+    )
+    assert abs(so_c - so_s) <= 3.0, (
+        f"solaire {so_c:.1f} % / {so_s:.1f} %, soit {abs(so_c-so_s):.1f} points d'écart — "
+        "l'étude écrit que le solaire occupe « une place très proche » dans les deux îles, "
+        "et en tire que ce qui les sépare n'est pas le soleil"
+    )
+
+
+@besoin_sard
+@besoin_courbe
+def test_t6_le_seuil_corse_est_depasse_bien_plus_souvent_en_sardaigne(con):
+    """T6 : les trois chiffres du chapitre, et l'invariant qui le fonde.
+
+    « Environ 15 % des heures » côté corse, « entre 36 et 52 % » côté sarde en 2024. Le
+    chapitre ne tient PAS à ces valeurs exactes mais à leur ordre : c'est la borne BASSE
+    sarde — celle qui rapporte à la génération, la plus défavorable à la démonstration —
+    qui doit rester au-dessus de la Corse, sinon la conclusion dépendrait d'un choix de
+    convention que personne ne sait trancher.
+    """
+    from demonstrateur.figures import heures_au_dessus_du_seuil
+
+    annees, corse, sard_gen, sard_charge = heures_au_dessus_du_seuil()
+    assert annees[-1] == 2024, f"T6 ne va plus jusqu'à 2024 mais à {annees[-1]}"
+    faibles = [a for a, c, s in zip(annees, corse, sard_gen) if s <= c]
+    assert not faibles, (
+        f"la borne basse sarde n'excède plus la Corse en {faibles} — la conclusion de T6 "
+        "dépendrait du dénominateur retenu"
+    )
+    assert corse[-1] == pytest.approx(15, abs=2), (
+        f"Corse 2024 : {corse[-1]:.1f} % des heures au-dessus de 35 % — l'étude écrit "
+        "« environ 15 % des heures »"
+    )
+    assert round(sard_gen[-1]) == 36 and round(sard_charge[-1]) == 52, (
+        f"Sardaigne 2024 : {sard_gen[-1]:.1f} à {sard_charge[-1]:.1f} % — l'étude écrit "
+        "« entre 36 et 52 % »"
+    )
+
+
+@besoin_sard
+def test_t6_les_episodes_sardes_durent(con):
+    """T6 : « huit heures en médiane, le plus long de plus de trois jours » (2024).
+
+    Mesuré sur la borne BASSE (dénominateur = génération). C'est ce qui distingue le
+    résultat d'une collection de pointes : une pointe d'une heure ne pose pas au réseau
+    la même question qu'un plateau de trois jours.
+    """
+    p = [x for (x,) in con.execute(
+        f"""SELECT 100.0*(greatest(solaire_mw,0)+greatest(eolien_mw,0))/production_totale_mw
+            FROM '{SARD.as_posix()}' WHERE annee = 2024 ORDER BY date_heure"""
+    ).fetchall()]
+    plages, cur = [], 0
+    for v in p + [0.0]:
+        if v > 35:
+            cur += 1
+        elif cur:
+            plages.append(cur)
+            cur = 0
+    mediane = sorted(plages)[len(plages) // 2]
+    assert mediane == pytest.approx(8, abs=2), (
+        f"durée médiane des plages > 35 % = {mediane} h — l'étude écrit « huit heures "
+        "en médiane »"
+    )
+    assert max(plages) > 72, (
+        f"la plus longue plage de 2024 dure {max(plages)} h — l'étude écrit « plus de "
+        "trois jours »"
+    )
+
+
+@pytest.mark.skipif(
+    not all((DATA_RAW / f"entsoe_sapei_2024_{s}.xml").exists() for s in ("entrant", "sortant")),
+    reason="flux SAPEI absents — fetch-data (jeton ENTSO-E) requis",
+)
+def test_t6_les_episodes_sardes_coincident_avec_l_export(con):
+    """T6 : « exporte 96 % du temps, 530 MW contre 86 » pendant les heures > 35 %.
+
+    C'est le seul étage du chapitre qui touche à un mécanisme, et le plus facile à
+    surinterpréter : il établit une CONCORDANCE horaire, pas un contrefactuel. Le verrou
+    tient donc les trois quantités publiées et rien de plus. SAPEI seule ; SACOI et SARCO
+    ne sont pas comptés, ce que l'encadré du chapitre déclare.
+    """
+    import pandas as pd
+
+    from demonstrateur.prepare import _points_flux_entsoe
+
+    flux = []
+    for sens in ("sortant", "entrant"):
+        for point in _points_flux_entsoe(DATA_RAW / f"entsoe_sapei_2024_{sens}.xml"):
+            flux.append({**point, "sens": sens})
+    con.register("f", pd.DataFrame(flux))
+    con.execute("""CREATE OR REPLACE VIEW net AS
+      WITH par_sens AS (SELECT date_trunc('hour', date_heure_utc) h, sens, avg(mw) mw
+                        FROM f GROUP BY 1, 2)
+      SELECT h, coalesce(max(mw) FILTER (WHERE sens='sortant'), 0)
+              - coalesce(max(mw) FILTER (WHERE sens='entrant'), 0) AS solde
+      FROM par_sens GROUP BY 1""")
+    (hors, pdt), = [tuple(r) for r in [con.execute(f"""
+      WITH j AS (SELECT 100.0*(greatest(s.solaire_mw,0)+greatest(s.eolien_mw,0))
+                        /s.production_totale_mw p, n.solde
+                 FROM '{SARD.as_posix()}' s JOIN net n ON s.date_heure = n.h
+                 WHERE s.annee = 2024)
+      SELECT avg(solde) FILTER (WHERE p <= 35), avg(solde) FILTER (WHERE p > 35) FROM j"""
+    ).fetchone()]]
+    part_export = con.execute(f"""
+      WITH j AS (SELECT 100.0*(greatest(s.solaire_mw,0)+greatest(s.eolien_mw,0))
+                        /s.production_totale_mw p, n.solde
+                 FROM '{SARD.as_posix()}' s JOIN net n ON s.date_heure = n.h
+                 WHERE s.annee = 2024)
+      SELECT 100.0*avg(CASE WHEN solde > 0 THEN 1.0 ELSE 0.0 END) FROM j WHERE p > 35"""
+    ).fetchone()[0]
+    assert round(pdt / 10) * 10 == 530, (
+        f"solde SAPEI pendant les heures > 35 % = {pdt:.0f} MW — l'étude écrit 530"
+    )
+    assert round(hors / 10) * 10 == 90 or round(hors) == 86, (
+        f"solde SAPEI hors épisodes = {hors:.0f} MW — l'étude écrit 86"
+    )
+    assert part_export == pytest.approx(96, abs=1.5), (
+        f"la Sardaigne exporte {part_export:.1f} % des heures > 35 % — l'étude écrit 96 %"
+    )
+
+
+@besoin_sard
+def test_le_solaire_sarde_est_une_progression_pas_un_niveau(con):
+    """Le solaire sarde triple en six ans : aucune moyenne ne le décrit.
+
+    5,0 % en 2019, 14,1 % en 2024. La moyenne de 9,1 % est au-dessus de chacune des trois
+    premières années et au-dessous des deux dernières. C'est la raison pour laquelle
+    l'étude ne publie plus ce pourcentage — indépendamment de la sous-observation du
+    diffus (§ 3.4 de docs/VERIF_ENTSOE_TERNA.md), qui ne retire que 5 à 8 % du total.
+    """
+    serie = [p for _, p in con.execute(
+        f"""SELECT annee, 100.0*sum(solaire_mw)/sum(production_totale_mw)
+            FROM '{SARD.as_posix()}' WHERE annee BETWEEN 2019 AND 2024
+            GROUP BY 1 ORDER BY 1"""
+    ).fetchall()]
+    assert len(serie) == 6, f"série solaire sarde incomplète : {len(serie)} années"
+    assert all(b > a for a, b in zip(serie, serie[1:])), (
+        f"la part solaire sarde n'est plus strictement croissante : "
+        f"{[round(x, 1) for x in serie]}"
+    )
+    assert serie[-1] >= 2 * serie[0], (
+        f"le solaire sarde ne double plus sur la période ({serie[0]:.1f} % -> "
+        f"{serie[-1]:.1f} %) — l'argument contre la moyenne s'affaiblit"
+    )
+
+
+@pytest.mark.skipif(
+    not all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in (2019, 2024)),
+    reason="XML Sardaigne 2019/2024 absents — fetch-data (jeton ENTSO-E) requis",
+)
+def test_le_charbon_sarde_recule_et_la_note_le_date():
+    """La note de T6 DATE le charbon au lieu de le moyenner : 36 % en 2019, 27 % en 2024.
+
+    Même défaut que le solaire si on le moyennait : `B05` va de 36,1 à 26,8 % du courant
+    sarde, et une valeur unique n'en décrirait aucune année. Les deux bornes étant
+    publiées en pied de figure, elles se verrouillent — sinon la note dériverait en
+    silence au prochain millésime, comme le « 65 % » de la section 4 en août 2026.
+    """
+    from collections import defaultdict
+
+    from demonstrateur.prepare import _lignes_entsoe_horaires
+
+    parts = {}
+    for an in (2019, 2024):
+        e = defaultdict(float)
+        for ligne in _lignes_entsoe_horaires(DATA_RAW / f"entsoe_sardaigne_{an}.xml"):
+            e[ligne["code"]] += ligne["mw"]
+        tot = sum(v for k, v in e.items() if k != "B10")  # STEP hors dénominateur
+        parts[an] = 100.0 * e.get("B05", 0.0) / tot
+    assert round(parts[2019]) == 36, (
+        f"charbon sarde 2019 = {parts[2019]:.1f} % — la note de T6 écrit « 36 % en 2019 »"
+    )
+    assert round(parts[2024]) == 27, (
+        f"charbon sarde 2024 = {parts[2024]:.1f} % — la note de T6 écrit « 27 % en 2024 »"
+    )
+    assert parts[2019] - parts[2024] >= 5.0, (
+        f"le charbon sarde ne recule plus que de {parts[2019]-parts[2024]:.1f} points — "
+        "la note de T6 présente ce recul comme un fait"
+    )
+
+
 @besoin_sard_xml
 def test_sardaigne_charbon_igcc():
     """T6 note « 32 % charbon + 32 % IGCC » : reconstruit sur le XML brut 2023 (via le parser)."""
@@ -292,14 +570,68 @@ def test_sardaigne_charbon_igcc():
 
 @besoin_mix
 def test_fraicheur_temps_reel(con):
-    """Le dernier relevé du mix doit avoir moins de 48 h (seuil de blocage « en ce moment »)."""
+    """Le dernier relevé du mix doit tenir sous le seuil de blocage éditorial.
+
+    La borne SUIT `FRAICHEUR_BLOQUER_H` au lieu de la recopier : une constante déplacée
+    sans que ce test bouge laisserait publier une donnée que la page elle-même déclare
+    trop ancienne.
+    """
+    from demonstrateur.figures import FRAICHEUR_BLOQUER_H
+
     age_h = con.execute(
         f"""SELECT extract(epoch FROM (now() - max("date")))/3600.0 FROM '{MIX.as_posix()}'"""
     ).fetchone()[0]
-    assert age_h <= 48, (
-        f"dernier relevé vieux de {age_h:.0f} h (> 48 h) — relancer fetch-data puis prepare "
-        "avant toute publication « en ce moment »"
+    assert age_h <= FRAICHEUR_BLOQUER_H, (
+        f"dernier relevé vieux de {age_h:.0f} h (> {FRAICHEUR_BLOQUER_H} h) — relancer "
+        "fetch-data puis prepare avant publication"
     )
+
+
+@besoin_mix
+@pytest.mark.skipif(
+    not (OUTPUTS / "t1_soleil_live.html").exists(),
+    reason="t1_soleil_live.html absent — lancer python -m demonstrateur.figures",
+)
+def test_t1_calcule_sa_fraicheur_chez_le_lecteur(con):
+    """La page de T1 date son relevé À L'OUVERTURE, avec les seuils du code.
+
+    Deux façons de perdre cette propriété sans que rien ne casse : déplacer
+    FRAICHEUR_AVERTIR_H / FRAICHEUR_BLOQUER_H et laisser la page avertir sur l'ancienne
+    valeur (deux définitions de la péremption, dont une invisible) ; ou publier un
+    instant que `Date()` ne sait pas lire, auquel cas le script se tait et la page
+    redevient muette sur son âge — exactement le défaut qu'il corrige. Le verrou tient
+    donc les trois : l'instant EST celui de la donnée, il est au format que toutes les
+    implémentations acceptent, et les seuils sont les mêmes des deux côtés.
+    """
+    import re
+    from datetime import datetime
+
+    from demonstrateur.figures import FRAICHEUR_AVERTIR_H, FRAICHEUR_BLOQUER_H
+
+    page = (OUTPUTS / "t1_soleil_live.html").read_text(encoding="utf-8")
+
+    seuils = re.search(r"AVERTIR = (\d+), BLOQUER = (\d+)", page)
+    assert seuils, "T1 ne recalcule plus sa fraîcheur chez le lecteur"
+    assert (int(seuils.group(1)), int(seuils.group(2))) == (
+        FRAICHEUR_AVERTIR_H, FRAICHEUR_BLOQUER_H
+    ), "les seuils incrustés dans la page ont divergé de ceux du code"
+
+    brut = re.search(r'new Date\("([^"]+)"\)', page)
+    assert brut, "aucun instant de relevé incrusté dans la page"
+    assert brut.group(1).endswith("Z"), (
+        f"instant {brut.group(1)!r} — hors du format UTC/Z, `Date()` peut refuser de le lire"
+    )
+    incruste = datetime.fromisoformat(brut.group(1).replace("Z", "+00:00"))
+    dernier = con.execute(
+        f"""SELECT max("date") FROM '{MIX.as_posix()}'"""
+    ).fetchone()[0]
+    assert incruste == dernier.astimezone(incruste.tzinfo), (
+        f"la page date le relevé du {incruste}, la donnée du {dernier}"
+    )
+
+    externes = [s for s in re.findall(r'(?:src|href)="([^"]+)"', page)
+                if s.startswith(("http://", "https://", "//"))]
+    assert not externes, f"ressource tierce dans la page de T1 : {externes}"
 
 
 @besoin_air
@@ -1403,6 +1735,34 @@ def test_etude_dependance_imports(con):
     )
 
 
+@besoin_courbe
+def test_etude_decompose_la_dependance_electrique(con):
+    """Section 3 : « 28 % par les câbles, 40 % de thermique importé », qui font les 68 %.
+
+    Le total circulait déjà, mais pas sa décomposition. Or c'est elle qui rend le chiffre
+    vérifiable par le lecteur : deux termes qu'il retrouve sur la figure T7, et dont la
+    somme doit tomber juste. Si l'un dérive sans l'autre, l'addition écrite dans la prose
+    devient fausse alors que chaque terme reste plausible — le défaut le plus difficile à
+    voir à la relecture.
+    """
+    im, th = con.execute(
+        f"""SELECT 100.0*sum(importations_mw)/sum(production_totale_mw),
+                   100.0*sum(thermique_mw)/sum(production_totale_mw)
+            FROM '{COURBE.as_posix()}' WHERE annee_locale BETWEEN 2019 AND 2024"""
+    ).fetchone()
+    assert round(im) == 28, (
+        f"câbles = {im:.1f} % — l'étude écrit « environ 28 % arrivait par les câbles »"
+    )
+    assert round(th) == 40, (
+        f"thermique = {th:.1f} % — l'étude écrit « 40 % produit sur l'île par des "
+        "centrales thermiques »"
+    )
+    assert round(im + th) == 68, (
+        f"la somme vaut {im + th:.1f} % — l'étude écrit « 68 % dépendait de l'extérieur », "
+        "et ses deux termes doivent l'expliquer"
+    )
+
+
 @besoin_ecret
 def test_etude_ecretement_progression(con):
     """Étude/T5 : 54 heures de bridage sur 2016, 356 sur 2023."""
@@ -1454,7 +1814,9 @@ def test_etude_hydro_trois_perimetres(con):
         "« un quart de ce que l'île produit elle-même »"
     )
     assert round(totale_loc) == 28, (
-        f"hydraulique totale / génération locale = {totale_loc:.1f} % — T6 écrit 28 %"
+        f"hydraulique totale / génération locale = {totale_loc:.1f} % — caractérisation : "
+        "T6 ne publie plus ce niveau depuis le 27/08/2026, mais un écart signalerait un "
+        "changement de la courbe EDF ou du périmètre"
     )
     assert grande_mix == pytest.approx(18.1, abs=1.0), (
         f"grande hydraulique / mix total = {grande_mix:.1f} % — base de T7 (12 à 22 % par an)"
@@ -1494,11 +1856,15 @@ def test_etude_mix_generation_locale(con):
     # fausse : le reclassement de B20 (22/08/2026) a déplacé ce chiffre de 65 à 69 % sans
     # qu'aucun verrou ne voie que la section 4 écrivait encore 65. Le seul test qui aurait
     # cassé était celui de T6 — c'est-à-dire précisément celui qu'on retouchait.
-    assert round(th_s) == 69, (
-        f"thermique sarde = {th_s:.1f} % — l'étude écrit « 69 % en Sardaigne »"
-    )
-    assert round(hy_s) == 4 and round(so_s) == 9, (
-        f"Sardaigne hydro/solaire = {hy_s:.1f} % / {so_s:.1f} % — l'étude écrit 4 % et 9 %"
+    # CARACTÉRISATION, pas publication. L'étude n'écrit plus de moyenne six ans pour la
+    # Sardaigne : ni le thermique, ni l'hydraulique, ni le solaire. Ces trois valeurs
+    # restent mesurées parce qu'un déplacement signalerait un changement de la source ou
+    # de la correspondance des codes — mais le message ne doit plus prétendre garder une
+    # phrase publiée. Décision du 27/08/2026, après séparation de la STEP.
+    assert 65.0 <= th_s <= 75.0 and 1.5 <= hy_s <= 3.0 and 8.0 <= so_s <= 11.0, (
+        f"Sardaigne, moyenne six ans : thermique {th_s:.1f} %, hydraulique naturelle "
+        f"{hy_s:.1f} %, solaire {so_s:.1f} % — une de ces valeurs a quitté son ordre de "
+        "grandeur ; vérifier PSR_VERS_FILIERE et la sortie de B10 avant toute publication"
     )
     assert round(eo_s) == 15, f"éolien sarde = {eo_s:.1f} % — l'étude écrit « 15 % de vent »"
     rapport = eo_s / corse[3]

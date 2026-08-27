@@ -335,8 +335,17 @@ def ecretement_corse_to_parquet(dest: str) -> None:
     print(f"[ok] {Path(dest).name} — {n} mois ({annees} années pleines, Corse) — écrêtement PV")
 
 
-def _lignes_entsoe_horaires(path) -> list[dict]:
-    """Reconstruit la génération horaire (MW) d'un GL_MarketDocument ENTSO-E.
+def _lignes_entsoe_horaires(path, *, direction: str = "inBiddingZone_Domain.mRID",
+                            code_fixe: str | None = None) -> list[dict]:
+    """Reconstruit la série horaire (MW) d'un GL_MarketDocument ENTSO-E.
+
+    Les deux paramètres nommés servent la charge (`A65`), qui obéit EXACTEMENT aux mêmes
+    règles de reconstruction — report A03, résolutions PT60M/PT15M mêlées, agrégation à
+    l'heure — et n'en diffère que par deux détails : sa série porte
+    `outBiddingZone_Domain.mRID` au lieu d'`inBiddingZone_Domain.mRID`, et elle n'a pas de
+    `MktPSRType` puisqu'il n'y a rien à ventiler. Les valeurs par défaut reproduisent le
+    comportement d'origine à l'identique ; un second parser aurait dupliqué les trois
+    pièges ci-dessous, donc l'occasion de n'en corriger qu'une copie.
 
     Trois pièges gérés (validés empiriquement sur IT-Sardinia 2019-2024) :
      - **curveType A03** : les positions manquantes RECONDUISENT la dernière valeur
@@ -357,9 +366,9 @@ def _lignes_entsoe_horaires(path) -> list[dict]:
     # (heure UTC, code) -> [somme des sous-pas, nombre de sous-pas] pour la moyenne.
     horaire: dict[tuple, list] = {}
     for ts in root.findall(q("TimeSeries")):
-        if ts.find(q("inBiddingZone_Domain.mRID")) is None:
+        if ts.find(q(direction)) is None:
             continue  # série OUT = consommation, hors génération
-        code = ts.find(q("MktPSRType") + "/" + q("psrType")).text
+        code = code_fixe or ts.find(q("MktPSRType") + "/" + q("psrType")).text
         for period in ts.findall(q("Period")):
             res = period.find(q("resolution")).text
             pas = _PT_MINUTES.get(res)
@@ -409,8 +418,27 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
         if not src.exists():
             raise FileNotFoundError(f"{src} manquant — lancer fetch-data (jeton ENTSO-E requis)")
         lignes.extend(_lignes_entsoe_horaires(src))
+        # La CHARGE (`A65`) vient dans le même Parquet, au même pas et au même fuseau, parce
+        # qu'elle sert de DÉNOMINATEUR : le seuil de déconnexion corse rapporte la puissance
+        # intermittente à ce qui transite sur le réseau, et côté corse `production_totale_mw`
+        # inclut les imports. Côté sarde la génération seule n'est pas la même quantité — l'île
+        # produit chaque année ~45 % de plus qu'elle ne consomme. Les deux colonnes coexistent
+        # donc, et la figure dit laquelle elle prend.
+        charge = DATA_RAW / f"entsoe_charge_sardaigne_{an}.xml"
+        if not charge.exists():
+            raise FileNotFoundError(f"{charge} manquant — lancer fetch-data (jeton ENTSO-E requis)")
+        lignes.extend(_lignes_entsoe_horaires(
+            charge, direction="outBiddingZone_Domain.mRID", code_fixe="charge"))
     brut = pd.DataFrame(lignes)
     brut["filiere"] = brut["code"].map(PSR_VERS_FILIERE)
+    # B10 (turbinage de STEP) SORT de l'hydraulique. Ce n'est pas une source primaire :
+    # c'est de l'énergie déjà produite ailleurs, pompée puis rendue — 1 110,9 GWh
+    # restitués sur six ans pour 1 328,4 consommés, soit un rendement de cycle de 0,84.
+    # Confondue avec l'hydraulique, elle en gonflait la barre de 42 % et invitait à
+    # comparer 3,65 % sardes aux 28 % corses, qui sont de la production pure — la Corse
+    # n'a aucune STEP. Cf. docs/VERIF_ENTSOE_TERNA.md § 3.2.
+    brut.loc[brut["code"] == "B10", "filiere"] = "step"
+    brut.loc[brut["code"] == "charge", "filiere"] = "charge"
     inconnus = sorted(brut.loc[brut["filiere"].isna(), "code"].unique())
     if inconnus:
         raise ValueError(f"codes PSR ENTSO-E non mappés {inconnus} — compléter PSR_VERS_FILIERE")
@@ -428,6 +456,8 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
             SELECT date_heure,
               coalesce(sum(mw) FILTER (WHERE filiere='thermique'), 0)   AS thermique_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='hydraulique'), 0) AS hydraulique_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='step'), 0)        AS step_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='charge'), 0)      AS charge_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='solaire'), 0)     AS solaire_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='eolien'), 0)      AS eolien_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='bioenergies'), 0) AS bioenergies_mw,
@@ -449,6 +479,10 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
             extract('hour' FROM (date_heure AT TIME ZONE 'UTC')
                                  AT TIME ZONE 'Europe/Rome')       AS heure_locale,
             thermique_mw, hydraulique_mw, solaire_mw, eolien_mw, bioenergies_mw, autre_mw,
+            -- `step_mw` est TRANSPORTÉ mais reste HORS du total : la restitution d'une
+            -- STEP n'est pas de la génération primaire, et l'inclure au dénominateur
+            -- diluerait toutes les parts d'un poste qui n'a pas d'équivalent corse.
+            step_mw, charge_mw,
             (thermique_mw + hydraulique_mw + solaire_mw + eolien_mw
              + bioenergies_mw + autre_mw)                          AS production_totale_mw
           FROM par_filiere
@@ -1355,7 +1389,8 @@ def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
     if sardaigne_ok:
         plan.append((
             "entsoe_sardaigne.parquet", entsoe_sardaigne_to_parquet,
-            [f"entsoe_sardaigne_{an}" for an in ENTSOE_ANNEES],
+            [f"entsoe_sardaigne_{an}" for an in ENTSOE_ANNEES]
+            + [f"entsoe_charge_sardaigne_{an}" for an in ENTSOE_ANNEES],
         ))
     if sarco_ok:
         plan.append((
@@ -1486,7 +1521,9 @@ def _ecrire_lignee(entrees: dict, sorties: dict) -> None:
 def main() -> int:
     # Garde-fou AUD-01 : on VÉRIFIE tous les bruts AVANT de construire, on construit en
     # staging et on bascule d'un bloc, puis on écrit la lignée sortie -> entrées.
-    sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES)
+    sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists()
+                       and (DATA_RAW / f"entsoe_charge_sardaigne_{an}.xml").exists()
+                       for an in ENTSOE_ANNEES)
     air_ok = Path(AIR).exists()
     meteo_ok = len(list(DATA_RAW.glob("meteo_horaire_corse*.csv.gz"))) == len(METEO_SOURCES)
     aee_ok = len(list(DATA_RAW.glob("aee_*.parquet"))) == len(AEE_SOURCES)

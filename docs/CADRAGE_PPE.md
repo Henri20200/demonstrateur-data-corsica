@@ -54,8 +54,10 @@ la cible est atteinte, ou bien elle ne l'est pas, et la donnée le dit.
 
 ## Les cibles, citées de leur producteur
 
-Toutes tirées du rapport de PPE à l'Assemblée de Corse (2016-2018 / 2019-2023). **Une cible
-se recopie, elle ne se déduit pas** — même règle que la moyenne 8 h de l'ozone.
+Toutes tirées du rapport de PPE à l'Assemblée de Corse (2016-2018 / 2019-2023), sauf la
+dernière ligne, qui vient du **rapport annexé au décret** — un autre document, cité à part
+en fin de page. **Une cible se recopie, elle ne se déduit pas** — même règle que la moyenne
+8 h de l'ozone.
 
 | Cible officielle | Périmètre | Échéance | Ce que le pipeline mesure |
 |---|---|---|---|
@@ -66,6 +68,7 @@ se recopie, elle ne se déduit pas** — même règle que la moyenne 8 h de l'oz
 | ENR garanties **+148 %** : petite hydraulique +12 MW, bois-énergie et bio-déchets +7 MW, PV et éolien avec stockage +30 MW | puissance installée | 2023 | registre EDF (étude carte solaire) |
 | ENR intermittentes **+38 %** : PV sans stockage +20 MW, solaire thermodynamique +12 MW, éolien +12 MW | puissance installée | 2023 | registre EDF |
 | Vazzio : dérogation de 18 000 h entre 2020 et 2023, puis « l'installation devra être mise définitivement à l'arrêt » | thermique | 2023 | hors pipeline — fait à sourcer |
+| « Ces mesures devraient porter la part des énergies renouvelables à **22 %** de la consommation d'énergie finale en 2023, et **40 %** de la production d'électricité » | énergie finale / **production nette livrée au réseau** | 2023 | `edf_courbe_corse` — **38,4 % en 2023**, cf. ci-dessous |
 
 Cibles **relevées** par le décret du 30 juin 2023 (art. 1er), en puissance additionnelle
 **depuis 2015** — à confronter au registre EDF, et non aux cibles de 2015 qu'elles remplacent :
@@ -81,6 +84,42 @@ Cibles **relevées** par le décret du 30 juin 2023 (art. 1er), en puissance add
 Le décret ouvre par ailleurs la centrale du Ricanto aux bioliquides (art. 2), prévoit que
 l'électrification des ports d'Ajaccio et de Bastia « *peut être directe ou recourir à
 l'hydrogène* » (art. 3), et fixe la fin des réseaux GPL au **31 décembre 2038**.
+
+### Les 40 % d'ENR électriques en 2023 : le périmètre est écrit, donc mesurable
+
+Vérifié le 27/08/2026. La phrase figure page 13 du **rapport annexé au décret**, pas dans
+le rapport à l'Assemblée ni dans le décret lui-même, qui ne portent aucun « 40 % ». Sa
+figure 7 la range en colonne « PPE » face aux objectifs nationaux : le national vise 40 %
+de la production électrique en **2030**, la Corse s'est donné le même chiffre pour **2023**.
+
+Le registre compte : « Ces mesures **devraient porter**… » est une conséquence attendue au
+conditionnel, pas une prescription comme les +148 % ou les +38 %. La formulation se recopie
+avec le chiffre.
+
+**Le dénominateur est écrit, et c'est ce qui rend la cible mesurable.** Page 10 du même
+rapport : « En 2014, la production électrique d'origine renouvelable représente **32 % de la
+production nette livrée au réseau** ». Sa figure 6 chiffre ce dénominateur — production
+nette **2 127 GWh**, dont **632 GWh d'interconnexions (29,7 %)**. Les imports sont donc
+**dans** le dénominateur. Notre donnée EDF suit exactement ce découpage :
+`production_totale_mw` est la somme des sept postes, importations comprises (identité
+vérifiée à 0,1 GWh près sur chaque année 2019-2024).
+
+Mesuré sur ce périmètre, ENR = hydraulique + micro-hydraulique + photovoltaïque + éolien +
+bioénergies :
+
+| | 2014* | 2019 | 2020 | 2021 | 2022 | **2023** | 2024 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ENR / production nette | 31,7 % | 27,5 % | 34,2 % | 34,1 % | 26,6 % | **38,4 %** | 32,7 % |
+
+\* valeur du rapport (source EDF) ; les autres calculées sur `edf_courbe_corse`
+(build `71338c8`).
+
+**La cible n'est pas atteinte en 2023 : 38,4 % contre 40 %.** Deux réserves à porter avec
+le chiffre. D'abord la volatilité : 26,6 % en 2022, 38,4 % en 2023, onze points d'écart —
+le rapport lui-même prévient de « la forte fluctuation de la production d'électricité
+d'origine renouvelable due à la prépondérance de l'hydroélectricité ». Un verdict sur la
+seule année d'échéance porte cette fragilité. Ensuite, 2021-2024 sont des millésimes EDF
+**estimés**, 2019-2020 seuls étant validés.
 
 ### Le point qui porte le sujet — et il est déjà établi
 
@@ -181,6 +220,9 @@ l'objectif une fois celui-ci tenu.
 
 ## Sources
 
+- PPE pour la Corse, **rapport annexé au décret** (73 p.) — la cible des 40 % d'ENR
+  électriques y est p. 13, le dénominateur p. 10 —
+  <https://www.ecologie.gouv.fr/sites/default/files/documents/PPE%20Corse%20-%20Rapport.pdf>
 - PPE pour la Corse 2016-2018 / 2019-2023, rapport à l'Assemblée de Corse —
   <https://www.aue.corsica/attachment/649449/>
 - Programmation pluriannuelle de l'énergie, DREAL Corse —

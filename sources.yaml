@@ -215,6 +215,88 @@ sources:
     racine_attendue: GL_MarketDocument
     empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
 
+  # --- Charge totale sarde (ENTSO-E `A65`) : le dénominateur du seuil, pas un décor ---
+  # Le seuil de déconnexion corse (arrêté du 23/04/2008 modifié) rapporte la puissance
+  # intermittente à « la puissance transitant sur le réseau ». Côté corse, la courbe EDF
+  # la donne directement, imports compris. Côté sarde, la génération SEULE n'est pas ce
+  # qui transite : la Sardaigne exporte, donc son dénominateur serait trop petit et la
+  # part surestimée. `A65` (charge réalisée) rend la comparaison homogène, sans quoi on
+  # opposerait deux définitions — le défaut exact que la refonte de T6 vient de corriger
+  # sur la STEP. Six millésimes, mêmes bornes que la génération.
+  entsoe_charge_sardaigne_2019:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A65&processType=A16&outBiddingZone_Domain=10Y1001A1001A74G&periodStart=201901010000&periodEnd=202001010000"
+    filename: "entsoe_charge_sardaigne_2019.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — charge totale, zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
+  entsoe_charge_sardaigne_2020:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A65&processType=A16&outBiddingZone_Domain=10Y1001A1001A74G&periodStart=202001010000&periodEnd=202101010000"
+    filename: "entsoe_charge_sardaigne_2020.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — charge totale, zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
+  entsoe_charge_sardaigne_2021:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A65&processType=A16&outBiddingZone_Domain=10Y1001A1001A74G&periodStart=202101010000&periodEnd=202201010000"
+    filename: "entsoe_charge_sardaigne_2021.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — charge totale, zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
+  entsoe_charge_sardaigne_2022:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A65&processType=A16&outBiddingZone_Domain=10Y1001A1001A74G&periodStart=202201010000&periodEnd=202301010000"
+    filename: "entsoe_charge_sardaigne_2022.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — charge totale, zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
+  entsoe_charge_sardaigne_2023:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A65&processType=A16&outBiddingZone_Domain=10Y1001A1001A74G&periodStart=202301010000&periodEnd=202401010000"
+    filename: "entsoe_charge_sardaigne_2023.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — charge totale, zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
+  entsoe_charge_sardaigne_2024:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A65&processType=A16&outBiddingZone_Domain=10Y1001A1001A74G&periodStart=202401010000&periodEnd=202501010000"
+    filename: "entsoe_charge_sardaigne_2024.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — charge totale, zone IT-Sardinia"
+    format: xml
+    racine_attendue: GL_MarketDocument
+    empreinte_ignore_xml: ["GL_MarketDocument/mRID", "GL_MarketDocument/createdDateTime"]
+
+  # --- Flux physiques SAPEI (ENTSO-E / Terna) : le test causal de T6, rien d'autre ---
+  # A65 établit que la Sardaigne produit chaque année ~45 % de plus qu'elle ne consomme,
+  # mais pas que ce surplus s'écoule PENDANT les épisodes de forte production variable.
+  # SAPEI (Sardaigne <-> Italie Centre-Sud, la liaison principale) sert uniquement à
+  # tester cette concordance horaire. Un seul millésime : 2024, celui où les dépassements
+  # sont les plus nombreux — un test causal se fait où le phénomène est le plus net, pas
+  # partout. SACOI et SARCO ne sont pas comptés ici : l'export mesuré est donc un
+  # PLANCHER, ce qui va dans le sens prudent pour la conclusion qu'on en tire.
+  entsoe_sapei_2024_sortant:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A74G&in_Domain=10Y1001A1001A71M&periodStart=202401010000&periodEnd=202501010000"
+    filename: "entsoe_sapei_2024_sortant.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — flux SAPEI, Sardaigne -> Italie Centre-Sud"
+    format: xml
+    racine_attendue: Publication_MarketDocument
+    empreinte_ignore_xml: ["Publication_MarketDocument/mRID", "Publication_MarketDocument/createdDateTime"]
+  entsoe_sapei_2024_entrant:
+    url: "https://web-api.tp.entsoe.eu/api?securityToken=${ENTSOE_TOKEN}&documentType=A11&out_Domain=10Y1001A1001A71M&in_Domain=10Y1001A1001A74G&periodStart=202401010000&periodEnd=202501010000"
+    filename: "entsoe_sapei_2024_entrant.xml"
+    licence: "ENTSO-E Transparency Platform — réutilisation libre (CC-BY 4.0, attribution ENTSO-E)"
+    producteur: "ENTSO-E Transparency Platform (données Terna) — flux SAPEI, Italie Centre-Sud -> Sardaigne"
+    format: xml
+    racine_attendue: Publication_MarketDocument
+    empreinte_ignore_xml: ["Publication_MarketDocument/mRID", "Publication_MarketDocument/createdDateTime"]
+
   # --- Flux physiques SARCO (ENTSO-E / Terna) : la SEULE contrainte extérieure ---
   # Pourquoi ces six-là et pas la série complète 2019-2024. La liaison SARCO relie le
   # réseau sarde au réseau corse ; ENTSO-E publie ses flux physiques mesurés du côté
