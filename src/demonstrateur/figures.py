@@ -4,13 +4,15 @@ Chaque figure : une question du BRIEF, un périmètre écrit sur la figure, la c
 Pacioli (via viz.export_html). Usage :
     python -m demonstrateur.figures
 
-Fraîcheur du temps réel (décision du 19/07/2026, post-audit) : au-delà de 24 h,
-T1 porte un avertissement visible ; au-delà de 48 h, le titre « en ce moment »
-est bloqué (titre dégradé en « au dernier relevé ») et le run termine en code 1.
+Fraîcheur du temps réel : l'âge du relevé est recalculé CHEZ LE LECTEUR (27/08/2026),
+une page statique ne pouvant pas vieillir toute seule. Au-delà de 12 h elle signale
+une donnée ancienne, au-delà de 24 h une donnée trop ancienne, et le run termine en
+code 1. Le titre, lui, ne promet plus le présent en aucun cas.
 """
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -36,23 +38,32 @@ SRC_ECRET = "EDF — Open Data Groupe EDF (limitations sûreté système)"
 NOTE_ESTIME = "Données EDF estimées à partir de 2021 (2019-2020 validées)."
 
 # Seuils de fraîcheur du temps réel (heures) — cf. docstring du module.
-FRAICHEUR_AVERTIR_H = 24
-FRAICHEUR_BLOQUER_H = 48
+# Seuils de validité ÉDITORIALE de l'instantané, pas de détection de panne : l'âge se
+# calcule chez le lecteur depuis le 27/08/2026, donc ils sont enfin opérants sur la
+# page qu'on a sous les yeux. Cadence normale mesurée de 5 à 7 h : à 24 h la page
+# pouvait avoir manqué trois cycles sans rien signaler.
+FRAICHEUR_AVERTIR_H = 12
+FRAICHEUR_BLOQUER_H = 24
 
 
 def _con():
     return duckdb.connect()
 
 
-# --- Titre 1 : « en ce moment, X % de soleil » -------------------------------
-def fig_t1_soleil() -> tuple[go.Figure, str, str, float]:
+# --- Titre 1 : « au dernier relevé, X % de soleil » --------------------------
+def fig_t1_soleil() -> tuple[go.Figure, str, str, float, str]:
     con = _con()
     r = con.execute(
         f"""SELECT part_soleil, strftime(timezone('Europe/Paris',"date"),'%d/%m/%Y à %Hh%M'),
-                   statut, extract(epoch FROM (now() - "date"))/3600.0
+                   statut, extract(epoch FROM (now() - "date"))/3600.0,
+                   -- UTC suffixé Z : `%z` de DuckDB rend « +02 » sans minutes, que
+                   -- Date() de JavaScript n'est pas tenu de savoir lire (et Safari
+                   -- refuse). L'instant est le même, écrit dans la seule forme que
+                   -- toutes les implémentations acceptent.
+                   strftime(timezone('UTC', "date"), '%Y-%m-%dT%H:%M:%SZ')
             FROM '{MIX}' ORDER BY "date" DESC LIMIT 1"""
     ).fetchone()
-    val, quand, statut, age_h = r
+    val, quand, statut, age_h, instant_iso = r
     fig = go.Figure(go.Indicator(
         mode="gauge+number", value=val,
         number=dict(suffix=" %", font=dict(family=SANS, size=64, color=PALETTE["solaire"])),
@@ -64,13 +75,19 @@ def fig_t1_soleil() -> tuple[go.Figure, str, str, float]:
         ),
         domain=dict(x=[0, 1], y=[0, 0.82]),
     ))
-    # Au-delà du seuil de blocage, l'affirmation « en ce moment » n'est plus tenable :
-    # titre dégradé (garde-fou 7 de RECONNAISSANCE.md — « dégrader proprement »).
-    titre = ("En ce moment, votre kWh corse est fait de <b>soleil</b>"
-             if age_h <= FRAICHEUR_BLOQUER_H
-             else "Au dernier relevé, votre kWh corse était fait de <b>soleil</b>")
+    # Le titre nomme le RELEVÉ, jamais l'instant présent. La page est statique et
+    # republiée ~4 fois par jour : ce que lit le visiteur a de 0 à 7 h, et bien plus si un
+    # run échoue — 18,1 h observées du 18/08 21:03 au 19/08 15:07, 11,7 h le 24/08 quand un
+    # verrou du sujet air a bloqué la publication. Aucun seuil de fraîcheur ne peut voir ces
+    # gels-là : ils s'évaluent DANS le run, et un run qui échoue ne publie rien — la page
+    # que lit le visiteur n'a donc jamais été soumise au test. L'heure exacte du relevé est
+    # au sous-titre ; l'écart, c'est le lecteur qui le fait, et il le peut.
+    # Plus de variante dégradée au seuil haut : le titre ne promettant plus le présent, il n'y a
+    # plus rien à dégrader. Le garde-fou 7 garde ses dents ailleurs, et elles ne bougent
+    # pas — ⚠ en tête du sous-titre et `code = 1` (cf. main()).
+    titre = "Quelle part de l'électricité corse vient du <b>soleil</b> ?"
     fig.update_layout(title=dict(text=titre), height=520)
-    return fig, quand, statut, float(age_h)
+    return fig, quand, statut, float(age_h), instant_iso
 
 
 # --- Titre 2 : la demande grimpe l'été (le « combien », bond juin→juillet) -----
@@ -105,7 +122,7 @@ def fig_t2_demande_mensuelle() -> go.Figure:
         font=dict(family=SANS, size=19, color=PALETTE["accent"]),
     )
     fig.update_layout(
-        title=dict(text="L'été, la demande d'électricité grimpe (+22 % en juillet)"),
+        title=dict(text="En juillet, la demande d'électricité augmente de 22 %"),
         yaxis=dict(title="Demande moyenne (MW)"), bargap=0.38, height=560,
     )
     return fig
@@ -156,7 +173,7 @@ def fig_t2b_surcroit_horaire() -> go.Figure:
         font=dict(family=SANS, size=18, color=PALETTE["accent"]),
     )
     fig.update_layout(
-        title=dict(text="Ce surcroît se joue de l'après-midi au début de soirée"),
+        title=dict(text="En juillet, la hausse est surtout marquée de 14 h à 20 h"),
         xaxis=dict(title="Heure légale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
         yaxis=dict(title="Surcroît juillet − juin (MW)"),
         bargap=0.2, height=560,
@@ -216,7 +233,7 @@ def fig_t3_profil() -> go.Figure:
     # Repère au zénith solaire : le thermique reste au-dessus du soleil à son maximum.
     fig.add_vline(x=h_pic, line=dict(color=PALETTE["rule"], width=1, dash="dot"))
     fig.update_layout(
-        title=dict(text="Même à son zénith, le soleil ne détrône pas le fossile"),
+        title=dict(text="Même en été, le solaire ne dépasse pas le thermique"),
         xaxis=dict(title="Heure légale", dtick=3, ticksuffix="h"),
         yaxis=dict(title="Part du mix (%)", ticksuffix=" %"),
         # Marge haute élargie : la légende (au-dessus du tracé) a SA bande, sous le
@@ -288,30 +305,31 @@ def fig_t4_heure_verte() -> go.Figure:
         FROM '{COURBE}' WHERE heure_locale BETWEEN {h1} AND {h2}
     """).df().iloc[0]
     milieu = (h1 + h2) / 2
-    fig.add_shape(type="rect", x0=h1 - 0.55, x1=h2 + 0.55, y0=0, y1=110,
+    # L'axe s'arrête à 100 % : le mix EST une somme à 100, un axe qui monte à 122 pour
+    # loger une annotation fait mentir l'échelle. Le cadre suit, et l'annotation passe
+    # AU-DESSUS du tracé (yref papier), dans la marge haute libérée par la légende.
+    fig.add_shape(type="rect", x0=h1 - 0.55, x1=h2 + 0.55, y0=0, y1=100,
                   line=dict(color=PALETTE["accent"], width=2.8),
                   fillcolor="rgba(0,0,0,0)", layer="above")
-    # Libellé (décision du 19/07/2026, post-audit) : le chiffre principal reste l'ENR
-    # décentralisée, TOUJOURS qualifiée — jamais « renouvelable » seul ; le total avec
-    # la grande hydraulique (déjà dans la pile) est donné juste dessous.
-    fig.add_annotation(x=milieu, y=110, yshift=16,
-                       text=f"<b>{h1}-{h2} h · {creneau['dec']:.0f} % renouvelable "
-                            "décentralisé</b>",
+    # Une seule annotation, et le chiffre principal reste l'ENR décentralisée, TOUJOURS
+    # qualifiée — jamais « renouvelable » seul (décision du 19/07/2026, post-audit) ;
+    # le total avec la grande hydraulique suit sur la même ligne.
+    fig.add_annotation(x=milieu, xref="x", y=1.0, yref="paper", yanchor="bottom", yshift=12,
+                       text=f"<b>{h1}-{h2} h : {creneau['dec']:.0f} % de renouvelable "
+                            f"décentralisé · {creneau['tot']:.0f} % avec les grands "
+                            "barrages</b>",
                        showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=4,
-                       font=dict(family=SANS, size=18, color=PALETTE["accent"]))
-    fig.add_annotation(x=milieu, y=110, yanchor="top", yshift=-6,
-                       text=f"{creneau['tot']:.0f} % avec la grande hydraulique",
-                       showarrow=False, bgcolor="rgba(252,252,251,0.9)", borderpad=3,
-                       font=dict(family=SANS, size=16, color=PALETTE["ink"]))
+                       font=dict(family=SANS, size=17, color=PALETTE["accent"]))
     fig.update_layout(
-        title=dict(text="Le créneau le plus vert se situe autour de midi"),
+        title=dict(text="Le renouvelable atteint son maximum autour de midi"),
         xaxis=dict(title="Heure légale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
-        yaxis=dict(title="Part du mix (%)", range=[0, 122], ticksuffix=" %"),
-        # Marge haute élargie : à 4 entrées la légende se replie sur 2 rangées en
-        # iframe étroite — il lui faut sa bande entière sous le sous-titre.
-        legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
-        margin=dict(t=210, b=170, l=116, r=56),
-        height=690,
+        yaxis=dict(title="Part du mix (%)", range=[0, 100], ticksuffix=" %"),
+        # La légende passe SOUS le tracé (même solution qu'en T6, arrêtée le 22/07) :
+        # au-dessus, elle partageait la marge haute avec le sous-titre et le recouvrait
+        # dès que celui-ci dépassait deux lignes. On déplace la cause, pas les pixels.
+        legend=dict(orientation="h", y=-0.16, yanchor="top", x=0, traceorder="normal"),
+        margin=dict(t=150, b=300, l=116, r=56),
+        height=700,
     )
     return fig
 
@@ -380,23 +398,10 @@ def fig_t5_ecretement() -> go.Figure:
     return fig
 
 
-# --- Titre 6 : « deux îles thermiques, mais la Sardaigne brûle du charbon » ---
-# Fenêtre de la comparaison, bornée des DEUX côtés. La courbe corse déborde déjà de son
-# millésime — elle porte une heure de 2025 — et EDF publiera 2025 en entier : sans borne,
-# la figure comparerait une Corse 2019-2025 à une Sardaigne 2019-2024 sans que rien ne le
-# signale, sous un sous-titre qui annonce « moyenne 2019-2024 ». Le côté sarde n'en a pas
-# besoin aujourd'hui (le Parquet ne contient que ces six années), mais la borne y est
-# répétée pour que la propriété tenue soit « les deux barres couvrent la même période », et
-# non « la requête est juste aujourd'hui ». Cf. docs/VERIF_ENTSOE_TERNA.md § 5.
+# --- Titre 6 : « la Sardaigne est plus thermique, chaque année » --------------
 FENETRE_T6 = (2019, 2024)
 
-# Une année civile LOCALE des deux côtés, et dite explicitement. Le côté corse la porte
-# désormais en colonne (`annee_locale`, écrite par prepare depuis l'heure légale établie
-# contre le soleil) ; le côté sarde porte un TIMESTAMP naïf d'UTC, qu'il faut déclarer
-# avant de convertir — sans quoi `extract('year')` se lirait dans le fuseau de la MACHINE,
-# et la borne découperait autrement ici et sur le runner CI, qui tourne en UTC. Les deux
-# îles étant à la même longitude et dans le même fuseau, l'année locale est la seule
-# définition qui vaille pour les deux.
+
 _AN_CORSE = "annee_locale"
 _AN_SARD = "extract('year' FROM (date_heure AT TIME ZONE 'UTC') AT TIME ZONE 'Europe/Rome')"
 
@@ -439,61 +444,82 @@ def mix_t6() -> tuple:
             (int(corse["an_min"]), int(corse["an_max"])),
             (int(sard["an_min"]), int(sard["an_max"])))
 
+def mix_t6_annuel() -> tuple:
+    """Les deux parts de thermique de T6, ANNÉE PAR ANNÉE, sur la fenêtre commune.
+
+    Même découpage que `mix_t6` — mêmes bornes, mêmes conventions d'année de chaque
+    côté — mais dégroupé. C'est ce dégroupage qui porte le résultat : une moyenne de six
+    ans donne 13,7 points d'écart entre les deux îles, quand l'écart réel va de 6,8 à
+    20,8 points selon l'année. Renvoie (annees, part_corse, part_sarde).
+    """
+    con = _con()
+    a, b = FENETRE_T6
+    sard = con.execute(f"""
+      SELECT {_AN_SARD}::INT AS an,
+             100.0*sum(thermique_mw)/sum(production_totale_mw) AS part
+      FROM '{SARD}' WHERE {_AN_SARD} BETWEEN {a} AND {b} GROUP BY 1 ORDER BY 1""").df()
+    corse = con.execute(f"""
+      WITH b AS (
+        SELECT {_AN_CORSE}::INT AS an, thermique_mw th,
+               hydraulique_mw + coalesce(micro_hydraulique_mw, 0) hy,
+               photovoltaique_mw so, eolien_mw eo, bioenergies_mw bi
+        FROM '{COURBE}' WHERE {_AN_CORSE} BETWEEN {a} AND {b})
+      SELECT an, 100.0*sum(th)/sum(th+hy+so+eo+bi) AS part
+      FROM b GROUP BY 1 ORDER BY 1""").df()
+    if list(sard["an"]) != list(corse["an"]):
+        raise ValueError(
+            f"T6 : périodes divergentes — Sardaigne {list(sard['an'])}, "
+            f"Corse {list(corse['an'])} ; les deux courbes doivent couvrir les mêmes années."
+        )
+    return [int(x) for x in corse["an"]], list(corse["part"]), list(sard["part"])
+
 
 def fig_t6_corse_sardaigne() -> go.Figure:
-    """Barres 100 % empilées : mix de génération local, Corse vs Sardaigne (2019-2024).
+    """Part du thermique dans la génération locale, ANNÉE PAR ANNÉE, Corse vs Sardaigne.
 
-    Comparaison honnête = GÉNÉRATION seule : on exclut les imports corses (27,8 % de la
-    demande) et on renormalise, car la Sardaigne (exportatrice) n'a pas de poste import
-    dans les données ENTSO-E. Les deux îles sont thermiques (~55 / 69 %), mais la Sardaigne
-    brûle du charbon (+ gaz de synthèse IGCC) quand la Corse tient au fioul + grande hydro.
+    La moyenne sur six ans détruisait le résultat au lieu de le montrer. Mesuré le
+    27/08/2026 : le thermique sarde recule de 73,3 à 65,9 %, tandis que le corse oscille
+    de 47,5 à 64,1 % au gré de l'hydraulicité, sans tendance. L'écart entre les deux îles
+    va donc de 6,8 à 20,8 points selon l'année — la moyenne de 13,7 points ne décrit
+    AUCUNE année, et « près de 14 points » ne se publie pas. Ce qui résiste au choix de
+    l'année, et c'est le message de la figure : la Sardaigne est au-dessus six fois sur six.
+
+    Deux périmètres alignés à la main, faute de producteur commun : on exclut les imports
+    corses (la Sardaigne, exportatrice, n'a pas de poste import chez ENTSO-E) et la
+    restitution de STEP sarde (`step_mw`, hors total depuis le 27/08/2026 — la Corse n'a
+    pas de STEP). De part et d'autre, de la génération primaire locale, et rien d'autre.
     """
-    corse, sard, _, _ = mix_t6()
-
-    # Ordre d'empilement : deux verts (hydro sauge / éolien forêt) jamais adjacents.
-    # Plus de segment « Autre » depuis le reclassement de B20 (22/08/2026) : il vaut zéro
-    # des deux côtés, et une clé de légende qui ne montre aucun segment pose au lecteur une
-    # question que la figure ne répond pas. Ce qui garantit qu'on ne perd rien en le
-    # retirant n'est pas ce commentaire, c'est `test_sardaigne_thermique_domine`, qui tient
-    # ce poste à zéro : s'il redevient non nul, la suite casse avant la publication.
-    filieres = [
-        ("thermique",   "Thermique",   PALETTE["thermique"]),
-        ("hydraulique", "Gde hydraulique", PALETTE["hydro"]),
-        ("solaire",     "Solaire",     PALETTE["solaire"]),
-        ("eolien",      "Éolien",      PALETTE["renouv"]),
-        ("bioenergies", "Bioénergies", PALETTE["accent"]),
-    ]
-    iles = ["Corse", "Sardaigne"]
+    annees, corse, sard = mix_t6_annuel()
+    # L'invariant qui FONDE le titre, vérifié avant de tracer : une seule année où la
+    # Corse rattrape la Sardaigne et la figure doit dire autre chose.
+    inversions = [a for a, c, s in zip(annees, corse, sard) if s <= c]
+    if inversions:
+        raise ValueError(
+            f"T6 : la Corse atteint ou dépasse la Sardaigne en {inversions} — "
+            "« plus thermique chaque année » ne tient plus, titre à revoir."
+        )
     fig = go.Figure()
-    for cle, libelle, couleur in filieres:
-        vals = [float(corse[cle]), float(sard[cle])]
-        # Étiquette directe si le segment est plus large que le texte au plancher
-        # 16 px (seuil ~3 %) ; en dessous, le tooltip prend le relais.
-        textes = [f"{v:.0f}%" if v >= 3 else "" for v in vals]
-        fig.add_trace(go.Bar(
-            y=iles, x=vals, name=libelle, orientation="h",
-            marker=dict(color=couleur, line=dict(width=2, color=PALETTE["surface"])),
-            text=textes, textposition="inside", insidetextanchor="middle",
-            textfont=dict(family=SANS, size=16, color="#FFFFFF"),
-            hovertemplate="%{y} — " + libelle + " : %{x:.1f}%<extra></extra>",
+    for nom, serie, couleur in (("Sardaigne", sard, PALETTE["thermique"]),
+                                ("Corse", corse, PALETTE["accent"])):
+        fig.add_trace(go.Scatter(
+            x=annees, y=serie, name=nom, mode="lines+markers+text",
+            line=dict(color=couleur, width=3), marker=dict(size=9, color=couleur),
+            text=[f"{v:.0f} %" for v in serie], textposition="top center",
+            textfont=dict(family=SANS, size=15, color=couleur),
+            hovertemplate=nom + " %{x} : %{y:.1f} %<extra></extra>",
         ))
     fig.update_layout(
-        title=dict(text="Deux îles thermiques — mais la Sardaigne brûle du charbon"),
-        barmode="stack",
-        # Axe X masqué : les segments portent déjà leur %, l'axe ne ferait que
-        # télescoper le pied de page (barres à 100 %, l'échelle est évidente).
-        xaxis=dict(range=[0, 100], showgrid=False, showticklabels=False,
-                   ticks="", showline=False, zeroline=False),
-        yaxis=dict(showgrid=False, ticks="", autorange="reversed"),  # Corse en haut
-        # Légende UNE LIGNE SOUS les barres (décision du 22/07), puis le pied
-        # (source + note) une bande plus bas — chacun chez soi, plus de télescopage.
-        # La marge basse absorbe la légende même repliée sur 3 rangées (iframe étroite) ;
-        # le pied est abaissé d'autant via pied_y à l'export.
-        legend=dict(orientation="h", y=-0.10, yanchor="top", x=0, traceorder="normal"),
-        # t : de quoi loger le titre (28) et SES TROIS lignes de sous-titre (18) sans que
-        # le tracé remonte dans le propos — cf. `marge_haute_minimale` dans viz.
-        margin=dict(t=180, b=350, l=116, r=56),
-        height=750,
+        title=dict(text="La Sardaigne est plus thermique que la Corse, chaque année"),
+        xaxis=dict(title="", dtick=1, tickformat="d"),
+        yaxis=dict(title="Part du thermique dans la production locale (%)",
+                   range=[0, 100], ticksuffix=" %"),
+        legend=dict(orientation="h", y=-0.14, yanchor="top", x=0, traceorder="normal"),
+        # Bande basse : légende SOUS le tracé, puis le pied encore dessous. 313 px sont
+        # nécessaires au pied (six lignes) ; `b` les couvre avec une réserve, et `height`
+        # suit d'autant pour ne pas écraser la zone de tracé. Gabarit d'une figure neuve,
+        # mesuré par `verifier_pied` — pas une marge poussée pour loger du texte.
+        margin=dict(t=150, b=330, l=116, r=56),
+        height=710,
     )
     return fig
 
@@ -569,7 +595,7 @@ def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
         ("solaire",      "Solaire",                      PALETTE["solaire"]),
     ]
     barres = ["Toute l'énergie consommée<br>(OREGES, 2020)",
-              "L'électricité seule<br>(EDF, 2019-2024)"]
+              "L'électricité consommée<br>(EDF, 2019-2024)"]
 
     # Décimale française — ce sont les seuls chiffres à décimale des visuels (ailleurs
     # des entiers) : sans cela, un « 76.8 % » voisinerait le « 39,9 % » du même segment.
@@ -779,7 +805,7 @@ def fig_t9_hydro_secheresse() -> go.Figure:
         font=dict(family=SANS, size=16, color=PALETTE["accent"]),
     )
     fig.update_layout(
-        title=dict(text="Moins d'eau, plus de thermique"),
+        title=dict(text="Hydraulique et thermique évoluent en sens inverse"),
         xaxis=dict(title="Année", dtick=1),
         yaxis=dict(title="Part du mix (%)", range=[0, 60], ticksuffix=" %"),
         legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
@@ -793,6 +819,42 @@ def fig_t9_hydro_secheresse() -> go.Figure:
     return fig
 
 
+def script_fraicheur(instant_iso: str, sous_titre: str) -> str:
+    """JavaScript local : réécrit le sous-titre de T1 avec l'âge du relevé À L'OUVERTURE.
+
+    Aucune ressource tierce, aucun appel réseau — le script ne lit que deux valeurs
+    incrustées ici : l'instant du relevé et les seuils. Sans JavaScript, la page reste
+    juste : le sous-titre porte déjà la date et l'heure exactes du relevé, et c'est
+    l'affichage de repli. Rafraîchi toutes les cinq minutes pour l'onglet resté ouvert.
+    """
+    base = json.dumps(sous_titre)
+    return f"""
+(function () {{
+  var instant = new Date({json.dumps(instant_iso)});
+  var AVERTIR = {FRAICHEUR_AVERTIR_H}, BLOQUER = {FRAICHEUR_BLOQUER_H};
+  var base = {base};
+  var cible = document.getElementById('t1_soleil_live');
+  if (!cible || isNaN(instant.getTime())) return;
+  function age() {{
+    var h = (Date.now() - instant.getTime()) / 3600000;
+    if (!isFinite(h) || h < 0) return '';
+    var d;
+    if (h < 1) d = "il y a moins d'une heure";
+    else if (h < 24) d = 'il y a ' + Math.round(h) + ' h';
+    else d = 'il y a ' + Math.round(h / 24) + ' j';
+    if (h > BLOQUER) return '<br>⚠ Relevé ' + d + ' : la collecte est en panne.';
+    if (h > AVERTIR) return '<br>⚠ Relevé ' + d + ' — collecte à relancer.';
+    return ' — ' + d + '.';
+  }}
+  function poser() {{
+    Plotly.relayout(cible, {{'title.subtitle.text': base + age()}});
+  }}
+  poser();
+  setInterval(poser, 300000);
+}})();
+"""
+
+
 def main() -> int:
     # Garde de publication (AUD-01) : aucune figure ne se dessine depuis une sortie
     # altérée — chaque Parquet est re-vérifié contre la lignée de build AVANT tout
@@ -804,45 +866,54 @@ def main() -> int:
     d_hist = date_collecte("edf_courbe_charge_horaire")
     code = 0
 
-    fig1, quand, statut, age_h = fig_t1_soleil()
+    fig1, quand, statut, age_h, instant_iso = fig_t1_soleil()
     sous_titre_t1 = f"Dernier relevé du {quand} (statut : {statut.lower()})"
     if age_h > FRAICHEUR_BLOQUER_H:
         # Repli explicite : l'avertissement rallonge le sous-titre au-delà de la largeur
         # du visuel, et un titre Plotly se fait rogner plutôt que replier — le message
         # d'alerte disparaîtrait précisément quand il est le plus utile.
-        sous_titre_t1 = ("⚠ Relevé de plus de 48 h : l'affichage « en ce moment » est "
-                         "suspendu.<br>" + sous_titre_t1)
+        sous_titre_t1 = (f"⚠ Relevé de plus de {FRAICHEUR_BLOQUER_H} h : donnée trop "
+                         "ancienne pour représenter la situation actuelle.<br>"
+                         + sous_titre_t1)
         print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_BLOQUER_H} h) — "
-              "titre « en ce moment » bloqué, visuel dégradé, run en échec.")
+              "avertissement de panne affiché, run en échec.")
         code = 1
     elif age_h > FRAICHEUR_AVERTIR_H:
         sous_titre_t1 = (f"⚠ Relevé de plus de {FRAICHEUR_AVERTIR_H} h — collecte à "
                          "relancer.<br>" + sous_titre_t1)
         print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_AVERTIR_H} h) — "
               "avertissement affiché sur le visuel.")
-    export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix, sous_titre=sous_titre_t1)
+    # L'ÂGE SE CALCULE CHEZ LE LECTEUR, pas à la génération. La page est statique et
+    # republiée ~4 fois par jour ; entre deux passages elle vieillit sans que rien ne
+    # bouge, et un run EN ÉCHEC ne publie pas du tout — les gels de 18,1 h (19/08/2026)
+    # et 11,7 h (24/08/2026) sont passés sous les seuils sans qu'aucun avertissement
+    # puisse s'afficher, puisque le seul code qui les évalue tournait dans le run qui a
+    # échoué. Un âge recalculé à l'ouverture ne dépend d'aucun run : c'est la seule
+    # mesure qui couvre ce cas. Les seuils restent ceux de la génération, ce qui garde
+    # UNE définition de la péremption des deux côtés.
+    export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix, sous_titre=sous_titre_t1,
+                script_apres=script_fraicheur(instant_iso, sous_titre_t1))
     export_html(fig_t2_demande_mensuelle(), "t2_demande_mensuelle", SRC_HIST, d_hist,
                 sous_titre="Demande moyenne mois par mois — Corse, 2019-2024",
                 note=NOTE_ESTIME)
     export_html(fig_t2b_surcroit_horaire(), "t2b_surcroit_horaire", SRC_HIST, d_hist,
                 sous_titre="Écart de demande moyenne juillet − juin, heure par heure — Corse, "
-                           "2019-2024.<br>La cause (résidents, tourisme, climatisation) n'est pas "
-                           "désagrégeable ici : on montre quand, pas pourquoi.",
+                           "2019-2024.<br>Ce graphique montre quand la demande augmente, pas ce "
+                           "qui explique cette hausse.",
                 note=NOTE_ESTIME)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
                 sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
                            "2019-2024.<br>Interconnexions = liaisons SACOI + SARCO.",
                 note=NOTE_ESTIME)
     export_html(fig_t4_heure_verte(), "t4_heure_verte", SRC_HIST, d_hist,
-                sous_titre="Part renouvelable heure par heure, moyenne annuelle — Corse 2019-2024."
-                           "<br>Renouvelable décentralisé = solaire + éolien + bioénergies + petite hydro."
-                           "<br>Maximum à 13 h pour lui, à 12 h avec les grands barrages : d'où un créneau.",
-                note=NOTE_ESTIME)
+                sous_titre="Moyenne heure par heure, Corse 2019-2024.",
+                note="Renouvelable décentralisé = solaire + éolien + bioénergies + petite "
+                     "hydraulique.<br>" + NOTE_ESTIME,
+                pied_decalage_px=-120)
     export_html(fig_t5_ecretement(), "t5_ecretement_solaire", SRC_ECRET,
                 date_collecte("edf_ecretement_corse"),
-                sous_titre="Heures de limitation ou de déconnexion imposées au photovoltaïque par "
-                           "le plafond d'injection<br>— durée maximale subie par un producteur, "
-                           "mois par mois. Corse, 2016-2023.",
+                sous_titre="Durée maximale de limitation observée chez un producteur, mois par "
+                           "mois<br>— Corse, 2016-2023.",
                 note="81 % des heures de bridage ont lieu de mars à juin. Même au pire mois "
                      "(mai 2020 : 141 h),<br>90,5 % de la production ENR intermittente a été "
                      "acceptée — l'écrêtement borne une durée, pas l'énergie perdue du réseau.")
@@ -851,10 +922,10 @@ def main() -> int:
         fig7, "t7_dependance_perimetres",
         "OREGES de Corse / AUE (Lettre 2021, données 2020) & EDF — Open Data Groupe EDF",
         d_hist,
-        sous_titre="Deux périmètres emboîtés, deux bases différentes — ils ne se comparent "
-                   "pas de tête.<br>En haut : toute l'énergie consommée en 2020, chauffage et "
-                   "carburants compris — 605 ktep,<br>soit 605 000 tonnes d'équivalent pétrole. "
-                   "En bas : l'électricité servie en Corse, 2019-2024.",
+        sous_titre="Deux façons de mesurer la dépendance : toute l'énergie consommée en "
+                   "Corse, puis l'électricité seule.<br>En haut : toute l'énergie consommée en "
+                   "2020, transports et chauffage compris.<br>En bas : l'électricité consommée "
+                   "en Corse entre 2019 et 2024.",
         note="Les 86,1 % de l'OREGES couvrent toute l'énergie — carburants et chauffage "
              "compris.<br>Contrôle croisé 2020 : OREGES 36 % / 29,8 % (thermique / "
              "liaisons) ; nos données EDF, 36,0 % / 29,8 %.<br>" + NOTE_ESTIME,
@@ -888,10 +959,8 @@ def main() -> int:
         export_html(fig_t6_corse_sardaigne(), "t6_corse_sardaigne",
                     "EDF (Corse) & ENTSO-E / Terna (Sardaigne)",
                     date_collecte("entsoe_sardaigne_2024"),
-                    sous_titre="Mix de génération électrique, moyenne 2019-2024. Comparaison à "
-                               "périmètre égal :<br>génération locale seule (les 27,8 % d'imports "
-                               "corses sont exclus et le reste<br>renormalisé ; la Sardaigne, "
-                               "exportatrice, n'importe pas).",
+                    sous_titre="Production locale seule, année par année : imports corses "
+                               "et restitution<br>de stockage sarde exclus des deux côtés.",
                     # Plus de « 10× plus grande » : aucun multiplicateur unique ne décrit
                     # cet écart de taille — 4,5× en population, 2,8× en superficie, 7,4× en
                     # production. Un raccourci chiffré sans dénominateur est exactement ce
@@ -902,10 +971,14 @@ def main() -> int:
                     # à 8 lignes, soit 354 px de marge basse pour 350 disponibles. On coupe
                     # le texte plutôt que de pousser `b` et `height` — la place manque au
                     # pied, pas dans la prose de l'étude, qui peut porter la phrase entière.
-                    note="La Sardaigne, plus vaste et plus peuplée, fait 32 % de son courant "
-                         "au charbon et 32 % au gaz de synthèse (IGCC), quasi absents en "
-                         "Corse ;<br>elle a 15 fois plus d'éolien. La Corse compense par la "
-                         "grande hydraulique et les câbles. Corse estimée à partir de 2021.",
+                    # Le charbon sarde se DATE au lieu de se moyenner : 36 % du courant en
+                    # 2019, 27 % en 2024. Une moyenne six ans lui ferait le même sort qu'au
+                    # solaire — un niveau qui ne décrit aucune année. Ce que la Corse oppose
+                    # (fioul, grande hydraulique variable) est dit par le chapitre, pas ici :
+                    # le pied est au gabarit, et on coupe le texte plutôt que la marge.
+                    note="La Sardaigne brûle du charbon — 36 % de son courant en 2019, 27 % en "
+                         "2024 — et du gaz de synthèse,<br>quasi absents en Corse. "
+                         + NOTE_ESTIME,
                     pied_decalage_px=-170)
         print("\n9 visuels exportés dans outputs/")
     else:

@@ -258,6 +258,43 @@ examinée, jamais remplacée en silence ; une catégorie inconnue ou une année 
 arrête tout. Enfin, chaque chiffre publié est protégé par un test. S'il cesse d'être vrai,
 le test le signale avant la mise en ligne.</p>
 
+<h2>Le détail technique, pour qui veut vérifier</h2>
+<p>Cette section est le renvoi annoncé par la section « Définitions et limites » de
+l'étude. Elle n'ajoute aucun résultat : elle décrit les mécanismes qui les protègent.</p>
+<ul>
+<li><strong>Empreinte et manifeste.</strong> Chaque fichier téléchargé est empreint en
+    SHA-256, et l'empreinte est consignée dans un manifeste versionné avec l'adresse
+    exacte, le producteur, la licence, la date de collecte et la taille. À chaque
+    exécution, un fichier déjà présent est <em>revérifié</em> contre cette empreinte :
+    s'il a changé d'un octet, la préparation s'arrête. Aucun Parquet ne dérive d'une
+    donnée non certifiée.</li>
+<li><strong>Le fuseau horaire, établi contre trois repères extérieurs.</strong> La courbe
+    horaire d'EDF est étiquetée en temps universel et ne l'est pas : elle porte l'heure
+    légale de l'île. Nous l'avons d'abord lue au mot, et le chapitre de midi a annoncé
+    « 14 heures » pendant plusieurs semaines. La convention retenue a été confirmée par
+    le rayonnement mesuré aux pyranomètres de Météo-France, par le comportement de la
+    série aux dix changements d'heure de 2020-2024, et par la structure du fichier
+    lui-même. Quatre tests automatiques la tiennent. Le jeu du temps réel, du même
+    producteur, est bien en temps universel : une convention se vérifie par jeu de
+    données, jamais par producteur.</li>
+<li><strong>52 602 heures, et non 52 608.</strong> Six heures sont retirées : les
+    2 heures du matin des dimanches de passage à l'heure d'été, qui n'existent pas en
+    heure légale. EDF les publie quand même, à zéro en 2019, 2020 et 2024, mais garnies
+    de 200 à 250 MW en 2021, 2022 et 2023 — trois années estimées.</li>
+<li><strong>Comment les verrous fonctionnent.</strong> Chaque chiffre publié est
+    reconstruit depuis les données à chaque exécution et comparé à ce que le document
+    affirme. Un écart interrompt la publication : la version précédente reste en ligne,
+    et l'écart doit être examiné. Le 23 août 2026, une correction de notre propre chaîne
+    — celle du fuseau horaire ci-dessus — a fait céder sept de ces verrous d'un coup ;
+    les fenêtres horaires ont été <em>remesurées</em> sur la donnée corrigée, jamais
+    translatées.</li>
+<li><strong>L'âge de l'instantané est calculé chez vous.</strong> La page est fabriquée
+    plusieurs fois par jour puis servie telle quelle : elle ne peut pas vieillir toute
+    seule. La jauge du temps réel embarque donc l'instant exact de son dernier relevé et
+    recalcule son âge à l'ouverture, puis toutes les cinq minutes. Sans cela, une page
+    fabriquée le matin aurait continué d'afficher le même âge tout l'après-midi.</li>
+</ul>
+
 <h2>Citer</h2>
 <p>Production corse et limitations : EDF, Open Data Groupe EDF (Licence Ouverte, Etalab).
 Production sarde : ENTSO-E, plateforme de transparence, données Terna (CC-BY 4.0).

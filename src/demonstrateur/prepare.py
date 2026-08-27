@@ -411,6 +411,13 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
         lignes.extend(_lignes_entsoe_horaires(src))
     brut = pd.DataFrame(lignes)
     brut["filiere"] = brut["code"].map(PSR_VERS_FILIERE)
+    # B10 (turbinage de STEP) SORT de l'hydraulique. Ce n'est pas une source primaire :
+    # c'est de l'énergie déjà produite ailleurs, pompée puis rendue — 1 110,9 GWh
+    # restitués sur six ans pour 1 328,4 consommés, soit un rendement de cycle de 0,84.
+    # Confondue avec l'hydraulique, elle en gonflait la barre de 42 % et invitait à
+    # comparer 3,65 % sardes aux 28 % corses, qui sont de la production pure — la Corse
+    # n'a aucune STEP. Cf. docs/VERIF_ENTSOE_TERNA.md § 3.2.
+    brut.loc[brut["code"] == "B10", "filiere"] = "step"
     inconnus = sorted(brut.loc[brut["filiere"].isna(), "code"].unique())
     if inconnus:
         raise ValueError(f"codes PSR ENTSO-E non mappés {inconnus} — compléter PSR_VERS_FILIERE")
@@ -428,6 +435,7 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
             SELECT date_heure,
               coalesce(sum(mw) FILTER (WHERE filiere='thermique'), 0)   AS thermique_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='hydraulique'), 0) AS hydraulique_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='step'), 0)        AS step_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='solaire'), 0)     AS solaire_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='eolien'), 0)      AS eolien_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='bioenergies'), 0) AS bioenergies_mw,
@@ -449,6 +457,10 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
             extract('hour' FROM (date_heure AT TIME ZONE 'UTC')
                                  AT TIME ZONE 'Europe/Rome')       AS heure_locale,
             thermique_mw, hydraulique_mw, solaire_mw, eolien_mw, bioenergies_mw, autre_mw,
+            -- `step_mw` est TRANSPORTÉ mais reste HORS du total : la restitution d'une
+            -- STEP n'est pas de la génération primaire, et l'inclure au dénominateur
+            -- diluerait toutes les parts d'un poste qui n'a pas d'équivalent corse.
+            step_mw,
             (thermique_mw + hydraulique_mw + solaire_mw + eolien_mw
              + bioenergies_mw + autre_mw)                          AS production_totale_mw
           FROM par_filiere

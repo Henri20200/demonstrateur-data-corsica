@@ -35,10 +35,13 @@ def figure(titre: str = "Titre court", sous_titre: str = "", marge_t: int = 400)
 
 # --- Le gabarit mesure juste ---------------------------------------------------
 
+# ÉTALONS FIGÉS, ce ne sont pas des titres vivants. Les trois largeurs de droite ont été
+# relevées au VRAI rendu (Segoe UI, la `system-ui` de Windows) le 06/08/2026 ; c'est cette
+# observation extérieure qui donne sa valeur au test, et elle ne se refait pas depuis le
+# code — mesurer un texte neuf avec `largeur_px` puis vérifier `largeur_px` contre lui-même
+# ne prouverait rien. Les chaînes restent donc telles quelles même quand le document
+# change : la première a été le titre de T3 jusqu'au 27/08/2026 et ne l'est plus.
 @pytest.mark.parametrize("texte, taille, attendu", [
-    # Relevés au vrai rendu (Segoe UI, la `system-ui` de Windows) : ce sont ces
-    # trois-là qui ont servi à trancher les coupures du 06/08/2026. Si le gabarit
-    # dérive, les décisions prises ce jour-là ne tiennent plus.
     ("Même à son zénith, le soleil ne détrône pas le fossile", 28, 655),
     ("Une journée d'été (juin-août) heure par heure — parts du mix, Corse 2019-2024.", 18, 631),
     ("Interconnexions = câbles SACOI (Italie via la Sardaigne).", 18, 438),

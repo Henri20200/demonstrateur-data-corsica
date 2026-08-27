@@ -106,6 +106,15 @@ L'écart de thermique entre les deux îles passe de **9,7 à 13,7 points** (la C
 et l'IGCC non plus, puisque `B05` et `B03` valent 32,04 % et 31,76 % du total et ne bougent
 pas.
 
+> **Mise à jour du 27/08/2026 — ces moyennes ne sont plus celles de la figure, et T6 n'en
+> publie plus aucune.** Deux changements les ont déplacées. `B10` est sorti du dénominateur
+> (§ 3.2 ci-dessous), ce qui porte le thermique sarde de 69,06 à **70,12 %** et l'hydraulique
+> de 3,65 à **2,17 %**. Surtout, dégroupée par année, la comparaison montre que l'écart de
+> 13,7 points n'est pas un résultat : il va de **6,8 points (2022) à 20,8 (2020)**. La
+> magnitude a donc quitté le document ; ce qui reste publié est l'ordre, vérifié six années
+> sur six. De même pour le charbon, qui recule de 36,1 % du courant sarde en 2019 à 26,8 %
+> en 2024 : la note de T6 le date au lieu de le moyenner.
+
 ### 3.2 La station de pompage gonfle l'hydraulique sarde
 
 `B10` est du turbinage de station de pompage. Sur six ans il **restitue** 1 110,9 GWh et en
@@ -122,6 +131,14 @@ d'hydraulique sarde — 42 % de la barre — ne sont pas de la production, mais 
 rendu.** L'hydraulique primaire sarde vaut 2,14 %. La Corse, elle, n'a aucune STEP
 (`stockage_mw` est vide dans la courbe EDF), et son hydraulique est à 27,95 % : la
 comparaison oppose donc 28 % de production à 2 % de production plus 1,5 % de restitution.
+
+> **Tranché et appliqué le 27/08/2026.** `B10` quitte la filière `hydraulique` pour une
+> colonne `step_mw` propre, **exclue du dénominateur** : une restitution de stockage n'est
+> pas de la génération primaire, et l'inclure diluait toutes les parts d'un poste sans
+> équivalent corse. Trois verrous tiennent la correction —
+> `test_la_step_sarde_est_hors_de_l_hydraulique_et_hors_du_total` vérifie que `step_mw`
+> existe, que le total reste la somme des six filières, et que l'hydraulique sarde repasse
+> sous 3 %.
 
 ### 3.3 La micro-hydraulique corse n'a pas de contrepartie
 
@@ -384,8 +401,9 @@ sur 6 654, soit 0,04 % du solaire sarde.
 
 ## 7. Ce que la vérification change dans ce qui est publié
 
-Les quatre premiers points sont **appliqués** sur cette branche ; les deux derniers restent
-ouverts.
+Les six points sont **appliqués** : les quatre premiers en août 2026, les deux derniers le
+27/08/2026 — ces deux-là ayant conduit à refondre T6, qui compare désormais les deux îles
+année par année au lieu d'une moyenne sur six ans.
 
 1. **`B20` → `thermique`** dans `PSR_VERS_FILIERE` — fait (`fe4ee87`). Le thermique sarde
    passe de 65,09 à 69,06 %, la filière `autre` disparaît de la figure, et le verrou
@@ -399,11 +417,16 @@ ouverts.
    multiplicateur unique ne décrit cet écart : la note est redevenue qualitative.
 4. **« Elle a 15 fois plus d'éolien »** tient : 15,6× en part de mix, ce qui est bien ce que
    la figure donne à lire. En énergie absolue, le rapport est de 115×.
-5. **La barre hydraulique sarde** mélange 2,14 % de production et 1,52 % de stockage rendu,
-   face à une Corse qui n'a pas de STEP. À trancher : séparer le segment, ou l'écrire.
+5. **La barre hydraulique sarde** mélangeait 2,14 % de production et 1,52 % de stockage
+   rendu, face à une Corse qui n'a pas de STEP — fait (27/08/2026). `B10` a sa colonne
+   `step_mw`, hors dénominateur ; cf. l'encadré du § 3.2.
 6. **Le solaire sarde est un plancher, pas une mesure** : 8,0 % manquants en 2023, 5,5 % en
-   2024. L'écart n'étant pas constant, toute lecture d'évolution sur ce poste doit d'abord
-   le mesurer année par année.
+   2024 — traité autrement que prévu (27/08/2026). La couverture s'est révélée suffisante
+   (92,0 % de l'énergie captée en 2023, 94,5 % en 2024) pour ne pas invalider la série. Ce
+   qui a fait retirer le chiffre est un autre défaut, plus grave : la part solaire sarde va
+   de **5,0 % en 2019 à 14,4 % en 2024**, et la moyenne de 9,1 % ne décrit aucune année.
+   L'étude n'énonce donc plus de niveau, mais une progression — « plus que doublé », borne
+   qui résiste même en supposant une captation de 80 % en début de période (2,42×).
 
 S'y ajoutent deux défauts déjà connus et déclarés au §2 de la pré-inscription, que cette
 vérification n'a pas traités : le pied de T6 ne porte que la date d'`entsoe_sardaigne_2024`

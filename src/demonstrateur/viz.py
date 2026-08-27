@@ -294,7 +294,8 @@ def date_collecte(source_id: str) -> str:
 
 
 def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = "",
-                note: str = "", pied_decalage_px: int = -85) -> str:
+                note: str = "", pied_decalage_px: int = -85,
+                script_apres: str | None = None) -> str:
     """Écrit outputs/<name>.html (fichier léger, plotly.min.js mutualisé dans outputs/).
 
     Applique le template, incruste la mention de source obligatoire.
@@ -309,6 +310,11 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
                 que soit la hauteur de la figure (une fraction de zone de tracé ne
                 l'est pas). Le défaut (-85) passe sous ticks + titre d'axe ; à creuser
                 quand une légende occupe la bande basse (cf. T6)
+    script_apres : JavaScript LOCAL exécuté après le tracé. Réservé à ce qui ne peut
+                pas être calculé à la génération parce que la réponse dépend de
+                l'instant de LECTURE — la péremption d'un relevé, et rien d'autre.
+                Aucune ressource tierce, aucun appel réseau : le script ne lit que des
+                valeurs déjà écrites dans la page.
     """
     preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px, nom=name)
     dest = OUTPUTS / f"{name}.html"
@@ -317,7 +323,8 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     # div_id fixe : sans lui, Plotly tire un UUID à chaque export et deux runs sur les
     # mêmes données produisent des fichiers différents — or la planification ne committe
     # que ce qui a réellement changé.
-    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name)
+    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name,
+                   post_script=script_apres)
     print(f"[ok] {dest}")
     return str(dest)
 
