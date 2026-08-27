@@ -49,9 +49,9 @@
 - Au printemps, la Corse doit parfois limiter sa production solaire parce que le
   réseau ne peut pas tout absorber. Il existe donc déjà, à certains moments, un
   surplus d'énergie renouvelable.
-- La Sardaigne voisine dépend elle aussi largement des centrales thermiques. La
-  différence : elle utilise notamment du charbon, tandis que la Corse repose
-  davantage sur le fioul et l'hydroélectricité.
+- La Sardaigne voisine fonctionne beaucoup plus souvent que la Corse avec une forte
+  part de solaire et d'éolien. Elle produit aussi bien plus d'électricité qu'elle n'en
+  consomme, et en exporte.
 
 Tout ce qui suit repose sur des données publiques d'EDF et d'ENTSO-E, mises à jour
 plusieurs fois par jour. Chaque graphique indique sa source et sa date. Les chiffres
@@ -333,41 +333,59 @@ directement la quantité d'électricité qui aurait pu être produite en plus.
 > et 14 en Guadeloupe ; aucune n'est recensée dans ces données pour la Guyane et la
 > Martinique.
 
-#### Corse et Sardaigne : deux systèmes encore très thermiques
+#### La Sardaigne dépasse beaucoup plus souvent le seuil corse de 35 %
 
-*Comment la Corse se compare-t-elle à sa voisine ?*
+*Un réseau insulaire peut-il fonctionner avec beaucoup plus de solaire et d'éolien ?*
 
 {{visuel:t6_corse_sardaigne}}
 
-Pour comparer les deux îles, on regarde uniquement l'électricité qu'elles produisent
-elles-mêmes, sans compter les importations.
+Les deux îles ne produisent pas leur électricité de la même façon. La Corse tire un quart
+de son courant de ses barrages, la Sardaigne presque rien ; l'éolien fait l'inverse, 2 %
+d'un côté contre 16 % de l'autre. Le solaire, lui, occupe une place très proche dans les
+deux cas : 16 % en Corse, 14 % en Sardaigne. Ce qui sépare ces deux mix n'est donc pas le
+soleil, mais l'eau et le vent.
 
-Dans les deux cas, le thermique reste la première source de production locale, et il
-est plus élevé en Sardaigne que en Corse chacune des six années observées.
+{{visuel:t6b_seuil_35}}
 
-Les deux trajectoires diffèrent cependant. En Sardaigne, la part du thermique recule
-régulièrement : 73 % en 2019, 66 % en 2024. En Corse, elle ne recule pas ; elle varie
-fortement d'une année à l'autre, de 48 % à 64 %, selon l'hydraulicité.
+En Corse, une règle autorise le gestionnaire de réseau à déconnecter les productions
+solaires et éoliennes sans stockage dès qu'elles atteignent 35 % de la puissance qui
+transite sur le réseau. En 2024, la Corse a dépassé ce niveau pendant environ 15 % des
+heures. En Sardaigne, selon le dénominateur retenu, cette proportion se situe entre 36 et
+52 %. Les épisodes sardes ne sont pas de simples pointes : ils durent huit heures en
+médiane, et le plus long de 2024 a duré plus de trois jours.
 
-Les deux systèmes diffèrent aussi par leur combustible. En Corse, les centrales
-thermiques fonctionnent principalement au fioul. En Sardaigne, une grande partie de la
-production thermique repose sur le charbon et sur du gaz de synthèse industriel.
+Les deux îles ne fonctionnent pas de la même manière. La Sardaigne produit chaque année
+environ 45 % de plus qu'elle ne consomme, alors que la Corse reçoit plus du quart de son
+électricité par les câbles sous-marins. Elle reste également plus thermique que la Corse
+chacune des six années étudiées, mais cette différence varie fortement selon les années et
+ne constitue pas le résultat principal de la comparaison.
 
-Les renouvelables ne se répartissent pas non plus de la même manière. La Corse se
-distingue par une part importante d'hydroélectricité, tandis que la Sardaigne produit
-beaucoup plus d'éolien : 15 % de sa production, contre environ 1 % en Corse. Son parc
-solaire, lui, progresse vite — sa part a plus que doublé entre 2019 et 2024.
+Pendant les heures sardes au-dessus de 35 %, la liaison avec le continent italien exporte
+96 % du temps, à 530 mégawatts en moyenne contre 86 le reste de l'année, tandis que la
+consommation locale, elle, reste presque stable. Une partie de cette production
+supplémentaire est donc évacuée vers l'extérieur par les interconnexions.
 
-> **Pour aller plus loin — pourquoi exclure les importations ?** Entre 2019 et 2024,
-> une partie importante de l'électricité consommée en Corse est arrivée par les câbles
-> sous-marins. La Sardaigne, à l'inverse, exporte une partie de son électricité.
+Cette comparaison ne montre pas que la Corse pourrait relever son seuil à conditions
+inchangées. Les deux réseaux diffèrent notamment par leurs interconnexions et par leur
+équilibre entre production et consommation. Elle montre seulement que 35 % n'est pas une
+limite générale propre à tous les réseaux insulaires.
+
+> **Pour aller plus loin — pourquoi deux courbes pour la Sardaigne ?** La règle corse
+> rapporte la production solaire et éolienne à « la puissance transitant sur le réseau ».
+> En Corse, cette quantité est celle qui alimente la consommation de l'île, importations
+> comprises. En Sardaigne, les deux ne coïncident pas : l'île produit bien plus qu'elle
+> ne consomme. Nous donnons donc les deux calculs plutôt que d'en choisir un
+> arbitrairement. L'écart entre eux est important, mais il ne change pas la conclusion :
+> même le calcul le plus bas place la Sardaigne nettement au-dessus de la Corse.
 >
-> Pour comparer correctement les deux territoires, nous avons donc retiré les échanges
-> avec l'extérieur et comparé uniquement ce que chaque île produit localement.
+> Les données corses viennent d'EDF, les données sardes d'ENTSO-E, qui publie les données
+> du système électrique européen. L'analyse des flux porte sur SAPEI, principale liaison
+> entre la Sardaigne et le continent italien ; les liaisons SACOI et SARCO ne sont pas
+> incluses.
 >
-> Les données corses viennent d'EDF. Pour la Sardaigne, elles viennent d'ENTSO-E, qui
-> publie les données du système électrique européen. Les productions ont été regroupées
-> dans les mêmes grandes catégories afin de rendre la comparaison possible.
+> Ni l'une ni l'autre source ne permet de distinguer les installations équipées de
+> stockage, que la règle corse exclut du calcul. Les parts présentées ici portent donc sur
+> l'ensemble du parc solaire et éolien.
 
 ## 4. Et maintenant ?
 

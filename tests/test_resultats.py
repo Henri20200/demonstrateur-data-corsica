@@ -339,6 +339,158 @@ def test_la_step_sarde_est_hors_de_l_hydraulique_et_hors_du_total(con):
 
 
 @besoin_sard
+@besoin_courbe
+def test_t6_le_mix_2024_oppose_l_eau_au_vent(con):
+    """T6, figure d'ouverture : les trois contrastes du millésime 2024.
+
+    Le chapitre écrit « un quart contre presque rien » pour l'hydraulique, « 2 % contre
+    16 % » pour l'éolien, et surtout « 16 contre 14 % » pour le solaire — c'est cette
+    QUASI-ÉGALITÉ qui porte la phrase « ce qui les sépare n'est pas le soleil ». Elle est
+    la plus fragile des trois : deux points d'écart suffisent à la défaire.
+    """
+    from demonstrateur.figures import ANNEE_MIX_T6
+
+    hy_s, so_s, eo_s = con.execute(
+        f"""SELECT 100.0*sum(hydraulique_mw)/sum(production_totale_mw),
+                   100.0*sum(solaire_mw)/sum(production_totale_mw),
+                   100.0*sum(eolien_mw)/sum(production_totale_mw)
+            FROM '{SARD.as_posix()}' WHERE annee = {ANNEE_MIX_T6}"""
+    ).fetchone()
+    hy_c, so_c, eo_c = con.execute(
+        f"""WITH b AS (SELECT sum(thermique_mw) th,
+              sum(hydraulique_mw + coalesce(micro_hydraulique_mw, 0)) hy,
+              sum(photovoltaique_mw) so, sum(eolien_mw) eo, sum(bioenergies_mw) bi
+            FROM '{COURBE.as_posix()}' WHERE annee_locale = {ANNEE_MIX_T6})
+          SELECT 100*hy/(th+hy+so+eo+bi), 100*so/(th+hy+so+eo+bi), 100*eo/(th+hy+so+eo+bi)
+          FROM b"""
+    ).fetchone()
+    assert round(hy_c) == 26 and round(hy_s) == 1, (
+        f"hydraulique {hy_c:.1f} % / {hy_s:.1f} % — l'étude écrit « un quart » contre "
+        "« presque rien »"
+    )
+    assert round(eo_c) == 2 and round(eo_s) == 16, (
+        f"éolien {eo_c:.1f} % / {eo_s:.1f} % — l'étude écrit 2 % contre 16 %"
+    )
+    assert abs(so_c - so_s) <= 3.0, (
+        f"solaire {so_c:.1f} % / {so_s:.1f} %, soit {abs(so_c-so_s):.1f} points d'écart — "
+        "l'étude écrit que le solaire occupe « une place très proche » dans les deux îles, "
+        "et en tire que ce qui les sépare n'est pas le soleil"
+    )
+
+
+@besoin_sard
+@besoin_courbe
+def test_t6_le_seuil_corse_est_depasse_bien_plus_souvent_en_sardaigne(con):
+    """T6 : les trois chiffres du chapitre, et l'invariant qui le fonde.
+
+    « Environ 15 % des heures » côté corse, « entre 36 et 52 % » côté sarde en 2024. Le
+    chapitre ne tient PAS à ces valeurs exactes mais à leur ordre : c'est la borne BASSE
+    sarde — celle qui rapporte à la génération, la plus défavorable à la démonstration —
+    qui doit rester au-dessus de la Corse, sinon la conclusion dépendrait d'un choix de
+    convention que personne ne sait trancher.
+    """
+    from demonstrateur.figures import heures_au_dessus_du_seuil
+
+    annees, corse, sard_gen, sard_charge = heures_au_dessus_du_seuil()
+    assert annees[-1] == 2024, f"T6 ne va plus jusqu'à 2024 mais à {annees[-1]}"
+    faibles = [a for a, c, s in zip(annees, corse, sard_gen) if s <= c]
+    assert not faibles, (
+        f"la borne basse sarde n'excède plus la Corse en {faibles} — la conclusion de T6 "
+        "dépendrait du dénominateur retenu"
+    )
+    assert corse[-1] == pytest.approx(15, abs=2), (
+        f"Corse 2024 : {corse[-1]:.1f} % des heures au-dessus de 35 % — l'étude écrit "
+        "« environ 15 % des heures »"
+    )
+    assert round(sard_gen[-1]) == 36 and round(sard_charge[-1]) == 52, (
+        f"Sardaigne 2024 : {sard_gen[-1]:.1f} à {sard_charge[-1]:.1f} % — l'étude écrit "
+        "« entre 36 et 52 % »"
+    )
+
+
+@besoin_sard
+def test_t6_les_episodes_sardes_durent(con):
+    """T6 : « huit heures en médiane, le plus long de plus de trois jours » (2024).
+
+    Mesuré sur la borne BASSE (dénominateur = génération). C'est ce qui distingue le
+    résultat d'une collection de pointes : une pointe d'une heure ne pose pas au réseau
+    la même question qu'un plateau de trois jours.
+    """
+    p = [x for (x,) in con.execute(
+        f"""SELECT 100.0*(greatest(solaire_mw,0)+greatest(eolien_mw,0))/production_totale_mw
+            FROM '{SARD.as_posix()}' WHERE annee = 2024 ORDER BY date_heure"""
+    ).fetchall()]
+    plages, cur = [], 0
+    for v in p + [0.0]:
+        if v > 35:
+            cur += 1
+        elif cur:
+            plages.append(cur)
+            cur = 0
+    mediane = sorted(plages)[len(plages) // 2]
+    assert mediane == pytest.approx(8, abs=2), (
+        f"durée médiane des plages > 35 % = {mediane} h — l'étude écrit « huit heures "
+        "en médiane »"
+    )
+    assert max(plages) > 72, (
+        f"la plus longue plage de 2024 dure {max(plages)} h — l'étude écrit « plus de "
+        "trois jours »"
+    )
+
+
+@pytest.mark.skipif(
+    not all((DATA_RAW / f"entsoe_sapei_2024_{s}.xml").exists() for s in ("entrant", "sortant")),
+    reason="flux SAPEI absents — fetch-data (jeton ENTSO-E) requis",
+)
+def test_t6_les_episodes_sardes_coincident_avec_l_export(con):
+    """T6 : « exporte 96 % du temps, 530 MW contre 86 » pendant les heures > 35 %.
+
+    C'est le seul étage du chapitre qui touche à un mécanisme, et le plus facile à
+    surinterpréter : il établit une CONCORDANCE horaire, pas un contrefactuel. Le verrou
+    tient donc les trois quantités publiées et rien de plus. SAPEI seule ; SACOI et SARCO
+    ne sont pas comptés, ce que l'encadré du chapitre déclare.
+    """
+    import pandas as pd
+
+    from demonstrateur.prepare import _points_flux_entsoe
+
+    flux = []
+    for sens in ("sortant", "entrant"):
+        for point in _points_flux_entsoe(DATA_RAW / f"entsoe_sapei_2024_{sens}.xml"):
+            flux.append({**point, "sens": sens})
+    con.register("f", pd.DataFrame(flux))
+    con.execute("""CREATE OR REPLACE VIEW net AS
+      WITH par_sens AS (SELECT date_trunc('hour', date_heure_utc) h, sens, avg(mw) mw
+                        FROM f GROUP BY 1, 2)
+      SELECT h, coalesce(max(mw) FILTER (WHERE sens='sortant'), 0)
+              - coalesce(max(mw) FILTER (WHERE sens='entrant'), 0) AS solde
+      FROM par_sens GROUP BY 1""")
+    (hors, pdt), = [tuple(r) for r in [con.execute(f"""
+      WITH j AS (SELECT 100.0*(greatest(s.solaire_mw,0)+greatest(s.eolien_mw,0))
+                        /s.production_totale_mw p, n.solde
+                 FROM '{SARD.as_posix()}' s JOIN net n ON s.date_heure = n.h
+                 WHERE s.annee = 2024)
+      SELECT avg(solde) FILTER (WHERE p <= 35), avg(solde) FILTER (WHERE p > 35) FROM j"""
+    ).fetchone()]]
+    part_export = con.execute(f"""
+      WITH j AS (SELECT 100.0*(greatest(s.solaire_mw,0)+greatest(s.eolien_mw,0))
+                        /s.production_totale_mw p, n.solde
+                 FROM '{SARD.as_posix()}' s JOIN net n ON s.date_heure = n.h
+                 WHERE s.annee = 2024)
+      SELECT 100.0*avg(CASE WHEN solde > 0 THEN 1.0 ELSE 0.0 END) FROM j WHERE p > 35"""
+    ).fetchone()[0]
+    assert round(pdt / 10) * 10 == 530, (
+        f"solde SAPEI pendant les heures > 35 % = {pdt:.0f} MW — l'étude écrit 530"
+    )
+    assert round(hors / 10) * 10 == 90 or round(hors) == 86, (
+        f"solde SAPEI hors épisodes = {hors:.0f} MW — l'étude écrit 86"
+    )
+    assert part_export == pytest.approx(96, abs=1.5), (
+        f"la Sardaigne exporte {part_export:.1f} % des heures > 35 % — l'étude écrit 96 %"
+    )
+
+
+@besoin_sard
 def test_le_solaire_sarde_est_une_progression_pas_un_niveau(con):
     """Le solaire sarde triple en six ans : aucune moyenne ne le décrit.
 
