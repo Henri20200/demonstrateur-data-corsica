@@ -348,10 +348,12 @@ l'éolien.
 
 En 2024, la part cumulée du solaire et de l'éolien a dépassé 35 % pendant environ 15 % des
 heures en Corse. En Sardaigne, selon le dénominateur retenu, cette proportion se situe
-entre 36 et 52 %. Les épisodes sardes ne sont pas de simples pointes : ils durent huit
-heures en médiane, et le plus long de 2024 a duré plus de trois jours.
+entre 36 et 52 %.
 
-Les deux îles ne fonctionnent pas de la même manière. La Sardaigne produit chaque année
+En Sardaigne, ces dépassements ne sont pas ponctuels : ils durent huit heures en médiane,
+et le plus long de 2024 a dépassé trois jours.
+
+Les deux systèmes électriques sont très différents. La Sardaigne produit chaque année
 environ 45 % de plus qu'elle ne consomme, alors que la Corse reçoit plus du quart de son
 électricité par les câbles sous-marins.
 
@@ -360,8 +362,8 @@ rien en Sardaigne. À l'inverse, l'éolien représente environ 16 % en Sardaigne
 en Corse. Le solaire occupe une place proche dans les deux cas : 16 % en Corse et 14 % en
 Sardaigne.
 
-Les flux de SAPEI montrent aussi ce qui se passe pendant les périodes de forte production
-solaire et éolienne. Pendant les heures où solaire et éolien dépassent 35 %, SAPEI est en
+Les flux de SAPEI permettent aussi de voir ce qui se passe pendant ces périodes. Pendant
+les heures où solaire et éolien dépassent 35 %, SAPEI est en
 export 96 % du temps. Le flux moyen atteint 530 MW, contre 86 MW pendant les autres
 heures, tandis que la consommation sarde varie peu. Une partie de la production
 supplémentaire est donc évacuée vers le continent.
