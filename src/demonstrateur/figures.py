@@ -593,7 +593,12 @@ def fig_t6_corse_sardaigne() -> go.Figure:
             hovertemplate="%{y} — " + libelle + " : %{x:.1f}%<extra></extra>",
         ))
     fig.update_layout(
-        title=dict(text="Deux mix très différents, sauf pour le solaire"),
+        # Descriptif plutôt que conclusif : la figure est SECONDE dans le chapitre,
+        # elle situe le résultat principal au lieu d'en énoncer un autre.
+        # Court volontairement : à 894 px sur 974 la version longue était la plus proche
+        # de la limite de tout le document, donc la première à se rogner en iframe
+        # étroite. Le sous-titre porte déjà « production locale d'électricité — 2024 ».
+        title=dict(text="Corse : plus d'eau, Sardaigne : plus de vent"),
         barmode="stack",
         xaxis=dict(range=[0, 100], showgrid=False, showticklabels=False,
                    ticks="", showline=False, zeroline=False),
@@ -646,7 +651,12 @@ def fig_t6b_seuil_35() -> go.Figure:
         textfont=dict(family=SANS, size=15, color=PALETTE["accent"]),
         hovertemplate="Corse %{x} : %{y:.1f} %<extra></extra>"))
     fig.update_layout(
-        title=dict(text=f"La Sardaigne dépasse beaucoup plus souvent le seuil corse "
+        # « le NIVEAU de 35 % », pas « le seuil corse » : ni EDF ni ENTSO-E ne permet
+        # d'isoler les installations avec stockage, que la règle corse exclut du calcul.
+        # On mesure donc la part cumulée de tout le parc, pas le périmètre réglementaire.
+        # Le titre annonce l'indicateur observable ; le texte dit ensuite pourquoi 35 %
+        # est le repère pertinent. Écrire « seuil » ferait croire qu'on applique la règle.
+        title=dict(text=f"La Sardaigne dépasse beaucoup plus souvent le niveau "
                         f"de {SEUIL_CORSE} %"),
         xaxis=dict(title="", dtick=1, tickformat="d"),
         yaxis=dict(title="Part des heures de l'année", range=[0, 60], ticksuffix=" %"),

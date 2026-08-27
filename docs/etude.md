@@ -115,13 +115,13 @@ Le premier concerne toute l'énergie consommée en Corse : électricité, carbur
 transports et chauffage. En 2020, 86 % venaient de l'extérieur.
 
 Le second concerne uniquement l'électricité, qui est le sujet de cette étude. Entre
-2019 et 2024, 68 % de l'électricité consommée en Corse dépendait de l'extérieur : une
-partie arrivait directement par les câbles sous-marins, et une autre était produite
-sur l'île avec du combustible importé.
+2019 et 2024, 68 % de l'électricité consommée en Corse dépendait de l'extérieur :
+environ 28 % arrivait directement par les câbles sous-marins, tandis que 40 % était
+produit sur l'île par des centrales thermiques utilisant du combustible importé.
 
-Les deux chiffres ne mesurent donc pas exactement la même chose. Pour la suite, nous
-nous concentrerons uniquement sur l'électricité et sur la façon dont elle est produite
-au fil des heures et des saisons.
+Les deux chiffres ne portent donc pas sur le même périmètre. Pour la suite, nous nous
+concentrerons uniquement sur l'électricité et sur la façon dont elle est produite au fil
+des heures et des saisons.
 
 ### Au dernier relevé
 
@@ -333,37 +333,36 @@ directement la quantité d'électricité qui aurait pu être produite en plus.
 > et 14 en Guadeloupe ; aucune n'est recensée dans ces données pour la Guyane et la
 > Martinique.
 
-#### La Sardaigne dépasse beaucoup plus souvent le seuil corse de 35 %
+#### La Sardaigne dépasse beaucoup plus souvent le niveau de 35 %
 
 *Un réseau insulaire peut-il fonctionner avec beaucoup plus de solaire et d'éolien ?*
 
-{{visuel:t6_corse_sardaigne}}
-
-Les deux îles ne produisent pas leur électricité de la même façon. La Corse tire un quart
-de son courant de ses barrages, la Sardaigne presque rien ; l'éolien fait l'inverse, 2 %
-d'un côté contre 16 % de l'autre. Le solaire, lui, occupe une place très proche dans les
-deux cas : 16 % en Corse, 14 % en Sardaigne. Ce qui sépare ces deux mix n'est donc pas le
-soleil, mais l'eau et le vent.
-
 {{visuel:t6b_seuil_35}}
 
-En Corse, une règle autorise le gestionnaire de réseau à déconnecter les productions
-solaires et éoliennes sans stockage dès qu'elles atteignent 35 % de la puissance qui
-transite sur le réseau. En 2024, la Corse a dépassé ce niveau pendant environ 15 % des
-heures. En Sardaigne, selon le dénominateur retenu, cette proportion se situe entre 36 et
-52 %. Les épisodes sardes ne sont pas de simples pointes : ils durent huit heures en
-médiane, et le plus long de 2024 a duré plus de trois jours.
+En Corse, le gestionnaire peut limiter certaines productions solaires et éoliennes sans
+stockage afin de maintenir leur part instantanée sous le seuil réglementaire de 35 %.
+
+En 2024, la part cumulée du solaire et de l'éolien a dépassé 35 % pendant environ 15 % des
+heures en Corse. En Sardaigne, selon le dénominateur retenu, cette proportion se situe
+entre 36 et 52 %. Les épisodes sardes ne sont pas de simples pointes : ils durent huit
+heures en médiane, et le plus long de 2024 a duré plus de trois jours.
 
 Les deux îles ne fonctionnent pas de la même manière. La Sardaigne produit chaque année
 environ 45 % de plus qu'elle ne consomme, alors que la Corse reçoit plus du quart de son
-électricité par les câbles sous-marins. Elle reste également plus thermique que la Corse
-chacune des six années étudiées, mais cette différence varie fortement selon les années et
-ne constitue pas le résultat principal de la comparaison.
+électricité par les câbles sous-marins. La Sardaigne reste aussi plus thermique que la
+Corse sur chacune des six années étudiées. Mais l'écart varie beaucoup selon les années :
+ce n'est pas le résultat principal de cette comparaison.
 
-Pendant les heures sardes au-dessus de 35 %, la liaison avec le continent italien exporte
-96 % du temps, à 530 mégawatts en moyenne contre 86 le reste de l'année, tandis que la
-consommation locale, elle, reste presque stable. Une partie de cette production
-supplémentaire est donc évacuée vers l'extérieur par les interconnexions.
+La Corse tire environ un quart de son courant de ses barrages, la Sardaigne presque rien
+; l'éolien fait l'inverse, 2 % d'un côté contre 16 % de l'autre. Le solaire, lui, occupe
+une place très proche dans les deux cas : 16 % en Corse, 14 % en Sardaigne. Cette
+différence se retrouve aussi dans la façon dont les deux îles utilisent leurs
+interconnexions.
+
+Pendant les heures où solaire et éolien dépassent 35 %, SAPEI est en export 96 % du temps.
+Le flux moyen atteint 530 mégawatts, contre 86 pendant les autres heures, tandis que la
+consommation sarde varie peu. Une partie de la production supplémentaire est donc évacuée
+vers le continent.
 
 Cette comparaison ne montre pas que la Corse pourrait relever son seuil à conditions
 inchangées. Les deux réseaux diffèrent notamment par leurs interconnexions et par leur
@@ -385,7 +384,12 @@ limite générale propre à tous les réseaux insulaires.
 >
 > Ni l'une ni l'autre source ne permet de distinguer les installations équipées de
 > stockage, que la règle corse exclut du calcul. Les parts présentées ici portent donc sur
-> l'ensemble du parc solaire et éolien.
+> l'ensemble du parc solaire et éolien, et non sur le périmètre réglementaire exact.
+
+Pour situer cette comparaison, voici comment se répartit la production locale des deux
+îles en 2024.
+
+{{visuel:t6_corse_sardaigne}}
 
 ## 4. Et maintenant ?
 

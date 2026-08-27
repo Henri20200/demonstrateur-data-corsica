@@ -1735,6 +1735,34 @@ def test_etude_dependance_imports(con):
     )
 
 
+@besoin_courbe
+def test_etude_decompose_la_dependance_electrique(con):
+    """Section 3 : « 28 % par les câbles, 40 % de thermique importé », qui font les 68 %.
+
+    Le total circulait déjà, mais pas sa décomposition. Or c'est elle qui rend le chiffre
+    vérifiable par le lecteur : deux termes qu'il retrouve sur la figure T7, et dont la
+    somme doit tomber juste. Si l'un dérive sans l'autre, l'addition écrite dans la prose
+    devient fausse alors que chaque terme reste plausible — le défaut le plus difficile à
+    voir à la relecture.
+    """
+    im, th = con.execute(
+        f"""SELECT 100.0*sum(importations_mw)/sum(production_totale_mw),
+                   100.0*sum(thermique_mw)/sum(production_totale_mw)
+            FROM '{COURBE.as_posix()}' WHERE annee_locale BETWEEN 2019 AND 2024"""
+    ).fetchone()
+    assert round(im) == 28, (
+        f"câbles = {im:.1f} % — l'étude écrit « environ 28 % arrivait par les câbles »"
+    )
+    assert round(th) == 40, (
+        f"thermique = {th:.1f} % — l'étude écrit « 40 % produit sur l'île par des "
+        "centrales thermiques »"
+    )
+    assert round(im + th) == 68, (
+        f"la somme vaut {im + th:.1f} % — l'étude écrit « 68 % dépendait de l'extérieur », "
+        "et ses deux termes doivent l'expliquer"
+    )
+
+
 @besoin_ecret
 def test_etude_ecretement_progression(con):
     """Étude/T5 : 54 heures de bridage sur 2016, 356 sur 2023."""
