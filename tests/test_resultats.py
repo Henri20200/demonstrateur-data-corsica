@@ -604,7 +604,7 @@ def test_t1_calcule_sa_fraicheur_chez_le_lecteur(con):
     implémentations acceptent, et les seuils sont les mêmes des deux côtés.
     """
     import re
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from demonstrateur.figures import FRAICHEUR_AVERTIR_H, FRAICHEUR_BLOQUER_H
 
@@ -622,10 +622,18 @@ def test_t1_calcule_sa_fraicheur_chez_le_lecteur(con):
         f"instant {brut.group(1)!r} — hors du format UTC/Z, `Date()` peut refuser de le lire"
     )
     incruste = datetime.fromisoformat(brut.group(1).replace("Z", "+00:00"))
-    dernier = con.execute(
-        f"""SELECT max("date") FROM '{MIX.as_posix()}'"""
-    ).fetchone()[0]
-    assert incruste == dernier.astimezone(incruste.tzinfo), (
+    # L'horodatage reste en SQL, on n'en ramène que des SECONDES. DuckDB ne convertit un
+    # TIMESTAMPTZ en objet Python qu'avec pytz, que pandas 3 n'entraîne plus : présent
+    # dans un venv de travail, absent du runner, ce verrou passait ici et tombait en
+    # ligne — il a suspendu la publication le 28/08/2026. Même geste qu'au verrou de
+    # fraîcheur plus haut, qui traverse le cron depuis des semaines pour cette raison.
+    dernier = datetime.fromtimestamp(
+        con.execute(
+            f"""SELECT extract(epoch FROM max("date")) FROM '{MIX.as_posix()}'"""
+        ).fetchone()[0],
+        timezone.utc,
+    )
+    assert incruste == dernier, (
         f"la page date le relevé du {incruste}, la donnée du {dernier}"
     )
 
