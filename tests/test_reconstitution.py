@@ -153,7 +153,7 @@ def test_une_version_reconstituee_n_a_aucune_adresse_de_depot(depot_jetable):
     sauver, et l'avertissement d'une vraie panne réseau se perdrait dedans.
     """
     _committer(depot_jetable, "2026-07-19T06:00:00+00:00", mix=A)
-    assert reconstitution.main(["--ecrire"]) == 0
+    assert reconstitution.main(["--ecrire", "--ref-autorite", "master"]) == 0
 
     version = json.loads(archive.VERSIONS_FILE.read_text(encoding="utf-8"))["mix"][0]
     assert version["origine"] == archive.ORIGINE_RECONSTITUEE
@@ -175,7 +175,7 @@ def test_le_registre_reconstitue_repond_a_version_connue_a(depot_jetable):
     """
     _committer(depot_jetable, "2026-07-19T06:00:00+00:00", mix=A)
     _committer(depot_jetable, "2026-07-19T18:00:00+00:00", mix=B)
-    assert reconstitution.main(["--ecrire"]) == 0
+    assert reconstitution.main(["--ecrire", "--ref-autorite", "master"]) == 0
 
     assert archive.version_connue_a("mix", "2026-07-19T09:00:00.000000Z")["sha256"] == A
     assert archive.version_connue_a("mix", "2026-07-19T23:00:00.000000Z")["sha256"] == B
@@ -257,7 +257,8 @@ def test_l_ecriture_depuis_toutes_les_branches_est_refusee(depot_jetable):
     """`--toutes-branches` sert à regarder. L'écrire poserait un registre faux."""
     _committer(depot_jetable, "2026-07-19T06:00:00+00:00", mix=A)
 
-    assert reconstitution.main(["--ecrire", "--toutes-branches"]) == 1
+    assert reconstitution.main(["--ecrire", "--toutes-branches",
+                                "--ref-autorite", "master"]) == 1
     assert not archive.VERSIONS_FILE.exists()
 
 
@@ -274,7 +275,7 @@ def test_deux_commits_au_meme_instant_bloquent_l_ecriture(depot_jetable):
 
     _, rapport = _registre()
     assert rapport.intervalles_plats, "la collision d'instants doit être vue"
-    assert reconstitution.main(["--ecrire"]) == 1
+    assert reconstitution.main(["--ecrire", "--ref-autorite", "master"]) == 1
     assert not archive.VERSIONS_FILE.exists()
 
 
@@ -319,3 +320,101 @@ def test_la_fusion_ne_retire_aucune_version_vivante(depot_jetable):
         "même empreinte des deux côtés : la version vivante commençait plus tôt"
     )
     assert ancienne["superseded_at"] == courante["first_observed_at"]
+
+
+def test_ecrire_ne_deduit_pas_de_ou_l_on_se_trouve(depot_jetable):
+    """Le défaut n'est pas d'être sur la mauvaise branche : c'est que le rapport a l'air normal.
+
+    Construction : le cron avance sur `master` pendant qu'une branche de travail existe,
+    puis la branche fusionne `master` chez elle. Depuis la branche, le premier parent
+    traverse la fusion en UN pas et ne voit AUCUN des millésimes que l'intégration a
+    collectés pendant ce temps. Mesuré sur le dépôt réel le 29/08/2026 : 969 millésimes
+    depuis une telle branche, 1 410 depuis la ligne d'intégration.
+
+    D'où deux gardes, et pas une : l'écriture PART de la référence qui fait autorité même
+    si l'on est ailleurs, et REFUSE une référence explicite qui n'est pas celle-là.
+    """
+    _committer(depot_jetable, "2026-07-19T06:00:00+00:00", mix=A)
+    _git(depot_jetable, "checkout", "-b", "travail")
+    _committer(depot_jetable, "2026-07-19T07:00:00+00:00", mix=A, note=A, sujet="travail")
+    _git(depot_jetable, "checkout", "master")
+    _committer(depot_jetable, "2026-07-19T08:00:00+00:00", mix=B, sujet="cron")
+    _committer(depot_jetable, "2026-07-19T09:00:00+00:00", mix=C, sujet="cron")
+    _git(depot_jetable, "checkout", "travail")
+    _git(depot_jetable, "merge", "master", "--no-ff", "--no-commit", tolerant=True)
+    _committer(depot_jetable, "2026-07-19T10:00:00+00:00", mix=C, note=A, sujet="fusion")
+
+    depuis_branche, _ = _registre("travail")
+    depuis_integration, _ = _registre("master")
+    assert [v["sha256"] for v in depuis_branche["mix"]] == [A, C]
+    assert [v["sha256"] for v in depuis_integration["mix"]] == [A, B, C], (
+        "B a bel et bien été détenu par l'intégration ; la branche ne le voit pas"
+    )
+
+    assert reconstitution.main(["--ecrire", "--ref", "travail",
+                                "--ref-autorite", "master"]) == 1
+    assert not archive.VERSIONS_FILE.exists(), "une ligne amputée ne s'écrit pas"
+
+    # Debout sur la branche, sans rien préciser : l'écriture part quand même de la ligne
+    # qui fait foi. C'est ce qui rend le garde-fou utile plutôt que seulement sévère.
+    assert reconstitution.main(["--ecrire", "--ref-autorite", "master"]) == 0
+    ecrit = json.loads(archive.VERSIONS_FILE.read_text(encoding="utf-8"))
+    assert [v["sha256"] for v in ecrit["mix"]] == [A, B, C]
+
+
+def test_ecrire_compare_les_commits_pas_les_noms(depot_jetable):
+    """En CI on travaille en HEAD détachée, où « être sur master » ne veut rien dire.
+
+    Détachée SUR le commit d'intégration, l'écriture doit passer : c'est le bon contenu,
+    quel que soit le nom qu'on lui donne. Détachée ailleurs, elle doit être refusée — et
+    c'est le cas que la comparaison par nom laisserait filer.
+    """
+    _committer(depot_jetable, "2026-07-19T06:00:00+00:00", mix=A)
+    _git(depot_jetable, "checkout", "-b", "travail")
+    _committer(depot_jetable, "2026-07-19T07:00:00+00:00", mix=C, sujet="travail")
+    _git(depot_jetable, "checkout", "master")
+
+    _git(depot_jetable, "checkout", "--detach", "travail")
+    assert reconstitution.main(["--ecrire", "--ref", "HEAD", "--ref-autorite", "master"]) == 1
+    assert not archive.VERSIONS_FILE.exists()
+
+    _git(depot_jetable, "checkout", "--detach", "master")
+    assert reconstitution.main(["--ecrire", "--ref", "HEAD", "--ref-autorite", "master"]) == 0
+    assert [v["sha256"] for v in json.loads(
+        archive.VERSIONS_FILE.read_text(encoding="utf-8"))["mix"]] == [A]
+
+
+def test_une_source_qui_revient_autrement_dit_ce_qu_on_detenait_pas_ce_qui_etait_certifie(
+        depot_jetable):
+    """Le cas réel du 20/07/2026, que les fixtures n'avaient pas prévu.
+
+    Six sources ENTSO-E ont quitté le manifeste le temps d'un run, puis y sont revenues
+    avec d'AUTRES empreintes — là où le test voisin ne couvrait qu'un retour à l'identique.
+    L'intervalle reste ouvert pendant le creux, donc `version_connue_a` rend le dernier
+    contenu détenu. C'est vrai : ces octets, nous les avions. Ce qu'il ne faut pas lui
+    faire dire, c'est que la source figurait au manifeste — et y était certifiée — à cet
+    instant. Les deux affirmations se séparent ici, et le test les sépare.
+    """
+    _committer(depot_jetable, "2026-07-20T06:00:00+00:00", mix=A, sarde=A)
+    _committer(depot_jetable, "2026-07-20T12:00:00+00:00", mix=B, sujet="run sans les sardes")
+    _committer(depot_jetable, "2026-07-20T18:00:00+00:00", mix=B, sarde=C)
+
+    index, rapport = _registre()
+    assert rapport.disparitions["sarde"] == 1, "la disparition se compte, elle ne se tait pas"
+    assert [v["sha256"] for v in index["sarde"]] == [A, C], (
+        "revenue sous une autre empreinte, elle ouvre une version"
+    )
+    assert index["sarde"][0]["superseded_at"] == "2026-07-20T18:00:00.000000Z", (
+        "l'intervalle ne se referme pas au creux, mais au retour"
+    )
+
+    assert reconstitution.main(["--ecrire", "--ref-autorite", "master"]) == 0
+    detenue = archive.version_connue_a("sarde", "2026-07-20T12:00:00.000000Z")
+    assert detenue["sha256"] == A, "au creux, nous détenions bien ce contenu"
+
+    vus, _ = reconstitution.instantanes("master")
+    creux = next(s for s in vus if s.instant.startswith("2026-07-20T12"))
+    assert "sarde" not in creux.entrees, (
+        "et le manifeste ne la portait pas : DÉTENU n'est pas CERTIFIÉ, et seul le "
+        "manifeste de la date répond à la seconde question"
+    )

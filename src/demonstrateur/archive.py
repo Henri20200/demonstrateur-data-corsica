@@ -421,6 +421,17 @@ def version_connue_a(source_id: str, instant: str) -> dict | None:
 
     Vérifier `payload_archived` avant d'aller chercher les octets : une version peut être
     connue sans que son contenu soit disponible.
+
+    CE QU'ELLE NE DIT PAS — et la distinction est tout sauf théorique : elle répond
+    « quelle version DÉTENIONS-NOUS », jamais « la source figurait-elle au manifeste, et
+    y était-elle certifiée, à cet instant ». Les deux se séparent quand une source
+    disparaît du manifeste puis revient : l'intervalle reste ouvert (cf. `reconstituer`),
+    donc l'interrogation continue de rendre le dernier contenu détenu pendant le trou.
+    C'est arrivé le 20/07/2026, où six sources ENTSO-E ont quitté le manifeste le temps
+    d'un run avant d'y revenir avec d'autres empreintes. Répondre None aurait été faux
+    aussi : nous détenions bien ces octets. Un usage qui exige la certification — et non
+    la détention — doit croiser avec le manifeste de la date voulue, que
+    `reconstitution.instantanes` sait rendre.
     """
     for version in _charger(VERSIONS_FILE).get(source_id, []):
         debut = version["first_observed_at"]

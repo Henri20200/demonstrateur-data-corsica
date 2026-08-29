@@ -159,6 +159,21 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   branche est datée de sa FUSION, donc tardivement plutôt que trop tôt — un backtest qui se
   croit informé plus tôt qu'en réalité fuit, l'inverse se prive seulement. Le registre ne se
   réécrit pas : une seconde exécution vient devant les versions vivantes sans en retirer une.
+  **`--ecrire` part de `REF_FAISANT_AUTORITE` (`origin/master`), jamais de là où l'on se
+  trouve**, et refuse si le commit parcouru n'est pas celui de cette référence — comparaison
+  par COMMIT, parce qu'en CI on travaille en HEAD détachée, où le nom de branche ne prouve
+  rien. Ce n'est pas de la rigueur de principe : lancé depuis une branche où `master` vient
+  d'être fusionné, le premier parent traverse la fusion en un pas et saute tout ce que
+  l'intégration a fait pendant ce temps — **969 millésimes au lieu de 1 410, mesuré le
+  29/08/2026**, sans un mot dans le rapport.
+- **Détenu n'est pas certifié.** Une source qui disparaît du manifeste garde son intervalle
+  OUVERT : `version_connue_a` continue donc de rendre le dernier contenu détenu pendant le
+  trou. C'est volontaire et c'est vrai — nous détenions bien ces octets — mais cela ne dit
+  pas que la source figurait au manifeste, ni qu'elle y était certifiée, à cet instant. Le
+  cas est réel : le 20/07/2026, six sources ENTSO-E ont quitté le manifeste le temps d'un
+  run avant d'y revenir avec d'autres empreintes. Un usage qui exige la certification croise
+  avec le manifeste de la date voulue (`reconstitution.instantanes`) ; l'index seul répond à
+  « que détenions-nous », et à rien d'autre.
 - **La traçabilité est vérifiée, pas seulement déclarée** : `fetch` re-contrôle chaque source
   figée à chaque run, `prepare` refuse un brut non certifié et écrit la lignée (`_build.json`),
   les figures datent d'après cette lignée. L'empreinte d'une source qui réestampille son

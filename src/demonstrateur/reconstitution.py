@@ -80,6 +80,15 @@ from .archive import ORIGINE_RECONSTITUEE, _charger, _sauver
 from .config import MANIFEST_FILE, ROOT, VERSIONS_FILE
 
 CHEMIN_MANIFESTE = MANIFEST_FILE.relative_to(ROOT).as_posix()
+
+# La ligne d'histoire qui fait foi. Écrire depuis une AUTRE référence pose un registre
+# amputé SANS RIEN SIGNALER : parcouru depuis une branche de travail où `master` vient
+# d'être fusionné, le premier parent traverse la fusion en UN pas et saute tout ce que
+# l'intégration a fait pendant ce temps. Mesuré le 29/08/2026 : 969 millésimes depuis une
+# telle branche, 1 410 depuis la ligne d'intégration — un tiers manquant, en silence.
+# Le nom ne suffit pas à se garder : en CI on travaille en HEAD détachée, où « être sur
+# master » ne veut rien dire. C'est le COMMIT RÉSOLU qui est comparé.
+REF_FAISANT_AUTORITE = "origin/master"
 _SEPARATEUR = "\x1f"  # unit separator : ne peut pas apparaître dans un sujet de commit
 
 
@@ -128,6 +137,16 @@ def _git(*args: str) -> bytes:
         detail = resultat.stderr.decode("utf-8", "replace").strip()
         raise HistoriqueIllisible(f"git {' '.join(args[:2])} : {detail}")
     return resultat.stdout
+
+
+def commit_de(ref: str) -> str:
+    """SHA du commit désigné par `ref`, quelle que soit la forme (branche, tag, HEAD, SHA).
+
+    `^{commit}` déréférence un tag annoté : sans lui, deux références qui désignent le même
+    commit pourraient se comparer inégales pour une raison qui n'a rien à voir avec
+    l'histoire.
+    """
+    return _git("rev-parse", "--verify", f"{ref}^{{commit}}").decode().strip()
 
 
 def instant_utc(iso: str) -> str:
@@ -356,19 +375,50 @@ def main(argv: list[str] | None = None) -> int:
     )
     analyseur.add_argument("--ecrire", action="store_true",
                            help="écrit le registre (sans ce drapeau : rapport seulement)")
-    analyseur.add_argument("--ref", default="HEAD",
-                           help="référence Git à parcourir (défaut : HEAD)")
+    analyseur.add_argument("--ref", default=None,
+                           help="référence Git à parcourir (défaut : HEAD pour le rapport, "
+                                f"{REF_FAISANT_AUTORITE} pour --ecrire)")
+    analyseur.add_argument("--ref-autorite", default=REF_FAISANT_AUTORITE,
+                           help="référence dont le commit fait foi pour écrire "
+                                f"(défaut : {REF_FAISANT_AUTORITE})")
     analyseur.add_argument("--toutes-branches", action="store_true",
                            help="suivre aussi les branches fusionnées (à regarder, pas à écrire)")
     options = analyseur.parse_args(argv)
 
+    # Le rapport se lit d'où l'on veut ; l'ÉCRITURE part de la ligne d'intégration, jamais
+    # de là où le poste de travail se trouve. Sans ce défaut, un `--ecrire` lancé depuis une
+    # branche à jour poserait un registre amputé du tiers, et son rapport aurait l'air normal.
+    ref = options.ref or (options.ref_autorite if options.ecrire else "HEAD")
+
+    if options.ecrire:
+        try:
+            parcourue, autorite = commit_de(ref), commit_de(options.ref_autorite)
+        except HistoriqueIllisible as exc:
+            # Cas réel : un clone superficiel, où la référence distante n'a jamais été
+            # rapatriée. Refuser est la bonne réponse — écrire depuis ce qu'on a sous la
+            # main poserait un registre amputé — mais l'opérateur doit savoir quoi faire.
+            print(f"[!] Écriture refusée : {options.ref_autorite} est introuvable ici "
+                  f"({exc}).\n    Rapatrier l'histoire complète (`git fetch --unshallow` "
+                  "ou `fetch-depth: 0` en CI),\n    ou nommer explicitement la référence "
+                  "qui fait foi avec --ref-autorite.", file=sys.stderr)
+            return 2
+        if parcourue != autorite:
+            print(f"\n[!] Écriture refusée : {ref} ({parcourue[:8]}) n'est pas "
+                  f"{options.ref_autorite} ({autorite[:8]}).\n"
+                  "    Le premier parent d'une autre ligne traverse les fusions d'un seul "
+                  "pas et saute\n    ce que l'intégration a fait pendant ce temps : le "
+                  "registre serait amputé sans le dire.\n"
+                  "    Lire ailleurs est libre (sans --ecrire) ; écrire se fait depuis la "
+                  "ligne qui fait foi.", file=sys.stderr)
+            return 1
+
     try:
-        vus, rapport = instantanes(options.ref, premier_parent=not options.toutes_branches)
+        vus, rapport = instantanes(ref, premier_parent=not options.toutes_branches)
     except HistoriqueIllisible as exc:
         print(f"[!] {exc}", file=sys.stderr)
         return 2
     if not vus:
-        print(f"[!] Aucun état de {CHEMIN_MANIFESTE} sous {options.ref}.", file=sys.stderr)
+        print(f"[!] Aucun état de {CHEMIN_MANIFESTE} sous {ref}.", file=sys.stderr)
         return 2
 
     index, rapport = reconstituer(vus, rapport)
