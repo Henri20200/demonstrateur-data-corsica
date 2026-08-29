@@ -130,5 +130,17 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   précis** à neutraliser (`GL_MarketDocument/mRID`, `.../createdDateTime` — l'enveloppe de
   document, jamais les `mRID` imbriqués des TimeSeries, qui sont de la donnée), reproductible
   d'un téléchargement à l'autre. Calcul unique dans `provenance.py`.
+- **Un verrou s'éprouve sur des données AVANT d'être fusionné.** Depuis le 28/08/2026 la
+  CI de PR a deux jobs : `valider` (environnement d'`uv.lock`, sans données) et `verrous`,
+  qui restaure le cache `data/raw` du pipeline en lecture seule, rejoue `prepare` → figures
+  → pages, puis toute la suite **sauf les tests marqués `fraicheur`** — ceux-là mesurent la
+  date du dernier passage du cron, pas le code. `verrous` tourne dans l'environnement du
+  CRON (pip, dernières versions) et non sous `uv.lock`, sans quoi il ne prédirait rien :
+  c'est un `pandas` sans `pytz` qui a suspendu la publication le 28/08, sous un `uv.lock`
+  qui, lui, passait. Lire les deux ensemble : `valider` vert + `verrous` rouge =
+  l'environnement a bougé, pas le code. Et ne PAS y recopier le
+  `git checkout -- data/raw/_manifest.json` du pipeline : ce job ne collecte pas, le couple
+  (octets, empreintes) du cache est cohérent, le manifeste versionné ne l'est plus avec ces
+  octets-là.
 - Licences des données : Licence Ouverte 2.0 (Etalab) sauf mention contraire ; réutilisation
   libre avec mention du producteur.

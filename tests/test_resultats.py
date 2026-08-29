@@ -569,12 +569,17 @@ def test_sardaigne_charbon_igcc():
 
 
 @besoin_mix
+@pytest.mark.fraicheur
 def test_fraicheur_temps_reel(con):
     """Le dernier relevé du mix doit tenir sous le seuil de blocage éditorial.
 
     La borne SUIT `FRAICHEUR_BLOQUER_H` au lieu de la recopier : une constante déplacée
     sans que ce test bouge laisserait publier une donnée que la page elle-même déclare
     trop ancienne.
+
+    Marqué `fraicheur` : il mesure la date du dernier passage du cron, pas le code. La
+    garde de PR, qui éprouve les verrous sur les données du cache, le saute pour cette
+    raison — il y serait rouge en permanence sans rien dire du diff. Le cron le joue.
     """
     from demonstrateur.figures import FRAICHEUR_BLOQUER_H
 
