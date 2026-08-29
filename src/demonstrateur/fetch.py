@@ -597,11 +597,21 @@ def main(argv: list[str] | None = None) -> int:
     # C'est l'unique occasion de les réunir avant que la copie disparaisse à son tour.
     archive.retenter_depots_en_attente()
 
+    # Le disjoncteur de volume n'interrompt pas la collecte — les versions restent indexées,
+    # et un intervalle de connaissance ne se rattrape pas quand des octets, eux, se
+    # redéposent — mais il ROUGIT le run : un changement de régime de volume ne doit pas
+    # s'installer derrière un cron vert, où personne ne le verrait avant la facture.
+    suspension = archive.seuil_franchi()
+    if suspension:
+        print(f"[!] DÉPÔT D'ARCHIVE SUSPENDU — {suspension}")
+
     if failures:
         print(f"\n{len(failures)} source(s) en échec : {', '.join(failures)}")
         if not recertifier:
             print("Vérifier les URL / formats dans sources.yaml (ils peuvent avoir changé), "
                   "ou une empreinte divergente signalée ci-dessus.")
+        return 1
+    if suspension:
         return 1
 
     action = "Re-certification" if recertifier else "Collecte"

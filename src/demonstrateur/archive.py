@@ -201,23 +201,85 @@ def _depot_durable() -> depot.Depot | None:
     return distant
 
 
+# État du disjoncteur de volume, pour la DURÉE D'UN RUN. Deux variables et pas une :
+# `_VOLUME_DEPOSE` est une mesure — les octets que le stockage détient déjà —, `_DISJONCTEUR`
+# est une décision, celle de ne plus rien envoyer. Une fois la décision prise on ne remesure
+# pas : un run qui redéposerait « les petits fichiers seulement » après un refus laisserait
+# un état que personne ne saurait relire, alors qu'un disjoncteur se voit d'un bloc.
+_VOLUME_DEPOSE: int | None = None
+_DISJONCTEUR: str | None = None
+
+
+def volume_depose() -> int:
+    """Octets que le dépôt distant détient, d'après l'index — la seule mesure sans réseau.
+
+    Ne compte QUE `payload_archived: true`, et c'est le point : une version indexée dont
+    les octets ne sont jamais partis n'occupe rien chez l'hébergeur, et les millésimes
+    reconstitués depuis Git (`origine: manifeste_git`) n'ont pas d'octets du tout — 1 445
+    d'entre eux au 29/08/2026. Les compter fermerait le robinet sur un volume imaginaire.
+    """
+    index = _charger(VERSIONS_FILE)
+    return sum(
+        version.get("taille_octets") or 0
+        for versions in index.values()
+        for version in versions
+        if version.get("payload_archived")
+    )
+
+
+def seuil_franchi() -> str | None:
+    """Message du refus si le disjoncteur a sauté pendant ce run, sinon None.
+
+    `fetch` s'en sert pour ROUGIR le run sans l'interrompre. L'arbitrage est celui de tout
+    ce module : le dépôt s'arrête, la collecte continue — des octets se redéposent, un
+    intervalle de connaissance ne se rattrape pas — mais un changement de régime ne doit
+    pas s'installer derrière un cron vert.
+    """
+    return _DISJONCTEUR
+
+
 def _deposer(source_id: str, cle: str, fichier: Path) -> bool:
     """Dépose les octets. True SEULEMENT si le stockage distant les détient à coup sûr.
 
-    Ne lève jamais : une collecte n'a pas à échouer parce qu'un stockage est indisponible.
-    L'échec se lit dans l'index (`payload_archived: false`), donc il se retente — une
-    exception ici perdrait en plus l'intervalle de connaissance, qui, lui, est
-    irremplaçable.
+    Ne lève jamais : une collecte n'a pas à échouer parce qu'un stockage est indisponible,
+    ni parce qu'un seuil de volume est atteint. L'échec se lit dans l'index
+    (`payload_archived: false`), donc il se retente — une exception ici perdrait en plus
+    l'intervalle de connaissance, qui, lui, est irremplaçable.
+
+    DEUX REFUS DE NATURES DIFFÉRENTES y mènent, et ils ne se confondent pas : la panne se
+    retente au run suivant, le seuil franchi ferme le robinet pour tout le run et se
+    rediscute avant de rouvrir.
     """
+    global _VOLUME_DEPOSE, _DISJONCTEUR
+
     distant = _depot_durable()
     if distant is None:
         return False
+    if _DISJONCTEUR is not None:
+        # Déjà refusé ce run : on ne mesure même plus, et surtout on n'envoie rien.
+        return False
+
+    if _VOLUME_DEPOSE is None:
+        _VOLUME_DEPOSE = volume_depose()
+    taille = fichier.stat().st_size
+    try:
+        depot.verifier_seuil(_VOLUME_DEPOSE, taille)
+    except depot.SeuilArchiveAtteint as exc:
+        _DISJONCTEUR = str(exc)
+        print(f"[!] {source_id} : dépôt REFUSÉ — {exc}")
+        print("[!] Plus aucun octet ne partira pendant ce run. Les versions restent "
+              "indexées `payload_archived: false` : rien n'est perdu, tout est suspendu.")
+        return False
+
     try:
         distant.deposer(cle, fichier)
     except depot.DepotIndisponible as exc:
         print(f"[!] {source_id} : octets NON déposés ({exc}) — version indexée "
               "`payload_archived: false`, reprise au prochain run.")
         return False
+    # Après le retour de `deposer`, donc après vérification par le stockage : le volume ne
+    # s'incrémente que d'octets réellement détenus, comme `payload_archived`.
+    _VOLUME_DEPOSE += taille
     return True
 
 
