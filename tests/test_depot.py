@@ -258,3 +258,36 @@ def test_un_client_inconstructible_est_converti_pas_propage(tmp_path, monkeypatc
     with pytest.raises(depot.DepotIndisponible, match="inconstructible"):
         _depot().deposer("archive/mix/2026/08/20260819T060011Z_abc.csv.gz",
                          _fichier(tmp_path))
+
+
+# --- Le disjoncteur de volume ------------------------------------------------------------
+
+
+def test_le_seuil_se_compte_en_gigaoctets_du_facturier():
+    """250 Go décimaux, pas 250 Gio.
+
+    Le seuil existe pour se comparer à une facture ; lu en 2^30 il vaudrait 268 Go
+    facturés, soit 7 % de plus que ce qui a été arbitré — et personne ne le verrait.
+    """
+    assert depot.SEUIL_ARCHIVE_OCTETS == 250_000_000_000
+
+
+def test_le_seuil_tranche_sur_l_etat_apres_ajout():
+    """Ce qui tient exactement dans le seuil passe ; l'octet suivant, non."""
+    depot.verifier_seuil(depot.SEUIL_ARCHIVE_OCTETS - 8, 8)
+
+    with pytest.raises(depot.SeuilArchiveAtteint) as refus:
+        depot.verifier_seuil(depot.SEUIL_ARCHIVE_OCTETS - 8, 9)
+    assert "réévaluer coût/prix/politique" in str(refus.value), (
+        "le refus doit dire quoi faire, pas seulement qu'il refuse"
+    )
+
+
+def test_un_seuil_franchi_ne_se_confond_pas_avec_une_panne():
+    """La propriété qui empêche le disjoncteur d'être avalé.
+
+    `archive._deposer` rattrape `DepotIndisponible` pour indexer et retenter au run
+    suivant. Si le seuil en héritait, la chaîne réessaierait indéfiniment de dépasser une
+    limite posée exprès, et le refus se lirait comme une panne réseau de plus.
+    """
+    assert not issubclass(depot.SeuilArchiveAtteint, depot.DepotIndisponible)

@@ -21,6 +21,20 @@ Trois propriétés voulues, et elles se lisent dans le code plutôt que dans une
 - **privé** : aucun en-tête `x-amz-acl` n'est envoyé, l'objet naît privé. C'est de la
   donnée brute de producteurs tiers, pas une vitrine.
 
+**Un disjoncteur de volume, pas un budget** : au-delà de `SEUIL_ARCHIVE_OCTETS`, plus
+rien ne part. Ce seuil n'est PAS une prévision — à la croissance mesurée le 29/08/2026
+(22,7 Go/an sur 41 jours réels) il est à onze ans — c'est une garde contre un CHANGEMENT
+DE RÉGIME : bug, source massive ajoutée, fréquence de collecte modifiée, périmètre élargi.
+Il ne remplace pas une alerte de facturation, il fait ce qu'une alerte ne fait pas :
+arrêter la dépense au lieu de la raconter.
+
+Repère de coût, et il se revérifie : au tarif Scaleway Standard Multi-AZ relevé le
+29/08/2026 (0,01606 € HT/Go/mois), 250 Go valent ~4,82 € TTC/mois, sous un plafond arbitré
+de 20 € TTC/mois pour TOUTE l'infrastructure de vitrine, tous projets confondus.
+LE SEUIL NE SE RELÈVE PAS MÉCANIQUEMENT : un tarif peut changer plus vite qu'un volume,
+et un seuil en octets ne protège un budget qu'au prix du jour. On recalcule le coût, puis
+on décide — jamais l'inverse.
+
 PAS DE BOTO3 : botocore pèse une trentaine de mégaoctets installés pour, ici, un unique
 PUT sans multipart. La signature SigV4 tient en quarante lignes de `hmac`/`hashlib`
 (stdlib) et le transport est `httpx`, déjà dépendance du projet.
@@ -67,6 +81,11 @@ PREFIXE = "archive"
 ENDPOINT_DEFAUT = "https://s3.fr-par.scw.cloud"
 REGION_DEFAUT = "fr-par"
 
+# 250 Go, en gigaoctets DÉCIMAUX (10^9) : c'est l'unité du facturier, et un seuil qui se
+# compare à une facture se compte comme elle. Lus en Gio (2^30), les mêmes 250 vaudraient
+# 268 Go facturés — 7 % au-dessus de ce qui a été arbitré, sans que rien ne le dise.
+SEUIL_ARCHIVE_OCTETS = 250 * 1000 ** 3
+
 _TAILLE_BLOC = 1 << 20
 # Connexion courte, transfert long : une tranche close pèse plusieurs dizaines de Mo et
 # n'a aucune raison de tenir dans le délai de lecture d'une requête ordinaire.
@@ -84,6 +103,40 @@ class DepotIndisponible(RuntimeError):
 
 class DepotMalConfigure(DepotIndisponible):
     """Configuration refusée : à corriger, pas à retenter."""
+
+
+class SeuilArchiveAtteint(RuntimeError):
+    """Le volume arbitré serait franchi : rien n'est envoyé, et cela ne se retente pas.
+
+    N'HÉRITE PAS de `DepotIndisponible`, et c'est tout le sens du disjoncteur. Une
+    indisponibilité se retente au run suivant — c'est ce que fait `archive._deposer`, qui
+    la rattrape et indexe `payload_archived: false`. Un seuil franchi, lui, se rediscute :
+    rattrapé par le même `except`, il s'avalerait dans le bruit des pannes passagères et
+    la chaîne réessaierait indéfiniment de dépasser une limite qu'on a posée exprès.
+    """
+
+
+def verifier_seuil(volume_depose: int, taille: int, *,
+                   seuil: int = SEUIL_ARCHIVE_OCTETS) -> None:
+    """Lève `SeuilArchiveAtteint` si déposer `taille` octets de plus franchissait `seuil`.
+
+    Se décide AVANT le réseau et sur le volume DÉJÀ DÉPOSÉ, pas sur celui de l'index
+    entier : une version indexée dont les octets ne sont jamais partis ne coûte rien au
+    stockage, et la compter ferait fermer le robinet avant l'heure.
+
+    La comparaison porte sur l'état APRÈS ajout — un dépôt qui ferait exactement le seuil
+    passe, celui qui le dépasse est refusé.
+    """
+    if volume_depose + taille <= seuil:
+        return
+    raise SeuilArchiveAtteint(
+        "seuil d'archive atteint, réévaluer coût/prix/politique avant augmentation — "
+        f"l'archive détient {volume_depose / 1e9:.1f} Go, ce dépôt ajouterait "
+        f"{taille / 1e6:.1f} Mo, le seuil est à {seuil / 1e9:.0f} Go. Repère de coût au "
+        "tarif relevé le 29/08/2026 (0,01606 € HT/Go/mois) : ~4,82 € TTC/mois au seuil, "
+        "sous un plafond arbitré de 20 € TTC/mois pour toute l'infrastructure. Ce tarif "
+        "n'est PAS gelé : recalculer le coût avant de toucher au seuil."
+    )
 
 
 def empreinte_octets(chemin: Path) -> str:

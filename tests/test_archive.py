@@ -407,3 +407,100 @@ def test_un_stockage_inconstructible_n_emporte_pas_la_collecte(archive_isolee, m
 
 def _refuser_le_client(*_args, **_kwargs):
     raise httpx.ConnectError("variable de proxy mal formée")
+
+
+# --- Le disjoncteur de volume ------------------------------------------------------------
+#
+# Trois questions, et la troisième est celle qui fait d'un seuil un disjoncteur : une fois
+# déclenché, il ne se rouvre pas au fichier suivant sous prétexte qu'il est petit.
+
+
+def test_un_depot_sous_le_seuil_part_normalement(archive_isolee, monkeypatch):
+    """Le cas ordinaire, et il doit rester ordinaire : le frein ne se sent pas."""
+    faux = DepotFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: faux)
+
+    entree = archive.enregistrer_version(
+        "mix", GLISSANT, _source(archive_isolee, "a"), "sha_aaa")
+
+    assert entree["payload_archived"] is True
+    assert entree["payload_key"] in faux.objets
+    assert archive.seuil_franchi() is None
+
+
+def test_un_depot_qui_franchirait_le_seuil_est_refuse_sans_rien_envoyer(
+        archive_isolee, monkeypatch):
+    """Refusé AVANT le réseau — et la version reste connue, donc rattrapable.
+
+    L'arbitrage est le même que pour une panne de stockage : ce qui ne se rattrape pas,
+    c'est l'intervalle de connaissance, pas les octets. Un seuil atteint suspend le dépôt,
+    il n'efface pas ce que la chaîne savait.
+    """
+    faux = DepotFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: faux)
+    monkeypatch.setattr(archive, "volume_depose", lambda: depot.SEUIL_ARCHIVE_OCTETS)
+
+    entree = archive.enregistrer_version(
+        "mix", GLISSANT, _source(archive_isolee, "a"), "sha_aaa")
+
+    assert faux.objets == {}, "un octet est parti alors que le seuil était atteint"
+    assert entree["payload_archived"] is False
+    assert entree["payload_key"], "la clé est promise même quand les octets ne partent pas"
+    assert ("mix", "sha_aaa") in archive.versions_non_deposees()
+    assert "seuil d'archive atteint" in archive.seuil_franchi()
+
+
+def test_apres_un_refus_plus_aucun_octet_ne_part_du_run(archive_isolee, monkeypatch):
+    """Le disjoncteur ne laisse pas repasser « les petits fichiers ».
+
+    Le piège serait de remesurer avant chaque dépôt : la source suivante est minuscule, la
+    mesure la laisserait passer, et le run finirait moitié déposé moitié refusé — un état
+    que personne ne saurait relire, et qui donnerait raison à qui dirait « ça passe encore ».
+    Ici la mesure redevient COMPLAISANTE après le refus, et pourtant rien ne part.
+    """
+    faux = DepotFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: faux)
+    monkeypatch.setattr(archive, "volume_depose", lambda: depot.SEUIL_ARCHIVE_OCTETS)
+    archive.enregistrer_version("mix", GLISSANT, _source(archive_isolee, "a"), "sha_aaa")
+    assert faux.objets == {}
+
+    monkeypatch.setattr(archive, "volume_depose", lambda: 0)
+    petite = {**GLISSANT, "filename": "petite.csv.gz"}
+    entree = archive.enregistrer_version(
+        "petite", petite, _source(archive_isolee, "b", nom="petite.csv.gz"), "sha_bbb")
+
+    assert faux.objets == {}, "le disjoncteur a laissé repasser un dépôt dans le même run"
+    assert entree["payload_archived"] is False
+    assert ("petite", "sha_bbb") in archive.versions_non_deposees()
+
+
+def test_un_seuil_franchi_rougit_le_run_sans_interrompre_la_collecte(
+        tmp_path, monkeypatch, capsys):
+    """Le verrou qui manque toujours : celui qui prévient un humain.
+
+    Un disjoncteur qui coupe sans que personne ne l'apprenne laisse le pire des états —
+    la chaîne tourne, le cron est vert, et les octets ne partent plus. Le harnais de
+    `test_secrets` est emprunté parce que c'est le seul qui pilote `fetch.main()` de bout
+    en bout ; c'est ce trajet-là, et pas l'appel direct, qui décide du code de retour.
+    """
+    from demonstrateur import fetch
+    from test_secrets import CSV_VALIDE, _mini_depot
+
+    manifeste = _mini_depot(tmp_path, monkeypatch)
+    faux = DepotFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: faux)
+    monkeypatch.setattr(archive, "volume_depose", lambda: depot.SEUIL_ARCHIVE_OCTETS)
+
+    def _download_ok(url, dest, entetes=None):
+        dest.write_bytes(CSV_VALIDE)
+        return "text/csv"
+
+    monkeypatch.setattr(fetch, "_download", _download_ok)
+
+    assert fetch.main([]) == 1, "un dépôt suspendu doit rougir le run"
+    sortie = capsys.readouterr().out
+    assert "DÉPÔT D'ARCHIVE SUSPENDU" in sortie
+    assert faux.objets == {}, "aucun octet ne doit partir au-delà du seuil"
+    assert manifeste.exists(), "la collecte, elle, doit être allée au bout"
+    assert json.loads(archive.VERSIONS_FILE.read_text(encoding="utf-8"))[
+        "faux_geodair"][0]["payload_archived"] is False

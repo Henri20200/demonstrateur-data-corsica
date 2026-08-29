@@ -31,3 +31,9 @@ def _archive_hors_du_depot(tmp_path, monkeypatch):
     monkeypatch.setattr(archive, "DATA_ARCHIVE", racine)
     monkeypatch.setattr(archive, "VERSIONS_FILE", racine / "_versions.json")
     monkeypatch.setattr(archive, "LAST_CHECKED_FILE", racine / "_last_checked.json")
+    # Le disjoncteur de volume est un état de RUN, porté par des globales. Remis à zéro ici
+    # et pas dans les fixtures locales, pour la raison qui vaut au-dessus : le premier test
+    # qui le fait sauter condamnerait tous les suivants, et un dépôt refusé ressemble en
+    # tout point à un dépôt que personne n'a demandé.
+    monkeypatch.setattr(archive, "_VOLUME_DEPOSE", None)
+    monkeypatch.setattr(archive, "_DISJONCTEUR", None)
