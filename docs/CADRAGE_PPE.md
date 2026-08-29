@@ -25,9 +25,15 @@ c'est précisément ce qui rend le travail descriptif tout en le rendant utile.
 ## Ce que la PPE est, et quand elle se joue
 
 Instituée pour les zones non interconnectées par l'article 203 II de la loi du 17 août 2015,
-la PPE de Corse est **distincte de la PPE nationale** et **co-élaborée** par le président de
-la Collectivité et le représentant de l'État. Elle est adoptée par décret, après délibération
-de l'Assemblée de Corse valant avis.
+la PPE de Corse est **distincte de la PPE nationale** et **co-élaborée** par le président du
+**Conseil exécutif** de Corse et le représentant de l'État. Elle est adoptée par décret, après
+délibération de l'**Assemblée de Corse** valant avis.
+
+> « Président de la Collectivité » ne désigne personne : la Collectivité de Corse a deux
+> présidences, celle du Conseil exécutif et celle de l'Assemblée. Elles n'interviennent pas
+> au même moment de la PPE — l'exécutif co-élabore le projet (art. L. 141-5 III du code de
+> l'énergie), l'Assemblée délibère ensuite pour avis. Confondre les deux effacerait
+> précisément l'étape délibérative. Formulation alignée sur `FRISE_PPE.md`.
 
 - Décret n° 2015-1697 du **18 décembre 2015**, modifié le **13 décembre 2019**, puis par le
   **décret n° 2023-554 du 30 juin 2023** (JO du 2 juillet 2023).
