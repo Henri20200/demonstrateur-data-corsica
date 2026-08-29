@@ -178,14 +178,18 @@ CLES = {
     # Bastia Montesoro dépasse 15,1 % de ses journées contre 10,4 % à Venaco. Le superlatif
     # a survécu au titre qui le portait — la figure, elle, n'a jamais montré que la
     # majorité. C'est ce que la garde d'A4 tient, et c'est ce que la phrase dit désormais.
+    # « Illustre », et non « la preuve est dans cette figure » : A4 montre le contraste
+    # entre Venaco et les stations urbaines ou périurbaines, elle ne démontre ni que
+    # l'ozone est un polluant secondaire ni le mécanisme chimique énoncé juste avant.
+    # Le verbe tient la portée que le reste de la page vient d'ajuster.
     # L'encadré RÉEXPLIQUAIT ici la formation de l'ozone, que la liaison d'A2 a déjà dite
     # deux figures plus haut (« il se fabrique sur place, sous le soleil »). Une page qui
     # tient en trois minutes ne peut pas payer deux fois la même notion : ce qui reste est
     # ce que cette figure-ci ajoute, et le mot qui porte le démenti.
     3: "L'ozone ne sort d'aucun tuyau : c'est un polluant secondaire, que personne n'émet. "
-       "Sa quantité ne dit donc pas ce qu'une installation rejette près de chez soi. La "
-       "preuve est dans cette figure : la seule station rurale de l'île dépasse l'objectif "
-       "plus souvent que la majorité des autres.",
+       "Sa quantité ne dit donc pas ce qu'une installation rejette près de chez soi. Cette "
+       "figure l'illustre : la seule station rurale de l'île dépasse l'objectif plus "
+       "souvent que la majorité des autres.",
 }
 
 
