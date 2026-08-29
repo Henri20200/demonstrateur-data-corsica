@@ -70,12 +70,16 @@ def _blocs() -> list[tuple[str, str, str]]:
             ),
         ),
         (
-            "<p>Et où ? Là encore, l'intuition trompe : le gaz se forme pendant que l'air se "
-            "déplace, et il s'accumule loin des moteurs qui, eux, le détruisent.</p>",
+            # « les moteurs qui, eux, le détruisent » disait un mécanisme faux en plus
+            # d'être catégorique : un moteur ne détruit pas l'ozone, c'est le monoxyde
+            # d'azote émis près des sources de combustion qui peut le consommer.
+            "<p>Et où ? Là encore, l'intuition trompe : il se forme pendant que l'air se "
+            "déplace et peut s'accumuler loin du trafic routier ; à proximité des "
+            "émissions, le monoxyde d'azote peut en consommer une partie.</p>",
             "a4",
             preparer_figure(
                 fa.fig_a4_campagne_contre_ville(), fa.SRC_AIR, d_air,
-                sous_titre=fa.ST_A4,
+                sous_titre=fa.st_a4(),
             ),
         ),
         (
@@ -170,11 +174,22 @@ CLES = {
     # vient de le montrer sur nos propres stations. Aucune installation n'est nommée : la
     # nommer pour l'écarter attirerait l'attention sur elle, et le mécanisme couvre tous
     # les cas sans qu'on ait à en désigner un.
-    3: "L'ozone ne sort d'aucun tuyau. C'est un polluant secondaire : il se fabrique dans "
-       "l'air, sous le soleil, à partir d'autres gaz. Aucune cheminée ne l'émet, et sa "
-       "quantité ne dit donc pas ce qu'une installation rejette près de chez soi. La "
-       "preuve est dans cette figure : c'est à la campagne, loin des moteurs, qu'on en "
-       "mesure le plus.",
+    # « C'est à la campagne qu'on en mesure le plus » était FAUX (corrigé le 29/08/2026) :
+    # Bastia Montesoro dépasse 15,1 % de ses journées contre 10,4 % à Venaco. Le superlatif
+    # a survécu au titre qui le portait — la figure, elle, n'a jamais montré que la
+    # majorité. C'est ce que la garde d'A4 tient, et c'est ce que la phrase dit désormais.
+    # « Illustre », et non « la preuve est dans cette figure » : A4 montre le contraste
+    # entre Venaco et les stations urbaines ou périurbaines, elle ne démontre ni que
+    # l'ozone est un polluant secondaire ni le mécanisme chimique énoncé juste avant.
+    # Le verbe tient la portée que le reste de la page vient d'ajuster.
+    # L'encadré RÉEXPLIQUAIT ici la formation de l'ozone, que la liaison d'A2 a déjà dite
+    # deux figures plus haut (« il se fabrique sur place, sous le soleil »). Une page qui
+    # tient en trois minutes ne peut pas payer deux fois la même notion : ce qui reste est
+    # ce que cette figure-ci ajoute, et le mot qui porte le démenti.
+    3: "L'ozone ne sort d'aucun tuyau : c'est un polluant secondaire, que personne n'émet. "
+       "Sa quantité ne dit donc pas ce qu'une installation rejette près de chez soi. Cette "
+       "figure l'illustre : la seule station rurale de l'île dépasse l'objectif plus "
+       "souvent que la majorité des autres.",
 }
 
 

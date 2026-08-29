@@ -41,7 +41,16 @@ Titres-affirmations que l'analyse doit valider, invalider ou chiffrer :
    serait faux dans sa partie haute ; un test fige la montée *et* le plafond)
 3. « Le pic n'est pas à l'heure de pointe » (heure du maximum d'ozone contre heure du
    maximum de NO₂, à station constante sur les cinq qui mesurent les deux)
-4. « L'air de campagne n'est pas meilleur » (Venaco contre les stations urbaines de fond)
+4. **Observation** : à Venaco, les dépassements d'ozone sont plus fréquents que dans
+   3 des 4 stations urbaines ou périurbaines étudiées. **Interprétation** : ce contraste
+   est compatible avec le mécanisme de consommation locale de l'ozone par certaines
+   émissions liées au trafic, sans permettre d'attribuer causalement l'écart observé à ce
+   seul mécanisme.
+   (Le titre publié se COMPTE dans la donnée — les deux nombres ci-dessus sont ceux du
+   29/08/2026. Il a été réécrit ce jour-là : « L'air de campagne n'est pas meilleur »
+   extrapolait deux fois — une seule station rurale y devenait « la campagne », et un
+   résultat sur le seul ozone y devenait « l'air », quand une station peut porter plus
+   d'ozone et moins de dioxyde d'azote.)
 5. « L'été, l'air est le plus chargé **entre 11 h et 18 h** » — mesuré le 01/08/2026
    (conclusion actionnable, pendant de « l'heure la plus verte ». Elle change de nature avec
    le recentrage : plus une consigne de crise, une information du quotidien).
