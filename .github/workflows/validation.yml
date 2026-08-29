@@ -4,9 +4,10 @@
 # ni écrire dans le dépôt ni voir le jeton ENTSO-E. Ne pas greffer pull_request
 # sur pipeline.yml, qui cumule contents:write + secret + push vers master.
 #
-# data/ n'étant pas versionné, les tests de résultats se sautent d'eux-mêmes ici :
-# la garde couvre fumée, provenance et lint — le pipeline planifié, lui, exécute
-# les verrous de résultats sur données réelles avant chaque publication.
+# DEUX JOBS, ET LEUR ÉCART EST UN DIAGNOSTIC. `valider` tient le code sous
+# l'environnement épinglé d'uv.lock, sans données : lint, fumée, provenance, pages.
+# `verrous` rejoue la chaîne du cron sur les données de son cache, dans l'environnement
+# du cron. Vert + rouge dans cet ordre = l'environnement a bougé, pas le code.
 
 name: validation
 
@@ -54,3 +55,80 @@ jobs:
       - name: Hygiène du diff (espaces parasites)
         if: github.event_name == 'pull_request'
         run: git diff --check origin/${{ github.base_ref }}...HEAD
+
+  # Les verrous de résultats à l'épreuve de vraies données, AVANT la fusion.
+  #
+  # POURQUOI CE JOB EXISTE. `valider` n'a pas de données — data/ n'est pas versionné —
+  # donc une trentaine de verrous s'y sautent en silence. Un verrou neuf n'était éprouvé
+  # qu'au premier passage du cron, six heures plus tard, et son échec coûtait une
+  # publication : rien ne se déploie tant qu'un verrou casse. Les quatre échecs de cron
+  # du 13 au 28/08/2026 (sur 60 runs) viennent tous de là — trois fois la donnée d'un
+  # producteur qui bouge, une fois l'environnement.
+  #
+  # TROIS CHOIX VOULUS, chacun contre une façon de rendre la garde muette :
+  #  1. L'environnement est celui du CRON (pip, dernières versions), PAS uv.lock. Un
+  #     verrou doit être éprouvé là où il devra tenir. Le 28/08, pandas 3 a cessé
+  #     d'entraîner pytz, DuckDB n'a plus su rendre un TIMESTAMPTZ en objet Python, et le
+  #     verrou de T1 est passé sous uv.lock avant de tomber en production.
+  #  2. La donnée vient du cache du pipeline en LECTURE SEULE (`cache/restore`) : une PR
+  #     ne doit ni écrire ce cache ni provoquer l'éviction de l'entrée dont le cron vit.
+  #  3. Sans cache, le job le DIT et laisse passer. Une garde qui se croit verte alors
+  #     qu'elle n'a rien éprouvé est pire que pas de garde.
+  verrous:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Même commande que pipeline.yml, à dessein : cf. le point 1 ci-dessus.
+      - name: Installer comme le cron
+        run: python -m pip install -e . pytest
+
+      - name: Restaurer data/raw du pipeline (lecture seule)
+        id: donnees
+        uses: actions/cache/restore@v4
+        with:
+          path: data/raw
+          key: data-raw-${{ hashFiles('sources.yaml') }}
+          restore-keys: data-raw-
+
+      - name: Aucune donnée en cache
+        if: steps.donnees.outputs.cache-matched-key == ''
+        run: |
+          echo "::warning::Aucun cache data/raw — les verrous de résultats n'ont PAS été éprouvés sur données."
+
+      # Ici, contrairement au pipeline, le manifeste du CACHE fait autorité — et c'est
+      # délibéré. Le pipeline restaure le manifeste versionné parce qu'il va collecter
+      # puis le re-committer ; ce job ne collecte pas. Les octets du cache et les
+      # empreintes qui les accompagnent forment un couple cohérent, tandis que le
+      # manifeste versionné a suivi les sources glissantes depuis : imposer l'un à
+      # l'autre ferait échouer `prepare` sur une empreinte qui n'a jamais menti.
+      # Ne PAS ajouter ici le `git checkout -- data/raw/_manifest.json` du pipeline.
+      - name: Préparation (Parquet)
+        if: steps.donnees.outputs.cache-matched-key != ''
+        run: python -m demonstrateur.prepare
+
+      # La chaîne du cron, dans son ordre. Les verrous des pages lisent ce que ces
+      # commandes écrivent : sans elles, ils compareraient la page publiée à des données
+      # plus anciennes et seraient rouges pour une raison qui n'est pas le diff.
+      # `figures` tolère son code 1 (relevé trop vieux), qui est la normale sur un cache.
+      - name: Figures et pages, comme le cron
+        if: steps.donnees.outputs.cache-matched-key != ''
+        run: |
+          python -m demonstrateur.figures || true
+          python -m demonstrateur.note_elec
+          python -m demonstrateur.figures_air
+          python -m demonstrateur.note_air
+          python -m demonstrateur.page_air
+          python -m demonstrateur.compile_etude
+          python -m demonstrateur.accueil
+
+      # Tout sauf les verrous d'exploitation (`fraicheur`), qui mesurent la date du
+      # dernier passage du cron et non le code — cf. leur déclaration dans pyproject.
+      - name: Verrous de résultats
+        if: steps.donnees.outputs.cache-matched-key != ''
+        run: pytest -m "not fraicheur"

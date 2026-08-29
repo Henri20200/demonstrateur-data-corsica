@@ -50,6 +50,12 @@ sur n'importe quel hébergement statique, et s'intègre en iframe.
     python -m demonstrateur.compile_etude
     pytest                              # fumée + verrous de résultats
 
+    python -m http.server -d outputs 8000   # http://127.0.0.1:8000/etude.html
+
+L'étude se lit par ce serveur local, pas par un double-clic : la page assemble ses
+figures en `<iframe>` relatives qui tirent le `plotly.min.js` mutualisé d'`outputs/`,
+et un `file://` les bloque.
+
 Ajouter une source de données, c'est ajouter une entrée dans `sources.yaml` — rien ne se
 télécharge à la main. `docs/BRIEF.md` porte la question de départ et les critères de
 « fini » ; `docs/RECONNAISSANCE.md`, les définitions verrouillées et les garde-fous ;

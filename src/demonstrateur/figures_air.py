@@ -52,6 +52,19 @@ ANNEES = "extract('year' FROM date_locale) BETWEEN 2020 AND 2025"
 # sortir du filtre qui trace les courbes. Tant que ce nombre était une constante, il a
 # annoncé cinq stations là où le filtre en retient quatre.
 OU_A3 = f"influence = 'Fond' AND station <> 'VENACO' AND {ETES} AND {ANNEES}"
+# Périmètre de A1 (24/08/2026), plus court d'une station que le périmètre commun.
+# A1 compte des JOURNÉES : la longueur d'une barre y est l'affirmation, et une barre ne
+# se compare qu'à dénominateur comparable. Ajaccio Confina 2 est ouverte depuis le
+# 31/01/2024 — 180 journées d'été mesurées, contre 520 à 544 pour les quatre autres. Ses
+# 4 dépassements la plaçaient donc SOUS les 8 de Canetto, quand sur la fenêtre où les
+# cinq stations existent toutes (2024-2025) elle dépasse quatre fois plus souvent que
+# lui. La figure classait deux stations à l'envers. Écrire « 4 sur 180 » à côté de la
+# barre n'y aurait rien changé : c'est la longueur qu'on lit, pas l'étiquette.
+# Elle reste dans A4, qui compte en PART des journées mesurées — là, une fenêtre courte
+# ne fausse plus la comparaison, c'est même la raison d'être de cette figure-là.
+RECENTE = "AJACCIO CONFINA 2"
+OU_A1 = (f"valide AND {ETES} AND {ANNEES} AND influence = 'Fond' "
+         f"AND station <> '{RECENTE}'")
 # Périmètre dit en langue courante (04/08/2026) : « stations de fond, journées
 # réglementairement valides » est exact mais illisible pour qui n'est pas du métier — or
 # cette ligne est la SEULE que tous les lecteurs voient, sur les cinq figures. Renvoyer
@@ -91,9 +104,36 @@ def stations_a3() -> list[str]:
 # individuels) et par `page_air` (page assemblée). Ils étaient recopiés dans les deux
 # modules : toute correction n'était appliquée que d'un côté, et les deux versions d'une
 # même figure se mettaient à raconter des choses différentes.
-ST_A1 = _sous_titre(
-    f"Objectif de qualité : {OBJECTIF_QUALITE} µg/m³ sur 8 heures. "
-    f"Information du public : {SEUIL_INFORMATION} µg/m³ sur une heure.")
+def st_a1() -> str:
+    """Sous-titre d'A1 — une fonction, comme `st_a3()`, et pour deux raisons.
+
+    A1 sort du périmètre commun (une station de fond de moins, cf. `OU_A1`), et la règle
+    du module veut qu'une figure qui en sort le dise ICI, pas seulement en pied : le
+    sous-titre se lit AVEC le titre, le pied se lit après — or c'est en lisant le titre
+    qu'on décide ce que la figure compare. Et ce qu'il annonce se compte dans la donnée,
+    sans quoi l'annonce survivrait à ce qu'elle décrit.
+    """
+    con = _con()
+    tracees, etes = con.execute(f"""
+        SELECT count(DISTINCT station), count(DISTINCT extract('year' FROM date_locale))
+        FROM '{MDA8}' WHERE {OU_A1}
+    """).fetchone()
+    fond, = con.execute(f"""
+        SELECT count(DISTINCT station) FROM '{MDA8}'
+        WHERE valide AND {ETES} AND {ANNEES} AND influence = 'Fond'
+    """).fetchone()
+    debut, etes_recente = con.execute(f"""
+        SELECT min(extract('year' FROM date_locale)),
+               count(DISTINCT extract('year' FROM date_locale))
+        FROM '{MDA8}'
+        WHERE valide AND {ETES} AND {ANNEES} AND station = '{RECENTE}'
+    """).fetchone()
+    return (_sous_titre(
+        f"Objectif de qualité : {OBJECTIF_QUALITE} µg/m³ sur 8 heures. "
+        f"Information du public : {SEUIL_INFORMATION} µg/m³ sur une heure.")
+        + f"<br>{NOMBRES[tracees]} stations sur {NOMBRES[fond].lower()} : "
+          f"{RECENTE.title()}, ouverte en {int(debut)}, ne couvre que "
+          f"{NOMBRES[etes_recente].lower()} de ces {NOMBRES[etes].lower()} étés.")
 ST_A2 = _sous_titre(
     "La température vient du poste météo le plus ressemblant, pas toujours le plus proche.")
 # Note tenue en lignes COURTES (< 90 signes) : le pied de figure est une annotation
@@ -122,6 +162,26 @@ def st_a3() -> str:
     return _sous_titre(
         f"{NOMBRES.get(n, str(n))} stations mesurant les deux polluants.<br>Chaque courbe "
         "est ramenée à son propre maximum : on compare des heures, pas des concentrations.")
+
+
+def note_a1() -> str:
+    """Note d'A1 : la seule objection que le sous-titre laisse ouverte.
+
+    Le périmètre est annoncé plus haut depuis que la figure suit la règle du module. Ce
+    qu'il reste à dire tient en une ligne : l'écart de périmètre ne coûte rien au chiffre
+    mis en avant. Sans elle, un lecteur attentif peut croire qu'il manque des journées au
+    total de l'encart — et il aurait raison de se poser la question.
+    """
+    con = _con()
+    depassements, = con.execute(f"""
+        SELECT count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE}) FROM '{MDA8}'
+        WHERE valide AND {ETES} AND {ANNEES} AND station = '{RECENTE}'
+    """).fetchone()
+    # « ci-dessus » faisait 65 signes contre 64 disponibles, donc deux lignes de pied
+    # pour un mot : l'encart est juste au-dessus, il se désigne tout seul.
+    return f"Ses {depassements} dépassements tombent tous des jours déjà comptés."
+
+
 ST_A4 = _sous_titre(
     "En part des journées mesurées, et non en nombre de jours — "
     "une station de campagne, quatre de ville.")
@@ -142,8 +202,7 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     con = _con()
     df = con.execute(f"""
         WITH j AS (
-          SELECT date_locale, station, mda8 FROM '{MDA8}'
-          WHERE valide AND {ETES} AND {ANNEES} AND influence = 'Fond'),
+          SELECT date_locale, station, mda8 FROM '{MDA8}' WHERE {OU_A1}),
         h AS (SELECT date_locale, station, max(valeur) AS horaire_max
               FROM '{SERIE}' WHERE polluant = 'O3' GROUP BY 1, 2)
         SELECT j.station,
@@ -154,13 +213,16 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     """).df()
     # Le total affiché compte des JOURNÉES DISTINCTES, jamais la somme des barres : une
     # journée chargée déclenche plusieurs stations à la fois, et additionner les colonnes
-    # donnerait 173 « journées » là où le calendrier n'en compte que 106 — un lecteur
-    # comprendrait qu'il y a eu 173 jours de dépassement sur la période. Les barres, elles,
+    # donnerait 169 « journées » là où le calendrier n'en compte que 106 — un lecteur
+    # comprendrait qu'il y a eu 169 jours de dépassement sur la période. Les barres, elles,
     # comptent bien des journées PAR STATION : chacune est juste dans son périmètre.
+    # Ce total est celui des quatre stations tracées, et il vaut celui des cinq : Confina 2
+    # n'apporte ni une journée mesurée ni un dépassement que les autres n'aient déjà. La
+    # note le dit au lecteur, un test le tient.
     journees, mesurees = con.execute(f"""
         SELECT count(DISTINCT CASE WHEN mda8 > {OBJECTIF_QUALITE} THEN date_locale END),
                count(DISTINCT date_locale)
-        FROM '{MDA8}' WHERE valide AND {ETES} AND {ANNEES} AND influence = 'Fond'
+        FROM '{MDA8}' WHERE {OU_A1}
     """).fetchone()
     alertes = int(df["alertes"].sum())
     if alertes:
@@ -195,12 +257,25 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     )
     fig.update_layout(
         title=dict(text="Six étés de dépassements, et pas une seule alerte"),
-        xaxis=dict(title=dict(text=f"Journées où CETTE station dépasse "
-                                   f"{OBJECTIF_QUALITE} µg/m³ (six étés cumulés)",
+        # Libellé aligné sur celui d'A4 (24/08/2026), qui le suit dans la page et le disait
+        # juste : c'est L'OZONE qui dépasse, pas la station — laquelle ne dépasse rien, elle
+        # mesure. Le seuil est nommé et pas seulement chiffré : le sous-titre en annonce
+        # DEUX (objectif de qualité et information du public), et un « 120 µg/m³ » nu
+        # laissait au lecteur le soin d'apparier. « (six étés cumulés) » disparaît : la
+        # période est déjà dite trois fois sur cette figure — titre, et les deux dernières
+        # lignes du sous-titre. Reste à empêcher d'additionner les barres, ce que faisaient
+        # les capitales de « CETTE » ; « station par station » le dit sans crier, et
+        # l'encart tient l'autre bout avec ses journées distinctes.
+        xaxis=dict(title=dict(text=f"Journées où l'ozone dépasse l'objectif de qualité "
+                                   f"({OBJECTIF_QUALITE} µg/m³), station par station",
                               font=AXE)),
         yaxis=dict(title=""),
-        margin=dict(t=170, b=170, l=250, r=90),
-        height=560,
+        # Le périmètre est passé du pied au sous-titre (24/08/2026) : une ligne de titre
+        # en plus, deux lignes de pied en moins. `t` couvrait déjà trois lignes de
+        # sous-titre, `b` redescend de 40 px — et `height` d'autant, pour que la zone de
+        # tracé retrouve la hauteur qu'elle avait, ni plus ni moins.
+        margin=dict(t=170, b=200, l=250, r=90),
+        height=590,
     )
     return fig
 
@@ -510,7 +585,7 @@ def main() -> int:
     d_meteo = date_collecte("meteo_horaire_corse")
 
     export_html(fig_a1_depassements_sans_alerte(), "a1_depassements_sans_alerte",
-                SRC_AIR, d_air, sous_titre=ST_A1)
+                SRC_AIR, d_air, sous_titre=st_a1(), note=note_a1())
     export_html(fig_a2_ozone_et_chaleur(), "a2_ozone_et_chaleur",
                 SRC_AIR_METEO, d_meteo, sous_titre=ST_A2, note=NOTE_A2,
                 pied_decalage_px=PIED_A2)

@@ -41,10 +41,24 @@ MIX = (DATA_RAW / "edf_mix_temps_reel.csv").as_posix()
 COURBE = (DATA_RAW / "edf_courbe_charge_horaire.csv").as_posix()
 ECRET = (DATA_RAW / "edf_ecretement_corse.csv").as_posix()
 AIR = (DATA_RAW / "lcsqa_temps_reel.csv").as_posix()
+SEQE = (DATA_RAW / "seqe_emissions_verifiees.csv").as_posix()
+# Les trois installations thermiques corses au registre SEQE-UE. Le filtre pays est
+# INDISPENSABLE : ces identifiants ne sont pas uniques hors de France, et 1040/1041/206030
+# désignent aussi une brasserie allemande, un regazéificateur espagnol et une distillerie
+# écossaise. Constaté le 23/08/2026 en oubliant le filtre.
+SEQE_CORSE = {1040: "EDF Vazzio", 1041: "EDF Lucciana", 206030: "EDF PEI Haute-Corse"}
+SEQE_ANNEES = range(2019, 2025)  # fenêtre de la courbe corse
 # Les deux tranches Météo-France : la close 2020-2024 et la glissante 2025-2026.
 METEO = (DATA_RAW / "meteo_horaire_corse*.csv.gz").as_posix()
 METEO_SOURCES = ["meteo_horaire_corse_2020_2024", "meteo_horaire_corse"]
 ENTSOE_ANNEES = range(2019, 2025)  # fenêtre alignée sur la courbe corse
+SARCO_ANNEES = (2020, 2021, 2023)  # les seuls millésimes qu'EDF SEI publie aussi
+SARCO_SENS = ("entrant", "sortant")  # entrant = Sardaigne -> Corse ; sortant = l'inverse
+# Solde SARCO publié par EDF SEI, en GWh, avec l'édition du bilan prévisionnel qui le
+# porte. Recopié à la main parce que ces PDF ne sont pas une source machine : c'est la
+# valeur À CONFRONTER, pas une valeur calculée. Le § 9 de docs/VERIF_ENTSOE_TERNA.md
+# donne la page de chacune.
+SARCO_EDF_SEI_GWH = {2020: 393, 2021: 418, 2023: 396}
 
 # Codes qualité Météo-France (H_descriptif_champs.csv, relevé le 01/08/2026). Pendant
 # exact de la `validité` du LCSQA. On garde ce qui a passé au moins les contrôles de
@@ -56,14 +70,21 @@ QT_ECARTES = (2,)       # 2 douteuse, en cours de vérification
 # On agrège les fossiles en « thermique » ; B10 (STEP) en génération -> hydraulique ;
 # déchets (B17) avec bioénergies comme le classement EDF. La Sardaigne a du charbon (B05)
 # et du gaz de synthèse IGCC (B03, centrale Sarlux), d'où un thermique majoritaire.
+# B20 (« Other ») est du THERMIQUE, et ce n'est pas une supposition : le bilan régional de
+# Terna n'a que six lignes de production, dont la géothermique sarde est vide — tout ce qui
+# n'est ni hydro, ni vent, ni soleil, ni batterie y est donc nécessairement thermique. Le
+# solde le confirme : sans B20 le thermique reconstruit manque 8,9 % (2023) et 9,2 % (2024)
+# de la mesure Terna ; avec lui, l'écart tombe à 1,2 % et 1,8 %. Rangé en « autre », il
+# fabriquait sur T6 un bloc de 4 % sans contrepartie corse — la Corse n'a pas de poste
+# « autre ». Cf. docs/VERIF_ENTSOE_TERNA.md § 3.1.
 PSR_VERS_FILIERE = {
     "B02": "thermique", "B03": "thermique", "B04": "thermique", "B05": "thermique",
-    "B06": "thermique", "B07": "thermique", "B08": "thermique",
+    "B06": "thermique", "B07": "thermique", "B08": "thermique", "B20": "thermique",
     "B10": "hydraulique", "B11": "hydraulique", "B12": "hydraulique",
     "B16": "solaire",
     "B18": "eolien", "B19": "eolien",
     "B01": "bioenergies", "B17": "bioenergies",
-    "B09": "autre", "B13": "autre", "B14": "autre", "B15": "autre", "B20": "autre",
+    "B09": "autre", "B13": "autre", "B14": "autre", "B15": "autre",
     "B25": "autre",  # stockage (batteries, décharge) — apparu en 2024, pas d'équivalent EDF
 }
 _PT_MINUTES = {"PT15M": 15, "PT30M": 30, "PT60M": 60}
@@ -138,28 +159,102 @@ def courbe_corse_to_parquet(dest: str) -> None:
 
     Colonnes Outre-mer vides (bagasse/geothermie/stockage) et coût (hors périmètre)
     écartées. `micro_hydraulique_mw` gardée brute + coalescée dans l'ENR (cf. audit).
+
+    **L'étiquette `+00:00` de ce jeu est fausse : il porte l'heure légale corse.**
+    Établi le 23/08/2026 par trois mesures indépendantes du code (cf.
+    `docs/VERIF_ENTSOE_TERNA.md` § 5 et `tests/test_horodatage_corse.py`) :
+
+    1. contre le pyranomètre `GLO` de Météo-France — autre producteur, autre instrument,
+       même soleil — la série demande 0 h de décalage l'hiver et −1 h l'été, quand le
+       témoin sarde (ENTSO-E, UTC déclaré) demande +1 h dans les deux régimes ;
+    2. autour des dix bascules d'heure légale de 2020-2024, ce décalage saute d'exactement
+       une heure d'un week-end à l'autre — trois semaines d'écart, même parc, même soleil.
+       Le témoin sarde ne bouge pas de plus de 0,3 h ;
+    3. signature structurelle, sans le soleil : sur 52 608 heures, les **trois seules**
+       lignes à production nulle tombent à 02 h des dimanches de passage à l'heure d'été.
+       C'est l'heure qui n'existe pas en heure légale. Une série réellement en UTC n'a
+       aucune heure singulière ce jour-là.
+
+    Le jeu voisin `edf_mix_temps_reel`, du même producteur, est lui bien en UTC (pic
+    d'étiquette brute à 11 h 30, midi solaire 11 h 28 UTC) : la convention se vérifie par
+    jeu, jamais par producteur.
+
+    Conséquence sur les colonnes — le brut se conserve À CÔTÉ de l'interprété, et la
+    convention s'écrit plutôt qu'elle ne se suppose :
+
+    - `horodatage_publie` : l'étiquette exactement comme EDF la publie, suffixe compris.
+      C'est la seule chose qu'on tienne du producteur ; elle ne se perd pas.
+    - `date_heure_locale` : cette étiquette lue littéralement, **en heure légale corse**.
+      Colonne de référence, et celle dont dérivent heure, mois et année.
+    - `date_heure_utc` : l'instant, obtenu en déclarant l'heure légale puis en convertissant.
+      C'est l'INTERPRÉTATION ; elle se vérifie contre le soleil, elle ne se déclare pas.
+
+    On ne « retire pas une heure l'été » dans une figure : la correction est ici, une fois,
+    et les figures lisent une heure déjà juste. `date_heure` a été RENOMMÉE à dessein —
+    tout consommateur doit choisir explicitement entre l'instant et l'heure légale.
+
+    Deux gardes tiennent la lecture. Le suffixe est vérifié : le jour où EDF corrigera son
+    étiquetage, `strptime` sur les dix-neuf premiers caractères deviendrait faux en
+    silence, donc un suffixe autre que `+00:00` fait ÉCHOUER. Et les heures qui n'existent
+    PAS en heure légale (02 h du dimanche de printemps) sont retirées — détectées par
+    aller-retour heure légale -> instant -> heure légale, jamais par une liste de dates
+    écrite à la main. EDF les remplit : à zéro sur les deux années validées, mais à
+    200-250 MW sur 2021, 2022 et 2023, toutes estimées. Une heure qui n'a pas eu lieu ne
+    se date pas.
     """
     con = duckdb.connect()
-    src = f"read_csv_auto('{COURBE}', delim=';', header=true)"
-    # `production_totale_mw > 0` retire 3 lignes à 0 MW (heure fantôme des passages à
-    # l'heure d'été 2019, 2020 et 2024) : 52 605 h traitées sur les 52 608 h du brut.
-    # Écart documenté (cf. RECONNAISSANCE.md) — c'est le dénominateur de tous les ratios.
-    corse = f"(SELECT * FROM {src} WHERE territoire='Corse' AND production_totale_mw > 0)"
+    # `types=` force l'étiquette en VARCHAR : sans quoi le sniffer la typerait en
+    # TIMESTAMPTZ sur la foi du suffixe, et toute relecture dépendrait du fuseau de la
+    # machine. Aucune sortie de cette fonction ne doit varier avec `TZ`.
+    src = (f"read_csv('{COURBE}', delim=';', header=true, "
+           "types={'date_heure':'VARCHAR'})")
+    corse = f"(SELECT * FROM {src} WHERE territoire='Corse')"
 
-    _auditer_null(con, corse, GRANDES_FILIERES, "courbe Corse")  # micro exemptée (doc)
+    # Garde 1 : le suffixe. Il est faux, on le sait, et c'est précisément pour cela qu'il
+    # doit rester tel quel — s'il change, notre lecture change de sens.
+    n_autres, exemple = con.execute(
+        f"SELECT count(*), min(date_heure) FROM {corse} WHERE date_heure NOT LIKE '%+00:00'"
+    ).fetchone()
+    if n_autres:
+        raise ValueError(
+            f"courbe Corse : {n_autres} étiquette(s) sans suffixe '+00:00' (ex. "
+            f"{exemple!r}) — EDF a changé son étiquetage. La lecture en heure légale "
+            "repose sur ce suffixe erroné : re-vérifier la convention contre le "
+            "pyranomètre AVANT de republier une heure de la journée."
+        )
+
+    lu = "strptime(substr(date_heure, 1, 19), '%Y-%m-%dT%H:%M:%S')"
+    instant = f"timezone('Europe/Paris', {lu})"        # heure légale -> instant
+    retour = f"timezone('Europe/Paris', {instant})"    # instant -> heure légale
+    base = f"(SELECT *, {lu} AS dhl, {instant} AS dhi, {retour} AS dhr FROM {corse})"
+
+    # Garde 2 : les heures inexistantes. L'aller-retour ne retombe pas sur ses pieds pour
+    # une heure sautée au passage à l'heure d'été — c'est la seule détection qui ne
+    # vieillit pas (une liste de dimanches, si).
+    fantomes = con.execute(f"SELECT count(*) FROM {base} WHERE dhr <> dhl").fetchone()[0]
+    reel = f"(SELECT * FROM {base} WHERE dhr = dhl AND production_totale_mw > 0)"
+    nulles = con.execute(
+        f"SELECT count(*) FROM {base} WHERE dhr = dhl AND production_totale_mw <= 0"
+    ).fetchone()[0]
+
+    _auditer_null(con, reel, GRANDES_FILIERES, "courbe Corse")  # micro exemptée (doc)
 
     enr = "(photovoltaique_mw+eolien_mw+bioenergies_mw+coalesce(micro_hydraulique_mw,0))"
     con.execute(
         f"""
         COPY (
-          SELECT date_heure, statut,
-            extract('hour'  FROM timezone('Europe/Paris', date_heure)) AS heure_locale,
-            extract('month' FROM timezone('Europe/Paris', date_heure)) AS mois_local,
+          SELECT date_heure               AS horodatage_publie,
+            dhl                           AS date_heure_locale,
+            timezone('UTC', dhi)          AS date_heure_utc,
+            statut,
+            extract('hour'  FROM dhl)     AS heure_locale,
+            extract('month' FROM dhl)     AS mois_local,
+            extract('year'  FROM dhl)     AS annee_locale,
             production_totale_mw, thermique_mw, hydraulique_mw, micro_hydraulique_mw,
             photovoltaique_mw, eolien_mw, bioenergies_mw, importations_mw,
             {enr}                                       AS enr_distrib_mw,
             round(100.0*{enr}/production_totale_mw, 2)  AS part_enr_distrib
-          FROM {corse}
+          FROM {reel}
         ) TO '{dest}' (FORMAT PARQUET)
         """
     )
@@ -167,7 +262,7 @@ def courbe_corse_to_parquet(dest: str) -> None:
     # sous-ensemble solaire — c'est l'invariant qui a révélé le bug NULL 2024. (Au niveau
     # ligne, la production nette nocturne peut être < 0 et le violer légitimement —
     # auxiliaires, convention EDF. Deux périmètres à ne pas confondre : PAR FILIÈRE,
-    # c'est fréquent (PV < 0 : 20 429 h, soit 38,8 % ; éolien 13 017 ; bio 4 856 ;
+    # c'est fréquent (PV < 0 : 20 426 h, soit 38,8 % ; éolien 13 015 ; bio 4 856 ;
     # micro 2 233) ; l'AGRÉGAT enr_distrib_mw < 0 est rare car les termes se
     # compensent : 2 750 h (5,2 %), part minimale −1,39 %. Sans objet à l'agrégat
     # horaire ; les figures clampent à 0 via greatest().)
@@ -179,8 +274,22 @@ def courbe_corse_to_parquet(dest: str) -> None:
     ).fetchone()[0]
     if viol:
         raise ValueError(f"courbe Corse : {viol} heures ENR<solaire (agrégat) — cohérence rompue.")
-    n = con.execute(f"SELECT count(*) FROM '{dest}'").fetchone()[0]
-    print(f"[ok] {Path(dest).name} — {n:,} heures (Corse 2019-2024) — garde ENR>=solaire OK")
+    # Garde de sortie : l'instant est une CLÉ, l'heure légale non — celle du retour à
+    # l'heure d'hiver a lieu deux fois. Un doublon d'instant dirait que la grille de 24 h
+    # par jour du producteur a gardé les deux, et fausserait toute jointure.
+    n, uniq, a1, a2 = con.execute(
+        f"SELECT count(*), count(DISTINCT date_heure_utc), min(annee_locale), "
+        f"max(annee_locale) FROM '{dest}'"
+    ).fetchone()
+    if n != uniq:
+        raise ValueError(
+            f"courbe Corse : {n - uniq} instant(s) en double — deux étiquettes d'heure "
+            "légale retombent sur le même instant (retour à l'heure d'hiver conservé en "
+            "double par le producteur ?). L'axe UTC ne peut plus servir de clé."
+        )
+    print(f"[ok] {Path(dest).name} — {n:,} heures (Corse {int(a1)}-{int(a2)}, heure légale) "
+          f"— {fantomes} heure(s) inexistante(s) et {nulles} ligne(s) à 0 MW retirées "
+          f"— gardes ENR>=solaire et unicité d'instant OK")
 
 
 def ecretement_corse_to_parquet(dest: str) -> None:
@@ -226,8 +335,17 @@ def ecretement_corse_to_parquet(dest: str) -> None:
     print(f"[ok] {Path(dest).name} — {n} mois ({annees} années pleines, Corse) — écrêtement PV")
 
 
-def _lignes_entsoe_horaires(path) -> list[dict]:
-    """Reconstruit la génération horaire (MW) d'un GL_MarketDocument ENTSO-E.
+def _lignes_entsoe_horaires(path, *, direction: str = "inBiddingZone_Domain.mRID",
+                            code_fixe: str | None = None) -> list[dict]:
+    """Reconstruit la série horaire (MW) d'un GL_MarketDocument ENTSO-E.
+
+    Les deux paramètres nommés servent la charge (`A65`), qui obéit EXACTEMENT aux mêmes
+    règles de reconstruction — report A03, résolutions PT60M/PT15M mêlées, agrégation à
+    l'heure — et n'en diffère que par deux détails : sa série porte
+    `outBiddingZone_Domain.mRID` au lieu d'`inBiddingZone_Domain.mRID`, et elle n'a pas de
+    `MktPSRType` puisqu'il n'y a rien à ventiler. Les valeurs par défaut reproduisent le
+    comportement d'origine à l'identique ; un second parser aurait dupliqué les trois
+    pièges ci-dessous, donc l'occasion de n'en corriger qu'une copie.
 
     Trois pièges gérés (validés empiriquement sur IT-Sardinia 2019-2024) :
      - **curveType A03** : les positions manquantes RECONDUISENT la dernière valeur
@@ -248,9 +366,9 @@ def _lignes_entsoe_horaires(path) -> list[dict]:
     # (heure UTC, code) -> [somme des sous-pas, nombre de sous-pas] pour la moyenne.
     horaire: dict[tuple, list] = {}
     for ts in root.findall(q("TimeSeries")):
-        if ts.find(q("inBiddingZone_Domain.mRID")) is None:
+        if ts.find(q(direction)) is None:
             continue  # série OUT = consommation, hors génération
-        code = ts.find(q("MktPSRType") + "/" + q("psrType")).text
+        code = code_fixe or ts.find(q("MktPSRType") + "/" + q("psrType")).text
         for period in ts.findall(q("Period")):
             res = period.find(q("resolution")).text
             pas = _PT_MINUTES.get(res)
@@ -300,8 +418,27 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
         if not src.exists():
             raise FileNotFoundError(f"{src} manquant — lancer fetch-data (jeton ENTSO-E requis)")
         lignes.extend(_lignes_entsoe_horaires(src))
+        # La CHARGE (`A65`) vient dans le même Parquet, au même pas et au même fuseau, parce
+        # qu'elle sert de DÉNOMINATEUR : le seuil de déconnexion corse rapporte la puissance
+        # intermittente à ce qui transite sur le réseau, et côté corse `production_totale_mw`
+        # inclut les imports. Côté sarde la génération seule n'est pas la même quantité — l'île
+        # produit chaque année ~45 % de plus qu'elle ne consomme. Les deux colonnes coexistent
+        # donc, et la figure dit laquelle elle prend.
+        charge = DATA_RAW / f"entsoe_charge_sardaigne_{an}.xml"
+        if not charge.exists():
+            raise FileNotFoundError(f"{charge} manquant — lancer fetch-data (jeton ENTSO-E requis)")
+        lignes.extend(_lignes_entsoe_horaires(
+            charge, direction="outBiddingZone_Domain.mRID", code_fixe="charge"))
     brut = pd.DataFrame(lignes)
     brut["filiere"] = brut["code"].map(PSR_VERS_FILIERE)
+    # B10 (turbinage de STEP) SORT de l'hydraulique. Ce n'est pas une source primaire :
+    # c'est de l'énergie déjà produite ailleurs, pompée puis rendue — 1 110,9 GWh
+    # restitués sur six ans pour 1 328,4 consommés, soit un rendement de cycle de 0,84.
+    # Confondue avec l'hydraulique, elle en gonflait la barre de 42 % et invitait à
+    # comparer 3,65 % sardes aux 28 % corses, qui sont de la production pure — la Corse
+    # n'a aucune STEP. Cf. docs/VERIF_ENTSOE_TERNA.md § 3.2.
+    brut.loc[brut["code"] == "B10", "filiere"] = "step"
+    brut.loc[brut["code"] == "charge", "filiere"] = "charge"
     inconnus = sorted(brut.loc[brut["filiere"].isna(), "code"].unique())
     if inconnus:
         raise ValueError(f"codes PSR ENTSO-E non mappés {inconnus} — compléter PSR_VERS_FILIERE")
@@ -319,16 +456,33 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
             SELECT date_heure,
               coalesce(sum(mw) FILTER (WHERE filiere='thermique'), 0)   AS thermique_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='hydraulique'), 0) AS hydraulique_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='step'), 0)        AS step_mw,
+              coalesce(sum(mw) FILTER (WHERE filiere='charge'), 0)      AS charge_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='solaire'), 0)     AS solaire_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='eolien'), 0)      AS eolien_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='bioenergies'), 0) AS bioenergies_mw,
               coalesce(sum(mw) FILTER (WHERE filiere='autre'), 0)       AS autre_mw
             FROM large GROUP BY 1
           )
+          -- `date_heure` est un TIMESTAMP NAÏF portant de l'UTC. Sur un naïf,
+          -- timezone('Europe/Rome', x) ne CONVERTIT pas : il INTERPRÈTE x comme étant
+          -- déjà à Rome et rend un TIMESTAMPTZ, dont extract() relit ensuite l'heure
+          -- dans le fuseau de session. Sur une machine à l'heure de Rome, l'aller-retour
+          -- est l'identité : `heure_locale` valait donc l'heure UTC, décalée d'une heure
+          -- l'hiver et de deux l'été. Le pic solaire sarde tombait à 11 h — impossible à
+          -- 9° de longitude, où la Corse pique à 14 h. Il faut donc DIRE d'abord que le
+          -- naïf est de l'UTC, puis convertir. Écrit ainsi, le calcul ne dépend plus du
+          -- fuseau de la machine qui le lance. Cf. docs/VERIF_ENTSOE_TERNA.md § 5.
           SELECT date_heure,
-            extract('year' FROM date_heure)                        AS annee,
-            extract('hour' FROM timezone('Europe/Rome', date_heure)) AS heure_locale,
+            extract('year' FROM (date_heure AT TIME ZONE 'UTC')
+                                 AT TIME ZONE 'Europe/Rome')       AS annee,
+            extract('hour' FROM (date_heure AT TIME ZONE 'UTC')
+                                 AT TIME ZONE 'Europe/Rome')       AS heure_locale,
             thermique_mw, hydraulique_mw, solaire_mw, eolien_mw, bioenergies_mw, autre_mw,
+            -- `step_mw` est TRANSPORTÉ mais reste HORS du total : la restitution d'une
+            -- STEP n'est pas de la génération primaire, et l'inclure au dénominateur
+            -- diluerait toutes les parts d'un poste qui n'a pas d'équivalent corse.
+            step_mw, charge_mw,
             (thermique_mw + hydraulique_mw + solaire_mw + eolien_mw
              + bioenergies_mw + autre_mw)                          AS production_totale_mw
           FROM par_filiere
@@ -341,6 +495,184 @@ def entsoe_sardaigne_to_parquet(dest: str) -> None:
         f"SELECT count(*), min(annee), max(annee) FROM '{dest}'"
     ).fetchone()
     print(f"[ok] {Path(dest).name} — {n:,} heures (Sardaigne {a}-{b}) — génération par filière")
+
+
+def _points_flux_entsoe(path) -> list[dict]:
+    """Points d'un Publication_MarketDocument A11 (flux physiques), un par position.
+
+    Trois pièges, tous constatés sur SARCO 2019-2024 le 23/08/2026 :
+
+     - **résolution mixte.** 2024 mêle PT60M et PT15M (bascule italienne au quart
+       d'heure). Un parseur qui compterait « un point = une heure » surestimerait de
+       trois quarts d'heure par point de 15 min. On porte donc la DURÉE de chaque point,
+       et l'énergie se calcule avec, jamais avec un comptage de lignes.
+     - **curveType A03.** Les positions absentes d'une `Period` reconduisent la dernière
+       valeur connue. On les matérialise avec `declare = False` plutôt que de choisir à
+       la place du lecteur : les deux lectures — positions déclarées seules, ou report
+       appliqué — se recalculent ensuite depuis la même table. Sur nos trois millésimes
+       elles ne diffèrent que de 0,1 à 0,5 GWh, et `tests/test_sarco.py` tient ce fait.
+     - **plusieurs `Period` par document**, chacune avec son propre intervalle et sa
+       propre résolution ; le report ne franchit pas la frontière d'une Period.
+
+    Ne PAS confondre avec `_lignes_entsoe_horaires`, qui lit des GL_MarketDocument (A75,
+    génération par filière) : autre racine, autre structure, autre règle de direction.
+    """
+    nom = lambda t: t.split("}")[-1]  # noqa: E731
+    pas_minutes = {"PT60M": 60, "PT15M": 15}
+    racine = ET.parse(path).getroot()
+    out = []
+    for periode in racine.iter():
+        if nom(periode.tag) != "Period":
+            continue
+        res = next(c.text for c in periode if nom(c.tag) == "resolution")
+        if res not in pas_minutes:
+            raise ValueError(
+                f"{Path(path).name} : résolution ENTSO-E inconnue {res!r} — ni PT60M ni "
+                "PT15M. Une durée de point non reconnue fausserait l'énergie en silence."
+            )
+        minutes = pas_minutes[res]
+        bornes = next(c for c in periode if nom(c.tag) == "timeInterval")
+        debut = datetime.fromisoformat(
+            next(c.text for c in bornes if nom(c.tag) == "start").replace("Z", "+00:00"))
+        fin = datetime.fromisoformat(
+            next(c.text for c in bornes if nom(c.tag) == "end").replace("Z", "+00:00"))
+        n_positions = int((fin - debut) / timedelta(minutes=minutes))
+        declares = {}
+        for pt in periode:
+            if nom(pt.tag) != "Point":
+                continue
+            pos = int(next(c.text for c in pt if nom(c.tag) == "position"))
+            declares[pos] = float(next(c.text for c in pt if nom(c.tag) == "quantity"))
+        courant = None
+        for pos in range(1, n_positions + 1):
+            declare = pos in declares
+            if declare:
+                courant = declares[pos]
+            if courant is None:  # rien avant le premier point déclaré : pas de report
+                continue
+            out.append({
+                "date_heure_utc": (debut + timedelta(minutes=minutes * (pos - 1)))
+                                  .replace(tzinfo=None),
+                "minutes": minutes,
+                "mw": courant,
+                "declare": declare,
+            })
+    return out
+
+
+def sarco_flux_to_parquet(dest: str) -> None:
+    """Parquet des flux physiques de la liaison SARCO, mesurés du côté italien.
+
+    C'est la SEULE contrainte extérieure à EDF trouvée sur l'approvisionnement corse
+    (cf. docs/VERIF_ENTSOE_TERNA.md § 9). On garde les deux sens SÉPARÉS et on ne
+    stocke aucun solde : EDF SEI publie un net, ENTSO-E deux bruts, et la soustraction
+    appartient à qui compare — sinon on ne sait plus ce qui est mesuré et ce qui est
+    calculé. Trois millésimes seulement, ceux qu'EDF SEI publie également.
+    """
+    lignes = []
+    for an in SARCO_ANNEES:
+        for sens in SARCO_SENS:
+            src = DATA_RAW / f"entsoe_sarco_{an}_{sens}.xml"
+            if not src.exists():
+                raise FileNotFoundError(
+                    f"{src} manquant — lancer fetch-data (jeton ENTSO-E requis)")
+            for ligne in _points_flux_entsoe(src):
+                lignes.append({**ligne, "annee": an, "sens": sens})
+    brut = pd.DataFrame(lignes)
+
+    con = duckdb.connect()
+    con.register("brut", brut)
+    con.execute(
+        f"""COPY (SELECT annee, sens, date_heure_utc, minutes, mw, declare
+                  FROM brut ORDER BY annee, sens, date_heure_utc)
+            TO '{dest}' (FORMAT PARQUET)"""
+    )
+
+    # Garde de sortie : un flux physique ne change pas de signe — le sens EST la
+    # direction, et une valeur négative dirait que le document encode autre chose que ce
+    # qu'on croit lire. Le solde, lui, a le droit d'être de n'importe quel signe.
+    neg = con.execute(f"SELECT count(*) FROM '{dest}' WHERE mw < 0").fetchone()[0]
+    if neg:
+        raise ValueError(
+            f"SARCO : {neg} point(s) de flux négatif — un sens porterait un solde et non "
+            "un flux, la soustraction entrant−sortant compterait deux fois."
+        )
+    # Garde de sortie : les deux sens et les trois années doivent être là. Une requête
+    # ENTSO-E qui renverrait un document vide passerait sinon inaperçue.
+    # CROSS JOIN et non deux `unnest` dans le même SELECT : DuckDB les ZIPPE par
+    # position au lieu de les croiser, ce qui fabriquerait un couple (2023, NULL).
+    manquants = con.execute(
+        f"""SELECT count(*)
+            FROM (SELECT unnest({list(SARCO_ANNEES)}) AS a)
+            CROSS JOIN (SELECT unnest({list(SARCO_SENS)}) AS s)
+            WHERE NOT EXISTS (SELECT 1 FROM '{dest}' t
+                              WHERE t.annee = a AND t.sens = s)"""
+    ).fetchone()[0]
+    if manquants:
+        raise ValueError(f"SARCO : {manquants} couple(s) (année, sens) sans aucun point.")
+
+    n, a1, a2 = con.execute(
+        f"SELECT count(*), min(annee), max(annee) FROM '{dest}'").fetchone()
+    net = con.execute(
+        f"""SELECT annee,
+              sum(CASE WHEN sens='entrant' THEN mw ELSE -mw END * minutes/60.0)/1000
+            FROM '{dest}' WHERE declare GROUP BY 1 ORDER BY 1"""
+    ).fetchall()
+    detail = " ; ".join(f"{int(a)} : {v:.1f} GWh" for a, v in net)
+    print(f"[ok] {Path(dest).name} — {n:,} points ({int(a1)}-{int(a2)}, deux sens) "
+          f"— solde net SARCO {detail}")
+
+
+def seqe_corse_to_parquet(dest: str) -> None:
+    """Émissions vérifiées SEQE-UE des trois installations thermiques corses.
+
+    Contrainte physique EXTÉRIEURE à la série de production : ces émissions sont vérifiées
+    par une tierce partie accréditée et engagent financièrement l'exploitant, dans une
+    chaîne de déclaration distincte de sa comptabilité électrique. Ce qu'elles permettent
+    de conclure — et la réserve qui subsiste, les deux chaînes pouvant partager la même
+    mesure de combustible en amont — est au § 10 de `docs/VERIF_ENTSOE_TERNA.md`.
+
+    On ne stocke QUE les émissions. Le rapport aux GWh thermiques est un calcul de
+    comparaison, il appartient à qui compare (`tests/test_seqe_thermique.py`) : mêler ici
+    la grandeur mesurée et la grandeur déclarée par EDF ferait perdre la trace de ce qui
+    vient d'où — même règle que pour les deux sens de SARCO.
+    """
+    con = duckdb.connect()
+    ids = ", ".join(str(i) for i in SEQE_CORSE)
+    a, b = SEQE_ANNEES[0], SEQE_ANNEES[-1]
+    con.execute(
+        f"""COPY (
+              SELECT year AS annee, eutl_id, name AS installation,
+                     TRY_CAST(emissions_tco2e AS DOUBLE) AS tco2
+              FROM read_csv_auto('{SEQE}')
+              WHERE country_code = 'FR' AND eutl_id IN ({ids})
+                AND year BETWEEN {a} AND {b}
+              ORDER BY annee, eutl_id
+            ) TO '{dest}' (FORMAT PARQUET)"""
+    )
+
+    # Garde : les trois installations, toutes les années. Un identifiant retiré du registre
+    # ou renuméroté ferait autrement disparaître une centrale en silence, et le rapport
+    # émissions/production chuterait sans que rien ne le signale.
+    attendu = len(SEQE_CORSE) * len(SEQE_ANNEES)
+    n, sites, a1, a2 = con.execute(
+        f"SELECT count(*), count(DISTINCT eutl_id), min(annee), max(annee) FROM '{dest}'"
+    ).fetchone()
+    if (n, sites, a1, a2) != (attendu, len(SEQE_CORSE), a, b):
+        raise ValueError(
+            f"SEQE Corse : {n} ligne(s) pour {sites} installation(s) sur {a1}-{a2} — "
+            f"attendu {attendu} lignes, {len(SEQE_CORSE)} installations, {a}-{b}. "
+            "Vérifier les eutl_id et le filtre country_code avant toute comparaison."
+        )
+    vides = con.execute(f"SELECT count(*) FROM '{dest}' WHERE tco2 IS NULL OR tco2 <= 0").fetchone()[0]
+    if vides:
+        raise ValueError(
+            f"SEQE Corse : {vides} déclaration(s) nulle(s) ou vide(s) — une centrale à zéro "
+            "émission fausserait le rapport aux GWh sans être une donnée manquante."
+        )
+    total = con.execute(f"SELECT sum(tco2)/1000 FROM '{dest}'").fetchone()[0]
+    print(f"[ok] {Path(dest).name} — {n} déclarations vérifiées ({sites} installations, "
+          f"{int(a1)}-{int(a2)}) — {total:,.0f} ktCO2 cumulées")
 
 
 def air_corse_to_parquet(dest: str) -> None:
@@ -1051,13 +1383,22 @@ _SORTIES_FIXES = [
 
 
 def _plan_construction(sardaigne_ok: bool, air_ok: bool = False,
-                       meteo_ok: bool = False, aee_ok: bool = False) -> list:
+                       meteo_ok: bool = False, aee_ok: bool = False,
+                       sarco_ok: bool = False, seqe_ok: bool = False) -> list:
     plan = list(_SORTIES_FIXES)
     if sardaigne_ok:
         plan.append((
             "entsoe_sardaigne.parquet", entsoe_sardaigne_to_parquet,
-            [f"entsoe_sardaigne_{an}" for an in ENTSOE_ANNEES],
+            [f"entsoe_sardaigne_{an}" for an in ENTSOE_ANNEES]
+            + [f"entsoe_charge_sardaigne_{an}" for an in ENTSOE_ANNEES],
         ))
+    if sarco_ok:
+        plan.append((
+            "entsoe_sarco.parquet", sarco_flux_to_parquet,
+            [f"entsoe_sarco_{an}_{sens}" for an in SARCO_ANNEES for sens in SARCO_SENS],
+        ))
+    if seqe_ok:
+        plan.append(("seqe_corse.parquet", seqe_corse_to_parquet, ["seqe_emissions_verifiees"]))
     if air_ok:
         plan.append(("air_corse.parquet", air_corse_to_parquet, ["lcsqa_temps_reel"]))
     if aee_ok:
@@ -1180,17 +1521,26 @@ def _ecrire_lignee(entrees: dict, sorties: dict) -> None:
 def main() -> int:
     # Garde-fou AUD-01 : on VÉRIFIE tous les bruts AVANT de construire, on construit en
     # staging et on bascule d'un bloc, puis on écrit la lignée sortie -> entrées.
-    sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists() for an in ENTSOE_ANNEES)
+    sardaigne_ok = all((DATA_RAW / f"entsoe_sardaigne_{an}.xml").exists()
+                       and (DATA_RAW / f"entsoe_charge_sardaigne_{an}.xml").exists()
+                       for an in ENTSOE_ANNEES)
     air_ok = Path(AIR).exists()
     meteo_ok = len(list(DATA_RAW.glob("meteo_horaire_corse*.csv.gz"))) == len(METEO_SOURCES)
     aee_ok = len(list(DATA_RAW.glob("aee_*.parquet"))) == len(AEE_SOURCES)
-    plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok, aee_ok)
+    sarco_ok = all((DATA_RAW / f"entsoe_sarco_{an}_{sens}.xml").exists()
+                   for an in SARCO_ANNEES for sens in SARCO_SENS)
+    seqe_ok = Path(SEQE).exists()
+    plan = _plan_construction(sardaigne_ok, air_ok, meteo_ok, aee_ok, sarco_ok, seqe_ok)
     source_ids = [sid for _, _, sids in plan for sid in sids]
 
     entrees = _verifier_bruts(source_ids)
     sorties = construire(plan, entrees)
     if not sardaigne_ok:
         print("[=] entsoe_sardaigne : fichiers annuels absents (jeton ENTSO-E ?) — étape sautée.")
+    if not sarco_ok:
+        print("[=] entsoe_sarco : flux SARCO absents (jeton ENTSO-E ?) — étape sautée.")
+    if not seqe_ok:
+        print("[=] seqe_emissions_verifiees : brut absent — étape sautée (lancer fetch-data).")
     if not air_ok:
         print("[=] lcsqa_temps_reel : brut absent — étape air sautée (lancer fetch-data).")
     if not meteo_ok:

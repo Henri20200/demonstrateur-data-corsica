@@ -139,8 +139,9 @@ jobs:
 
       - name: Figures — électricité
         id: figures
-        # Code 1 = relevé > 48 h : le visuel T1 dégradé (affichage suspendu) doit être
-        # publié quand même — c'est lui qui dit la vérité au lecteur.
+        # Code 1 = relevé au-delà du seuil de blocage (24 h depuis le 27/08/2026) : le
+        # visuel T1, avertissement en tête, doit être publié quand même — c'est lui qui
+        # dit la vérité au lecteur, et son âge se recalcule désormais chez celui-ci.
         continue-on-error: true
         run: python -m demonstrateur.figures
 

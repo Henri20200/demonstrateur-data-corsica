@@ -43,3 +43,13 @@ packages = ["src/demonstrateur"]
 [tool.ruff]
 line-length = 100
 src = ["src"]
+
+[tool.pytest.ini_options]
+# `fraicheur` : verrou d'EXPLOITATION, pas de code. Il mesure l'âge du dernier relevé,
+# donc la date du dernier passage du cron — rien que le diff d'une PR puisse corriger.
+# La CI de PR éprouve les verrous sur les données du cache, vieilles de quelques heures
+# à quelques jours : y faire tourner celui-ci rendrait la garde rouge sans rien dire du
+# code, et une garde qui crie à tort finit désarmée. Le cron, lui, joue TOUT.
+markers = [
+    "fraicheur: dépend de l'instant du dernier passage du cron, pas du code",
+]

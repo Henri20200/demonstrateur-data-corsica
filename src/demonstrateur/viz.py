@@ -199,6 +199,97 @@ def lignes_de_titre(fig) -> list[tuple[str, int]]:
     return lignes
 
 
+# --- Légende : la zone que rien ne surveillait ---------------------------------
+# Deux fois en une journée (T4, T6), une légende horizontale a recouvert soit le
+# sous-titre, soit le titre d'axe, sans qu'aucune garde ne s'en aperçoive : elle vit
+# hors du titre et hors du pied, les deux seules choses mesurées jusqu'ici. Les
+# constantes ci-dessous sont des ORDRES DE GRANDEUR relevés au rendu, pas des valeurs
+# que Plotly expose — d'où des marges volontairement généreuses : la garde doit
+# refuser un chevauchement, pas placer la légende au pixel.
+TAILLE_LEGENDE = 17          # cf. template()
+RANGEE_LEGENDE_PX = 26       # hauteur d'une rangée d'entrées, interligne compris
+PASTILLE_LEGENDE_PX = 46     # carré de couleur + espace avant le libellé + écart
+TAILLE_TICK = 17             # cf. template()
+TAILLE_TITRE_AXE = 19        # cf. template()
+STANDOFF_AXE_PX = 18         # cf. template()
+
+
+def entrees_de_legende(fig) -> list:
+    """Libellés qui apparaîtront dans la légende, dans l'ordre du tracé."""
+    return [tr.name for tr in fig.data
+            if getattr(tr, "showlegend", None) is not False and getattr(tr, "name", None)]
+
+
+def rangees_de_legende(fig, largeur: int) -> int:
+    """Nombre de rangées qu'occupera une légende HORIZONTALE à cette largeur.
+
+    Plotly replie les entrées quand elles ne tiennent plus sur une ligne ; c'est ce
+    repli qui fait grandir une légende en iframe étroite. On le simule au lieu de le
+    supposer.
+    """
+    entrees = entrees_de_legende(fig)
+    if not entrees:
+        return 0
+    dispo, rangees, courante = largeur - RETRAIT_TITRE_PX, 1, 0.0
+    for nom in entrees:
+        besoin = largeur_px(nom, TAILLE_LEGENDE) + PASTILLE_LEGENDE_PX
+        if courante and courante + besoin > dispo:
+            rangees, courante = rangees + 1, besoin
+        else:
+            courante += besoin
+    return rangees
+
+
+def hauteur_sous_axe_px(fig) -> int:
+    """Place occupée sous la zone de tracé par les étiquettes et le titre de l'axe x."""
+    axe = fig.layout.xaxis
+    sous = 0 if getattr(axe, "showticklabels", None) is False else round(TAILLE_TICK * 1.2)
+    if getattr(getattr(axe, "title", None), "text", None):
+        sous += STANDOFF_AXE_PX + round(TAILLE_TITRE_AXE * 1.2)
+    return sous
+
+
+def verifier_legende(fig, largeur: int = LARGEUR_VISUEL) -> list:
+    """Fautes de placement de la légende. Liste vide si elle ne recouvre rien.
+
+    Deux configurations, deux voisins. SOUS le tracé (`y < 0`), elle doit passer sous
+    les étiquettes et le titre de l'axe x, et tenir dans la marge basse. AU-DESSUS
+    (`y > 1`), elle partage la marge haute avec le titre et le sous-titre. Entre les
+    deux la légende est DANS le tracé : ce dépôt ne s'en sert pas, et la garde ne s'y
+    prononce pas plutôt que de prononcer au hasard.
+    """
+    lg = fig.layout.legend
+    if getattr(lg, "orientation", None) != "h" or getattr(lg, "y", None) is None:
+        return []
+    hauteur = getattr(fig.layout, "height", None)
+    if not hauteur:
+        return []
+    zone = hauteur - marge_effective(fig, "t") - marge_effective(fig, "b")
+    if zone <= 0:
+        return [f"    zone de tracé nulle ou négative ({zone} px) — marges à revoir"]
+    rangees = rangees_de_legende(fig, largeur)
+    haut = RANGEE_LEGENDE_PX * rangees
+    y = float(lg.y)
+    if y < 0:
+        depart = abs(y) * zone
+        besoin = hauteur_sous_axe_px(fig)
+        if depart < besoin:
+            return [f"    légende à y={y} : elle commence {depart:.0f} px sous le tracé, "
+                    f"où l'axe x en occupe encore {besoin}. Descendre `y`."]
+        if depart + haut > marge_effective(fig, "b"):
+            return [f"    légende à y={y} sur {rangees} rangée(s) : son bas tombe à "
+                    f"{depart + haut:.0f} px, hors d'une marge b="
+                    f"{marge_effective(fig, 'b')}. Augmenter `b` ET `height`."]
+    elif y > 1:
+        depart = (y - 1) * zone
+        besoin = marge_haute_minimale(fig)
+        if marge_effective(fig, "t") - depart - haut < besoin - 30:
+            return [f"    légende à y={y} sur {rangees} rangée(s) : elle remonte dans le "
+                    f"sous-titre, qui réclame {besoin} px de marge haute. La passer sous "
+                    "le tracé (y négatif), comme T6 depuis le 22/07/2026."]
+    return []
+
+
 def marge_haute_minimale(fig) -> int:
     """Marge haute qu'il faut à cette figure pour que le tracé ne remonte pas dans le titre.
 
@@ -270,10 +361,12 @@ def verifier_titres(fig, nom: str = "figure", largeur: int = LARGEUR_VISUEL) -> 
     besoin = marge_haute_minimale(fig)
     if marge < besoin:
         fautes.append(f"    marge haute t={marge} — il en faut {besoin} pour ce titre")
+    fautes += verifier_legende(fig, largeur)
     if fautes:
         raise ValueError(
-            f"{nom} : titre hors gabarit à {largeur} px de large — couper sur <br>, "
-            "ou raccourcir.\n" + "\n".join(fautes))
+            f"{nom} : titre, marge ou légende hors gabarit à {largeur} px — couper "
+            "sur <br>, raccourcir, ou déplacer la légende.\n"
+            + "\n".join(fautes))
 
 
 def date_collecte(source_id: str) -> str:
@@ -294,7 +387,8 @@ def date_collecte(source_id: str) -> str:
 
 
 def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = "",
-                note: str = "", pied_decalage_px: int = -85) -> str:
+                note: str = "", pied_decalage_px: int = -85,
+                script_apres: str | None = None) -> str:
     """Écrit outputs/<name>.html (fichier léger, plotly.min.js mutualisé dans outputs/).
 
     Applique le template, incruste la mention de source obligatoire.
@@ -309,6 +403,11 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
                 que soit la hauteur de la figure (une fraction de zone de tracé ne
                 l'est pas). Le défaut (-85) passe sous ticks + titre d'axe ; à creuser
                 quand une légende occupe la bande basse (cf. T6)
+    script_apres : JavaScript LOCAL exécuté après le tracé. Réservé à ce qui ne peut
+                pas être calculé à la génération parce que la réponse dépend de
+                l'instant de LECTURE — la péremption d'un relevé, et rien d'autre.
+                Aucune ressource tierce, aucun appel réseau : le script ne lit que des
+                valeurs déjà écrites dans la page.
     """
     preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px, nom=name)
     dest = OUTPUTS / f"{name}.html"
@@ -317,7 +416,8 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     # div_id fixe : sans lui, Plotly tire un UUID à chaque export et deux runs sur les
     # mêmes données produisent des fichiers différents — or la planification ne committe
     # que ce qui a réellement changé.
-    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name)
+    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name,
+                   post_script=script_apres)
     print(f"[ok] {dest}")
     return str(dest)
 

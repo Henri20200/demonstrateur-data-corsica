@@ -40,13 +40,13 @@ contiennent aucun kilowattheure.</p>
 chez leur producteur.</p>
 <div class="scroll"><table>
 <tr><th>Jeu</th><th>Producteur</th><th>Licence</th><th>Collecté le</th></tr>
-<tr><td>Production corse heure par heure, par filière, 52 605 heures
+<tr><td>Production corse heure par heure, par filière, 52 602 heures
         (2019-2024)</td>
     <td>EDF — Open Data Groupe EDF (Corse &amp; Outre-mer)</td>
     <td>Licence Ouverte (Etalab)</td><td>2026-07-22</td></tr>
 <tr><td>Mix électrique corse en temps réel, pas de 15 minutes</td>
     <td>EDF — Open Data Groupe EDF (production corse temps réel)</td>
-    <td>Licence Ouverte 2.0 (Etalab)</td><td>2026-08-18</td></tr>
+    <td>Licence Ouverte 2.0 (Etalab)</td><td>2026-08-29</td></tr>
 <tr><td>Limitations imposées au photovoltaïque, 96 mois (2016-2023)</td>
     <td>EDF — Open Data Groupe EDF (limitations sûreté système)</td>
     <td>Licence Ouverte 2.0 (Etalab)</td><td>2026-07-22</td></tr>
@@ -54,10 +54,10 @@ chez leur producteur.</p>
     <td>ENTSO-E, plateforme de transparence des réseaux européens — données Terna</td>
     <td>CC-BY 4.0, attribution à ENTSO-E</td><td>2026-07-22</td></tr>
 </table></div>
-<p>L'historique corse couvre <strong>52 605 heures</strong>, de 2019 à
+<p>L'historique corse couvre <strong>52 602 heures</strong>, de 2019 à
 2024. La Sardaigne ajoute 52 608 heures, de 2019 à 2024. Le temps réel ne garde que les deux dernières semaines : au
-dernier téléchargement, 1 344 relevés de 15 minutes, du 04/08/2026 au
-18/08/2026. Il est retéléchargé à chaque exécution.</p>
+dernier téléchargement, 1 344 relevés de 15 minutes, du 15/08/2026 au
+29/08/2026. Il est retéléchargé à chaque exécution.</p>
 <p>Un cinquième chiffre est <strong>recopié, pas calculé</strong> : le taux de dépendance
 énergétique de 86,1 %. Il vient de la Lettre de l'OREGES de Corse
 (Agence d'aménagement durable, d'urbanisme et d'énergie de la Corse), édition 2021,
@@ -112,12 +112,12 @@ n'est pas dessinée.</p>
 <h2>Les approximations, assumées</h2>
 <ul>
 <li><strong>Deux tiers des heures sont estimées.</strong> EDF classe son historique :
-    17 542 heures « validé », 35 063 « estimé », soit
+    17 542 heures « validé », 35 060 « estimé », soit
     67 %. Les conclusions ont été vérifiées séparément sur chaque
     moitié. Chaque visuel historique porte la mention.</li>
-<li><strong>52 605 heures retenues.</strong> De 2019 à 2024, soit
+<li><strong>52 602 heures retenues.</strong> De 2019 à 2024, soit
     6 années pleines, la période couvre 52 608 heures.
-    Il en manque 3. Elles tombent aux passages à l'heure d'été, quand on
+    Il en manque 6. Elles tombent aux passages à l'heure d'été, quand on
     saute de deux heures du matin à trois : ces heures-là n'ont pas existé, et le fichier
     d'EDF les porte tout de même, à production nulle. Elles sont retirées avant calcul.
     Le total retenu sert de dénominateur à toutes les parts publiées.</li>
@@ -144,6 +144,43 @@ fait échouer la préparation. Les contrôles sont bloquants. Une valeur absente
 examinée, jamais remplacée en silence ; une catégorie inconnue ou une année incomplète
 arrête tout. Enfin, chaque chiffre publié est protégé par un test. S'il cesse d'être vrai,
 le test le signale avant la mise en ligne.</p>
+
+<h2>Le détail technique, pour qui veut vérifier</h2>
+<p>Cette section est le renvoi annoncé par la section « Définitions et limites » de
+l'étude. Elle n'ajoute aucun résultat : elle décrit les mécanismes qui les protègent.</p>
+<ul>
+<li><strong>Empreinte et manifeste.</strong> Chaque fichier téléchargé est empreint en
+    SHA-256, et l'empreinte est consignée dans un manifeste versionné avec l'adresse
+    exacte, le producteur, la licence, la date de collecte et la taille. À chaque
+    exécution, un fichier déjà présent est <em>revérifié</em> contre cette empreinte :
+    s'il a changé d'un octet, la préparation s'arrête. Aucun Parquet ne dérive d'une
+    donnée non certifiée.</li>
+<li><strong>Le fuseau horaire, établi contre trois repères extérieurs.</strong> La courbe
+    horaire d'EDF est étiquetée en temps universel et ne l'est pas : elle porte l'heure
+    légale de l'île. Nous l'avons d'abord lue au mot, et le chapitre de midi a annoncé
+    « 14 heures » pendant plusieurs semaines. La convention retenue a été confirmée par
+    le rayonnement mesuré aux pyranomètres de Météo-France, par le comportement de la
+    série aux dix changements d'heure de 2020-2024, et par la structure du fichier
+    lui-même. Quatre tests automatiques la tiennent. Le jeu du temps réel, du même
+    producteur, est bien en temps universel : une convention se vérifie par jeu de
+    données, jamais par producteur.</li>
+<li><strong>52 602 heures, et non 52 608.</strong> Six heures sont retirées : les
+    2 heures du matin des dimanches de passage à l'heure d'été, qui n'existent pas en
+    heure légale. EDF les publie quand même, à zéro en 2019, 2020 et 2024, mais garnies
+    de 200 à 250 MW en 2021, 2022 et 2023 — trois années estimées.</li>
+<li><strong>Comment les verrous fonctionnent.</strong> Chaque chiffre publié est
+    reconstruit depuis les données à chaque exécution et comparé à ce que le document
+    affirme. Un écart interrompt la publication : la version précédente reste en ligne,
+    et l'écart doit être examiné. Le 23 août 2026, une correction de notre propre chaîne
+    — celle du fuseau horaire ci-dessus — a fait céder sept de ces verrous d'un coup ;
+    les fenêtres horaires ont été <em>remesurées</em> sur la donnée corrigée, jamais
+    translatées.</li>
+<li><strong>L'âge de l'instantané est calculé chez vous.</strong> La page est fabriquée
+    plusieurs fois par jour puis servie telle quelle : elle ne peut pas vieillir toute
+    seule. La jauge du temps réel embarque donc l'instant exact de son dernier relevé et
+    recalcule son âge à l'ouverture, puis toutes les cinq minutes. Sans cela, une page
+    fabriquée le matin aurait continué d'afficher le même âge tout l'après-midi.</li>
+</ul>
 
 <h2>Citer</h2>
 <p>Production corse et limitations : EDF, Open Data Groupe EDF (Licence Ouverte, Etalab).

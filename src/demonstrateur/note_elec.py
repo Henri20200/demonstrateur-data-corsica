@@ -43,23 +43,24 @@ SARD_PATH = DATA_PROCESSED / "entsoe_sardaigne.parquet"
 
 def _chiffres() -> dict:
     con = duckdb.connect()
-    # Millésimes forcés en UTC — le fuseau des sources, et celui des bornes annoncées par
-    # l'étude. Deux raisons de ne pas laisser faire : convertie en heure locale, la
-    # dernière heure de l'historique bascule au 1er janvier suivant et annoncerait une
-    # année de plus que celle que couvrent les visuels ; et `extract` sur un horodatage à
-    # fuseau suit le fuseau de la SESSION — UTC sur le runner, Paris sur un poste français,
-    # soit deux notes différentes pour la même donnée.
+    # Millésimes lus dans `annee_locale`, écrite par prepare depuis l'heure légale corse
+    # établie contre le soleil (cf. sa docstring). Ni `extract` sur un horodatage à fuseau
+    # — qui suivrait le fuseau de la SESSION, UTC sur le runner et Paris sur un poste
+    # français, soit deux notes différentes pour la même donnée — ni une conversion écrite
+    # ici : la convention se décide une fois, en préparation. Les heures couvertes se
+    # comptent sur l'axe UTC, le seul où une heure vaut une heure : l'axe local en compte
+    # 23 le dimanche de printemps et 25 celui d'automne.
     heures, an1, an2, estimees, sans_micro, couvertes = con.execute(f"""
         SELECT count(*),
-               min(extract('year' FROM timezone('UTC', date_heure))),
-               max(extract('year' FROM timezone('UTC', date_heure))),
+               min(annee_locale),
+               max(annee_locale),
                count(*) FILTER (WHERE lower(statut) LIKE 'estim%'),
                count(*) FILTER (WHERE micro_hydraulique_mw IS NULL),
                -- Heures que la période couvre, bornes comprises. C'est à elle que se
                -- compare le nombre de lignes retenues, et l'écart EST la limite publiée
                -- juste en dessous : écrit à la main, il se figerait le jour où la
                -- période s'allonge, dans une note qui promet de tout lire.
-               datediff('hour', min(date_heure), max(date_heure)) + 1
+               datediff('hour', min(date_heure_utc), max(date_heure_utc)) + 1
         FROM '{COURBE}'""").fetchone()
     pas, mix_d1, mix_d2 = con.execute(f"""
         SELECT count(*),
@@ -86,8 +87,17 @@ def _chiffres() -> dict:
     # elle disparaît alors du tableau plutôt que d'y figurer sans chiffres (comme
     # `figures` saute T6). Une ligne de tableau vide serait un sourçage qui ment.
     if SARD_PATH.exists():
+        # PAS `min/max(annee)` : cette colonne porte l'année LOCALE (Rome), et la
+        # dernière heure de 2024 en UTC y bascule au 1er janvier suivant. La note
+        # annoncerait « 2019 à 2025 » pour une source qui couvre six années pleines —
+        # exactement la confusion de bord corrigée côté corse le 23/08/2026. On lit donc
+        # l'axe de la SOURCE, qu'ENTSO-E publie en UTC. `tests/test_provenance.py` relie
+        # cette annonce au périmètre analytique (`figures.FENETRE_T6`) : c'est lui qui
+        # fait foi, pas un extremum d'horodatage.
         n, sa1, sa2 = con.execute(
-            f"SELECT count(*), min(annee), max(annee) FROM '{SARD_PATH.as_posix()}'"
+            f"""SELECT count(*), min(extract('year' FROM date_heure)),
+                       max(extract('year' FROM date_heure))
+                FROM '{SARD_PATH.as_posix()}'"""
         ).fetchone()
         c["sard"] = dict(heures=n, an1=int(sa1), an2=int(sa2),
                          collecte=date_collecte("entsoe_sardaigne_2024"))
@@ -247,6 +257,43 @@ fait échouer la préparation. Les contrôles sont bloquants. Une valeur absente
 examinée, jamais remplacée en silence ; une catégorie inconnue ou une année incomplète
 arrête tout. Enfin, chaque chiffre publié est protégé par un test. S'il cesse d'être vrai,
 le test le signale avant la mise en ligne.</p>
+
+<h2>Le détail technique, pour qui veut vérifier</h2>
+<p>Cette section est le renvoi annoncé par la section « Définitions et limites » de
+l'étude. Elle n'ajoute aucun résultat : elle décrit les mécanismes qui les protègent.</p>
+<ul>
+<li><strong>Empreinte et manifeste.</strong> Chaque fichier téléchargé est empreint en
+    SHA-256, et l'empreinte est consignée dans un manifeste versionné avec l'adresse
+    exacte, le producteur, la licence, la date de collecte et la taille. À chaque
+    exécution, un fichier déjà présent est <em>revérifié</em> contre cette empreinte :
+    s'il a changé d'un octet, la préparation s'arrête. Aucun Parquet ne dérive d'une
+    donnée non certifiée.</li>
+<li><strong>Le fuseau horaire, établi contre trois repères extérieurs.</strong> La courbe
+    horaire d'EDF est étiquetée en temps universel et ne l'est pas : elle porte l'heure
+    légale de l'île. Nous l'avons d'abord lue au mot, et le chapitre de midi a annoncé
+    « 14 heures » pendant plusieurs semaines. La convention retenue a été confirmée par
+    le rayonnement mesuré aux pyranomètres de Météo-France, par le comportement de la
+    série aux dix changements d'heure de 2020-2024, et par la structure du fichier
+    lui-même. Quatre tests automatiques la tiennent. Le jeu du temps réel, du même
+    producteur, est bien en temps universel : une convention se vérifie par jeu de
+    données, jamais par producteur.</li>
+<li><strong>52 602 heures, et non 52 608.</strong> Six heures sont retirées : les
+    2 heures du matin des dimanches de passage à l'heure d'été, qui n'existent pas en
+    heure légale. EDF les publie quand même, à zéro en 2019, 2020 et 2024, mais garnies
+    de 200 à 250 MW en 2021, 2022 et 2023 — trois années estimées.</li>
+<li><strong>Comment les verrous fonctionnent.</strong> Chaque chiffre publié est
+    reconstruit depuis les données à chaque exécution et comparé à ce que le document
+    affirme. Un écart interrompt la publication : la version précédente reste en ligne,
+    et l'écart doit être examiné. Le 23 août 2026, une correction de notre propre chaîne
+    — celle du fuseau horaire ci-dessus — a fait céder sept de ces verrous d'un coup ;
+    les fenêtres horaires ont été <em>remesurées</em> sur la donnée corrigée, jamais
+    translatées.</li>
+<li><strong>L'âge de l'instantané est calculé chez vous.</strong> La page est fabriquée
+    plusieurs fois par jour puis servie telle quelle : elle ne peut pas vieillir toute
+    seule. La jauge du temps réel embarque donc l'instant exact de son dernier relevé et
+    recalcule son âge à l'ouverture, puis toutes les cinq minutes. Sans cela, une page
+    fabriquée le matin aurait continué d'afficher le même âge tout l'après-midi.</li>
+</ul>
 
 <h2>Citer</h2>
 <p>Production corse et limitations : EDF, Open Data Groupe EDF (Licence Ouverte, Etalab).

@@ -19,6 +19,7 @@ from demonstrateur.viz import (
     largeur_px,
     marge_basse_minimale,
     marge_haute_minimale,
+    rangees_de_legende,
     verifier_pied,
     verifier_titres,
 )
@@ -35,10 +36,13 @@ def figure(titre: str = "Titre court", sous_titre: str = "", marge_t: int = 400)
 
 # --- Le gabarit mesure juste ---------------------------------------------------
 
+# ÉTALONS FIGÉS, ce ne sont pas des titres vivants. Les trois largeurs de droite ont été
+# relevées au VRAI rendu (Segoe UI, la `system-ui` de Windows) le 06/08/2026 ; c'est cette
+# observation extérieure qui donne sa valeur au test, et elle ne se refait pas depuis le
+# code — mesurer un texte neuf avec `largeur_px` puis vérifier `largeur_px` contre lui-même
+# ne prouverait rien. Les chaînes restent donc telles quelles même quand le document
+# change : la première a été le titre de T3 jusqu'au 27/08/2026 et ne l'est plus.
 @pytest.mark.parametrize("texte, taille, attendu", [
-    # Relevés au vrai rendu (Segoe UI, la `system-ui` de Windows) : ce sont ces
-    # trois-là qui ont servi à trancher les coupures du 06/08/2026. Si le gabarit
-    # dérive, les décisions prises ce jour-là ne tiennent plus.
     ("Même à son zénith, le soleil ne détrône pas le fossile", 28, 655),
     ("Une journée d'été (juin-août) heure par heure — parts du mix, Corse 2019-2024.", 18, 631),
     ("Interconnexions = câbles SACOI (Italie via la Sardaigne).", 18, 438),
@@ -133,3 +137,50 @@ def test_une_figure_sans_marge_declaree_passe():
     fig = go.Figure()
     fig.update_layout(title=dict(text="Titre court"))
     verifier_titres(fig, "t_essai")
+
+
+# --- La légende ne recouvre plus rien ------------------------------------------
+
+def _fig_legende(y, hauteur=700, t=150, b=300, titre_axe="Heure légale", noms=("A", "B")):
+    fig = go.Figure()
+    for n in noms:
+        fig.add_trace(go.Scatter(x=[0, 1], y=[0, 1], name=n))
+    fig.update_layout(
+        title=dict(text="Un titre", subtitle=dict(text="Un sous-titre")),
+        xaxis=dict(title=dict(text=titre_axe)),
+        legend=dict(orientation="h", y=y, yanchor="top", x=0),
+        margin=dict(t=t, b=b), height=hauteur)
+    return fig
+
+
+def test_une_legende_qui_tombe_sur_le_titre_d_axe_est_refusee():
+    """Le défaut réel de T4 le 27/08/2026 : y=-0,16 posait la légende sur « Heure légale »."""
+    with pytest.raises(ValueError, match="l'axe x en occupe encore"):
+        verifier_titres(_fig_legende(-0.16), "figure")
+
+
+def test_une_legende_assez_basse_passe():
+    verifier_titres(_fig_legende(-0.30), "figure")
+
+
+def test_sans_titre_d_axe_la_legende_peut_remonter():
+    """La garde MESURE ce qui est sous le tracé, elle ne le suppose pas : sans titre
+    d'axe il n'y a que les étiquettes à dégager, et y=-0,16 redevient acceptable."""
+    verifier_titres(_fig_legende(-0.16, titre_axe=None), "figure")
+
+
+def test_une_legende_qui_deborde_de_la_marge_basse_est_refusee():
+    with pytest.raises(ValueError, match="hors d'une marge b="):
+        verifier_titres(_fig_legende(-0.80, b=120), "figure")
+
+
+def test_une_legende_au_dessus_du_trace_qui_mord_le_sous_titre_est_refusee():
+    """L'autre défaut, celui de T6 : légende à y=1,02 dans une marge haute déjà prise."""
+    with pytest.raises(ValueError, match="elle remonte dans le sous-titre"):
+        verifier_titres(_fig_legende(1.02, t=100), "figure")
+
+
+def test_une_legende_se_replie_et_la_garde_le_voit():
+    """Six entrées longues ne tiennent pas sur une rangée : la garde compte le repli."""
+    longs = tuple(f"Une entrée de légende plutôt longue n° {i}" for i in range(6))
+    assert rangees_de_legende(_fig_legende(-0.30, noms=longs), 992) >= 3
