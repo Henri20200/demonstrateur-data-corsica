@@ -70,8 +70,12 @@ def _blocs() -> list[tuple[str, str, str]]:
             ),
         ),
         (
-            "<p>Et où ? Là encore, l'intuition trompe : le gaz se forme pendant que l'air se "
-            "déplace, et il s'accumule loin des moteurs qui, eux, le détruisent.</p>",
+            # « les moteurs qui, eux, le détruisent » disait un mécanisme faux en plus
+            # d'être catégorique : un moteur ne détruit pas l'ozone, c'est le monoxyde
+            # d'azote émis près des sources de combustion qui peut le consommer.
+            "<p>Et où ? Là encore, l'intuition trompe : il se forme pendant que l'air se "
+            "déplace et peut s'accumuler loin du trafic routier ; à proximité des "
+            "émissions, le monoxyde d'azote peut en consommer une partie.</p>",
             "a4",
             preparer_figure(
                 fa.fig_a4_campagne_contre_ville(), fa.SRC_AIR, d_air,
@@ -170,11 +174,15 @@ CLES = {
     # vient de le montrer sur nos propres stations. Aucune installation n'est nommée : la
     # nommer pour l'écarter attirerait l'attention sur elle, et le mécanisme couvre tous
     # les cas sans qu'on ait à en désigner un.
+    # « C'est à la campagne qu'on en mesure le plus » était FAUX (corrigé le 29/08/2026) :
+    # Bastia Montesoro dépasse 15,1 % de ses journées contre 10,4 % à Venaco. Le superlatif
+    # a survécu au titre qui le portait — la figure, elle, n'a jamais montré que la
+    # majorité. C'est ce que la garde d'A4 tient, et c'est ce que la phrase dit désormais.
     3: "L'ozone ne sort d'aucun tuyau. C'est un polluant secondaire : il se fabrique dans "
        "l'air, sous le soleil, à partir d'autres gaz. Aucune cheminée ne l'émet, et sa "
        "quantité ne dit donc pas ce qu'une installation rejette près de chez soi. La "
-       "preuve est dans cette figure : c'est à la campagne, loin des moteurs, qu'on en "
-       "mesure le plus.",
+       "preuve est dans cette figure : la seule station rurale de l'île dépasse l'objectif "
+       "plus souvent que la majorité des autres.",
 }
 
 

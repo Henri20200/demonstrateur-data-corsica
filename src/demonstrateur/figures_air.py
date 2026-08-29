@@ -590,8 +590,9 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
     if devancees * 2 <= len(autres):
         raise ValueError(
             f"A4 : {rurale} ne devance que {devancees} station(s) non rurale(s) sur "
-            f"{len(autres)} — la figure ne soutient plus la phrase qui l'introduit "
-            "(« il s'accumule loin des moteurs »). À rejuger avant de publier."
+            f"{len(autres)} — la figure ne soutient plus ni la phrase qui l'introduit "
+            "(« il peut s'accumuler loin du trafic routier ») ni l'encadré qui la conclut "
+            "(« plus souvent que la majorité »). À rejuger avant de publier."
         )
     # LE TITRE SE COMPTE (29/08/2026). « La campagne n'est pas l'endroit où l'air est le
     # plus pur » extrapolait deux fois : une seule station rurale devenait « la campagne »,
