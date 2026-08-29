@@ -32,6 +32,10 @@ python -m demonstrateur.prepare     # data/raw/*.csv.gz -> data/processed/*.parq
 pytest                              # fumée + résultats (les tests de résultats exigent
                                     # fetch-data + prepare ; sinon ils sont sautés)
 pytest tests/test_smoke.py::test_sources_yaml_est_valide   # un seul test
+
+# Millésimes déjà passés : les retrouver dans l'historique Git du manifeste
+python -m demonstrateur.reconstitution              # rapport, n'écrit rien
+python -m demonstrateur.reconstitution --ecrire     # pose data/archive/_versions.json
 ruff check src                      # lint (line-length 100)
 ruff format src
 ```
@@ -133,10 +137,28 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   ne disent pas à quelle date ils s'appliquaient. **Aucune rétention destructive** : rien
   n'est jamais supprimé ni échantillonné, une révision effacée aujourd'hui ne se
   récupérerait pas pour un backtest dans deux ans. Configuration par `ARCHIVE_BUCKET` +
-  `SCW_ACCESS_KEY`/`SCW_SECRET_KEY` ; absente, la collecte continue et marque les versions
-  `payload_archived: false`, reprises au run suivant. **Le bucket d'archive n'est jamais
+  `ARCHIVE_ACCESS_KEY`/`ARCHIVE_SECRET_KEY`, qui priment sur `SCW_ACCESS_KEY`/`SCW_SECRET_KEY`
+  — ces dernières servent aussi à `aws s3 sync --delete` pour la vitrine, donc une clé propre
+  à l'archive est préférable : restreinte à son seul bucket, elle ne peut pas effacer la
+  vitrine, et la clé de la vitrine ne peut pas atteindre l'archive. Configuration absente,
+  la collecte continue et marque les versions `payload_archived: false`, reprises au run
+  suivant. **Le bucket d'archive n'est jamais
   celui de la vitrine** — celle-ci est synchronisée avec `--delete`, qui l'effacerait, et
   `depot.configurer()` refuse explicitement ce cas.
+- **L'historique d'avant l'archive se reconstitue depuis Git, pas depuis rien.**
+  `data/raw/_manifest.json` est versionné depuis le 19/07/2026 : chaque passage du cron y a
+  laissé l'empreinte de ce que chaque source disait ce jour-là. `reconstitution.py` en tire
+  les intervalles de connaissance des versions antérieures au 20/08/2026 — 940 millésimes sur
+  38 sources, que l'index n'aurait sinon jamais connus. Trois choses à savoir avant de s'en
+  servir : (1) ces versions n'ont PAS d'octets et n'en auront jamais (`data/raw/` n'est pas
+  versionné), d'où `payload_key: null` et `origine: "manifeste_git"` — `versions_sans_octets()`
+  les liste, `versions_non_deposees()` les ignore, sans quoi le CI avertirait pour toujours de
+  reprises impossibles ; (2) la ligne d'histoire qui fait foi est le **premier parent**, celle
+  de l'intégration : mêler les branches fabrique des retours en arrière que la chaîne n'a
+  jamais faits, et `--ecrire` refuse `--toutes-branches` ; (3) une source collectée sur une
+  branche est datée de sa FUSION, donc tardivement plutôt que trop tôt — un backtest qui se
+  croit informé plus tôt qu'en réalité fuit, l'inverse se prive seulement. Le registre ne se
+  réécrit pas : une seconde exécution vient devant les versions vivantes sans en retirer une.
 - **La traçabilité est vérifiée, pas seulement déclarée** : `fetch` re-contrôle chaque source
   figée à chaque run, `prepare` refuse un brut non certifié et écrit la lignée (`_build.json`),
   les figures datent d'après cette lignée. L'empreinte d'une source qui réestampille son

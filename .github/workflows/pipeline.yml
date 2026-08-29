@@ -119,6 +119,10 @@ jobs:
       # reprise est automatique au run suivant (`archive.retenter_depots_en_attente`) ;
       # encore faut-il savoir qu'elle est due. Avertissement et non échec : la collecte est
       # valide, et l'intervalle de connaissance — la partie irremplaçable — est sauf.
+      # Ne compte QUE les trous rattrapables. Les versions reconstituées depuis l'historique
+      # du manifeste (cf. `reconstitution.py`) n'ont aucune adresse de dépôt et n'en auront
+      # jamais : les avertir ici noierait, sous des centaines de lignes immuables, la panne
+      # réseau d'hier — la seule sur laquelle on puisse agir.
       - name: Millésimes en attente de dépôt durable
         run: |
           python - <<'PY'

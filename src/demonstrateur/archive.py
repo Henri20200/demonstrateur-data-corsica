@@ -72,6 +72,16 @@ from .config import DATA_ARCHIVE, LAST_CHECKED_FILE, VERSIONS_FILE
 POLITIQUES = ("immutable", "append_only", "revisable", "unknown")
 _SANS_ARCHIVE = ("immutable", "append_only")
 
+# D'où vient une entrée du registre, et ce n'est pas de la décoration. `collecte` : la
+# chaîne a tenu ces octets, ils ont une adresse dans le dépôt durable, et un dépôt raté se
+# retente. `manifeste_git` : la version a été RECONSTITUÉE après coup depuis l'historique
+# du manifeste (cf. `reconstitution.py`) — l'intervalle de connaissance est sûr, les octets
+# n'existent nulle part et n'existeront jamais, `data/raw/` n'ayant jamais été versionné.
+# Confondre les deux ferait retenter sans fin des dépôts impossibles et noierait les vrais
+# incidents dans le bruit.
+ORIGINE_COLLECTE = "collecte"
+ORIGINE_RECONSTITUEE = "manifeste_git"
+
 
 def _maintenant() -> str:
     """Horodatage UTC ISO 8601, À LA MICROSECONDE — et ce n'est pas du zèle.
@@ -82,8 +92,14 @@ def _maintenant() -> str:
     « jamais détenue », qu'une interrogation par instant sauterait en silence. Le cron
     passe toutes les 6 h et n'y arriverait jamais ; un rattrapage manuel, deux runs
     concurrents ou un test, si. La précision coûte six caractères par horodatage.
+
+    Elle est FORCÉE, jamais laissée à `isoformat()`, qui omet les microsecondes quand
+    elles valent exactement zéro. Une fois sur un million le registre porterait alors un
+    instant plus court que ses voisins — et `version_connue_a` compare ses bornes comme du
+    TEXTE, où `'.'` (0x2E) précède `'Z'` (0x5A) : `...:21.999999Z` passerait AVANT
+    `...:21Z`, qu'il suit pourtant d'une seconde presque entière. Largeur fixe, toujours.
     """
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
 
 
 def politique(meta: dict) -> str:
@@ -312,6 +328,7 @@ def enregistrer_version(source_id: str, meta: dict, fichier: Path, sha: str) -> 
         "payload_archived": depose,
         "taille_octets": fichier.stat().st_size,
         "revision_policy": politique(meta),
+        "origine": ORIGINE_COLLECTE,
     }
     versions.append(entree)
     index[source_id] = versions
@@ -357,12 +374,39 @@ def versions_non_deposees() -> list[tuple[str, str]]:
     Un index a toujours l'air complet — c'est sa nature de ne porter que des métadonnées.
     Cette liste est le seul endroit où le trou se voit AVANT qu'on aille chercher un
     contenu qui n'existe plus.
+
+    Elle ne retient QUE LES TROUS RATTRAPABLES : une entrée sans `payload_key` n'a aucune
+    adresse où déposer quoi que ce soit — c'est le cas des versions reconstituées depuis
+    l'historique du manifeste, dont les octets ont disparu avant que l'archive n'existe.
+    Les compter ici ferait avertir le CI, toutes les six heures et pour toujours, de mille
+    versions qu'aucune reprise ne peut sauver ; l'avertissement qui compte, celui de la
+    panne réseau d'hier, s'y perdrait. Elles ont leur propre liste, `versions_sans_octets`.
     """
     return [
         (source_id, version.get("sha256", ""))
         for source_id, versions in _charger(VERSIONS_FILE).items()
         for version in versions
-        if not version.get("payload_archived")
+        if not version.get("payload_archived") and version.get("payload_key")
+    ]
+
+
+def versions_sans_octets() -> list[tuple[str, str]]:
+    """(source_id, sha256) des versions dont les octets n'existent NULLE PART, définitivement.
+
+    L'autre moitié de `versions_non_deposees` : celle-ci liste ce qu'une reprise peut encore
+    sauver, celle-là ce qu'aucune reprise ne sauvera. Ce sont les versions reconstituées
+    après coup depuis l'historique du manifeste — la chaîne les a bel et bien détenues,
+    l'intervalle de connaissance est sûr, mais leur contenu a été écrasé dans `data/raw/`
+    avant que l'archive n'existe, et `data/raw/` n'est pas versionné.
+
+    Un backtest qui a besoin des octets consulte cette liste : il y voit la limite de ce que
+    la chaîne peut rejouer, au lieu de la découvrir en cherchant un fichier absent.
+    """
+    return [
+        (source_id, version.get("sha256", ""))
+        for source_id, versions in _charger(VERSIONS_FILE).items()
+        for version in versions
+        if version.get("origine") == ORIGINE_RECONSTITUEE
     ]
 
 

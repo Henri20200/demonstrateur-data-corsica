@@ -203,7 +203,15 @@ def test_le_dernier_controle_est_note_meme_sans_nouvelle_version(archive_isolee)
 
 
 def test_l_index_des_versions_ne_porte_aucun_contenu(archive_isolee):
-    """Il est VERSIONNÉ : il ne doit transporter que des métadonnées, jamais de donnée."""
+    """Il est VERSIONNÉ : il ne doit transporter que des métadonnées, jamais de donnée.
+
+    Le jeu de clés est verrouillé À L'IDENTIQUE, et pas seulement l'absence de contenu :
+    ajouter un champ à un index qui fait foi est une décision qui se prend, pas un effet
+    de bord. Une entrée RECONSTITUÉE depuis l'historique du manifeste en porte deux de
+    plus, `commit` et `date_collecte` — la preuve dont elle est tirée, et ce que le
+    manifeste déclarait ce jour-là. Une affirmation sur le passé doit pouvoir être
+    recoupée ; une entrée vivante, elle, n'a pas encore de commit quand elle s'écrit.
+    """
     fichier = _source(archive_isolee, "secret_metier,42\n")
     archive.enregistrer_version("mix", GLISSANT, fichier, "sha_aaa")
 
@@ -212,9 +220,10 @@ def test_l_index_des_versions_ne_porte_aucun_contenu(archive_isolee):
     attendus = {
         "sha256", "resolved_url", "first_observed_at", "superseded_at",
         "fichier_archive", "payload_key", "payload_archived", "taille_octets",
-        "revision_policy",
+        "revision_policy", "origine",
     }
     assert set(json.loads(brut)["mix"][0]) == attendus
+    assert json.loads(brut)["mix"][0]["origine"] == archive.ORIGINE_COLLECTE
 
 
 def test_l_index_ne_porte_jamais_la_valeur_d_un_jeton(archive_isolee):
