@@ -1688,17 +1688,22 @@ def test_a1_ecarte_la_station_recente_sans_perdre_une_journee(con):
 
 @besoin_serie
 def test_a4_annonce_les_implantations_qu_elle_trace(con):
-    """A4 : le sous-titre, les libellés et l'encart comptent le MÊME périmètre.
+    """A4 : le titre, le sous-titre et les libellés comptent le MÊME périmètre.
 
-    Ce verrou ne protège pas une phrase. « Une station rurale régionale, quatre urbaines
-    ou périurbaines » est un DÉCOMPTE : si une station change légitimement de catégorie
-    chez son producteur, le texte doit suivre la donnée sans qu'on réécrive un test
-    éditorial. Ce qui se tient ici, c'est l'accord des trois rendus du même périmètre.
+    Ce verrou ne protège pas une phrase. « Une station rurale, quatre urbaines ou
+    périurbaines » est un DÉCOMPTE : si une station change légitimement de catégorie chez
+    son producteur, le texte doit suivre la donnée sans qu'on réécrive un test éditorial.
+    Ce qui se tient ici, c'est l'accord des trois rendus du même périmètre.
 
     Et les mots publiés sont ceux du producteur. Le couple ville/campagne, supprimé le
     29/08/2026, fusionnait Urbaine et Périurbaine sous un nom d'aucun référentiel : une
     nomenclature de plus, que rien dans l'analyse ne demandait. Une phrase qui désigne
     plusieurs catégories les énumère.
+
+    Le TITRE est entré dans ce verrou le même jour. « La campagne n'est pas l'endroit où
+    l'air est le plus pur » extrapolait deux fois — une station rurale pour « la
+    campagne », l'ozone pour « l'air » — et rien ne l'en empêchait, puisqu'il était écrit
+    à la main. Il se compte désormais.
     """
     from demonstrateur.figures_air import (
         IMPLANTATIONS, adjectif, enumeration, est_rurale, fig_a4_campagne_contre_ville,
@@ -1743,25 +1748,39 @@ def test_a4_annonce_les_implantations_qu_elle_trace(con):
     annonce = st_a4().lower()
     for rural in (True, False):
         groupe = [i for i in df["implantation"] if est_rurale(i) == rural]
-        dits = enumeration(groupe, len(groupe) > 1)
+        # Le sous-titre dit les FAMILLES (« rurale »), la barre dit la catégorie entière
+        # (« rurale régionale ») : l'échelle de représentativité n'apprend rien à qui lit
+        # un décompte de milieux.
+        dits = enumeration(groupe, len(groupe) > 1, famille=True)
         assert f"{mots[len(groupe)]} " in annonce and dits in annonce, (
             f"le sous-titre d'A4 n'annonce plus {mots[len(groupe)]} station(s) "
             f"« {dits} » : « {annonce} »"
         )
 
-    # 4. Ce que l'encart AFFIRME : une seule station rurale, nommée, et un dénominateur
-    #    qui est celui des barres tracées.
+    # 4. Ce que le TITRE affirme, qui est le plus exposé des trois : il nomme la seule
+    #    station rurale, compte celles qu'elle devance, et les nomme par leurs catégories.
     cats_rurales = [i for i in attendu if est_rurale(i)]
     rurales = [e for e in etiquettes
                if any(f"({adjectif(i)})" in e for i in cats_rurales)]
-    assert len(rurales) == 1, f"« seule station rurale » en vaut {len(rurales)}"
-    encart = fig.layout.annotations[0].text
-    assert encart.startswith(rurales[0].split(" <i>")[0]), (
-        f"l'encart ne nomme plus la station rurale tracée : « {encart} »"
+    assert len(rurales) == 1, f"le titre nomme UNE station rurale, il y en a {len(rurales)}"
+    titre = fig.layout.title.text
+    assert titre.startswith(f"À {rurales[0].split(' <i>')[0]},"), (
+        f"le titre ne nomme plus la station rurale tracée : « {titre} »"
     )
-    autres = [i for i in df["implantation"] if not est_rurale(i)]
-    assert f"des {len(autres)} stations" in encart and enumeration(autres) in encart, (
-        f"l'encart ne compte plus les mêmes stations que la figure : « {encart} »"
+    # Le titre porte le nom du polluant, et c'est une garde de fond : A4 ne mesure QUE
+    # l'ozone. Une station peut en porter plus et porter moins de dioxyde d'azote — A3 le
+    # montre juste avant. Un titre qui parlerait de « l'air » dirait plus que la figure.
+    assert "ozone" in titre.lower(), (
+        f"le titre d'A4 ne nomme plus l'ozone : « {titre} » — la figure ne mesure que lui"
+    )
+    rural = [est_rurale(i) for i in df["implantation"]]
+    taux_rural = float(df.loc[rural, "taux"].iloc[0])
+    autres = df.loc[[not r for r in rural]]
+    devancees = int((autres["taux"] < taux_rural).sum())
+    attendue = (f"que dans {devancees} des {len(autres)} stations "
+                f"{enumeration(autres['implantation'])}")
+    assert attendue in titre, (
+        f"le titre ne compte plus ce que la figure trace (« {attendue} ») : « {titre} »"
     )
 
     # 5. Falsificateur : une catégorie hors nomenclature arrête la figure au lieu d'être

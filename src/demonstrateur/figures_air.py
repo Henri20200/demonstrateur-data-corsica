@@ -117,8 +117,14 @@ def stations_a3() -> list[str]:
 IMPLANTATIONS = ("Urbaine", "Périurbaine", "Rurale régionale")
 
 
-def adjectif(implantation: str, pluriel: bool = False) -> str:
+def adjectif(implantation: str, pluriel: bool = False, famille: bool = False) -> str:
     """L'implantation du producteur, telle qu'elle s'écrit dans une phrase. Inconnue = arrêt.
+
+    `famille` n'en garde que le PREMIER mot — « rurale régionale » devient « rurale ». Ce
+    n'est pas un raccourci de confort : le second mot de la nomenclature dit l'échelle de
+    représentativité de la station (proche, régionale, nationale), pas la nature du lieu.
+    Une phrase qui oppose des milieux n'a que faire de l'échelle ; la barre de la station,
+    elle, porte la catégorie entière, où la précision ne coûte rien.
 
     La Corse ne présente que trois des catégories de la nomenclature. Le jour où une
     quatrième arrive, la figure s'arrête : l'accorder, l'énumérer et relire le texte
@@ -129,19 +135,22 @@ def adjectif(implantation: str, pluriel: bool = False) -> str:
             f"implantation « {implantation} » hors nomenclature connue ({list(IMPLANTATIONS)}) "
             "— l'inscrire ICI et relire le texte des figures, qui énumère les catégories."
         )
-    mots = implantation.lower().split()
+    mots = implantation.lower().split()[:1] if famille else implantation.lower().split()
     return " ".join(f"{m}s" for m in mots) if pluriel else " ".join(mots)
 
 
-def enumeration(implantations, pluriel: bool = True) -> str:
+def enumeration(implantations, pluriel: bool = True, famille: bool = False) -> str:
     """« urbaines ou périurbaines » : les catégories présentes, dans l'ordre du producteur.
 
     C'est ce qui remplace le mot-valise : une phrase qui désigne plusieurs catégories les
-    nomme toutes. Elle s'allonge un peu, et elle cesse d'inventer un référentiel.
+    nomme toutes. Elle s'allonge un peu, et elle cesse d'inventer un référentiel. En
+    `famille`, deux catégories d'une même famille n'en font qu'une — « rurale proche » et
+    « rurale régionale » se diraient « rurales », pas deux fois.
     """
-    presentes = {adjectif(i) for i in implantations}
-    return " ou ".join(
-        adjectif(i, pluriel) for i in IMPLANTATIONS if adjectif(i) in presentes)
+    presentes = {adjectif(i, famille=famille) for i in implantations}
+    return " ou ".join(dict.fromkeys(
+        adjectif(i, pluriel, famille) for i in IMPLANTATIONS
+        if adjectif(i, famille=famille) in presentes))
 
 
 def est_rurale(implantation: str) -> bool:
@@ -285,15 +294,14 @@ def st_a4() -> str:
     implantations = list(perimetre_a4()["implantation"])
     rurales = [i for i in implantations if est_rurale(i)]
     autres = [i for i in implantations if not est_rurale(i)]
-    # « et non » raccourci en « non » : nommer les catégories du producteur allonge la
-    # ligne, et la phrase complète mesurait 976 px pour 974 disponibles — `export_html`
-    # la refusait. On raccourcit le texte, on ne replie pas et on ne pousse pas la marge.
-    # Il reste 18 px : une catégorie de plus dans l'énumération repassera par ce refus,
-    # qui est le bon endroit pour l'apprendre.
+    # Familles, pas catégories entières : « une station rurale » et non « rurale
+    # régionale ». L'échelle de représentativité n'apprend rien à qui lit un décompte de
+    # milieux, la barre de la station la porte, et la ligne y gagne 77 px — elle mesurait
+    # 976 px pour 974 disponibles, `export_html` la refusait.
     return _sous_titre(
         "En part des journées mesurées, non en nombre de jours — "
-        f"{_stations(len(rurales))} {enumeration(rurales, len(rurales) > 1)}, "
-        f"{NOMBRES[len(autres)].lower()} {enumeration(autres)}.")
+        f"{_stations(len(rurales))} {enumeration(rurales, len(rurales) > 1, famille=True)}, "
+        f"{NOMBRES[len(autres)].lower()} {enumeration(autres, famille=True)}.")
 
 
 ST_A5 = _sous_titre("Moyenne de chaque heure de la journée.")
@@ -562,28 +570,37 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
     """
     df = perimetre_a4()
     rurales = df.loc[[est_rurale(i) for i in df["implantation"]]]
-    # L'encart écrit « seule station rurale régionale de l'île » : c'est une affirmation,
-    # et elle se vérifie. Deux stations rurales, et c'est la phrase qui est fausse, pas la
-    # figure — d'où l'arrêt, plutôt qu'un `iloc[0]` qui en choisirait une au hasard.
+    # Le titre NOMME la station rurale (« À Venaco… ») : il n'a de sens que s'il n'y en a
+    # qu'une. Deux, et c'est le titre qui est faux, pas la figure — d'où l'arrêt, plutôt
+    # qu'un `iloc[0]` qui en choisirait une au hasard.
     if len(rurales) != 1:
         raise ValueError(
             f"A4 : {len(rurales)} station(s) rurale(s) ({list(rurales['station'])}) — "
-            "l'encart n'en nomme qu'une, « seule de l'île ». À réécrire avant de publier."
+            "le titre n'en nomme qu'une. À réécrire avant de publier."
         )
-    rurale, implantation_rurale = rurales["station"].iloc[0], rurales["implantation"].iloc[0]
+    rurale = rurales["station"].iloc[0]
     taux_rural = float(rurales["taux"].iloc[0])
     autres = df.loc[[not est_rurale(i) for i in df["implantation"]]]
     devancees = int((autres["taux"] < taux_rural).sum())
-    # Le titre affirme que la campagne n'est pas MEILLEURE — pas qu'elle mène. Une garde
-    # exigeant la première place serait plus stricte que l'affirmation publiée, et elle a
-    # d'ailleurs sauté : Bastia Montesoro dépasse plus souvent que Venaco. Ce qu'il faut
-    # tenir, c'est que la station rurale devance la majorité des urbaines.
+    # Le titre se compte, donc il ne peut plus mentir. Cette garde protège désormais ce
+    # qui l'entoure : la page introduit la figure en disant que l'ozone « s'accumule loin
+    # des moteurs », et A4 n'en est la preuve que tant que la station rurale devance la
+    # MAJORITÉ des autres. Exiger la première place serait plus strict que ce qui est
+    # publié, et ce serait déjà tombé : Bastia Montesoro dépasse plus souvent que Venaco.
     if devancees * 2 <= len(autres):
         raise ValueError(
             f"A4 : {rurale} ne devance que {devancees} station(s) non rurale(s) sur "
-            f"{len(autres)} — le titre « l'air de campagne n'est pas meilleur » ne tient "
-            "plus. À réécrire avant de publier."
+            f"{len(autres)} — la figure ne soutient plus la phrase qui l'introduit "
+            "(« il s'accumule loin des moteurs »). À rejuger avant de publier."
         )
+    # LE TITRE SE COMPTE (29/08/2026). « La campagne n'est pas l'endroit où l'air est le
+    # plus pur » extrapolait deux fois : une seule station rurale devenait « la campagne »,
+    # et un résultat sur le seul ozone devenait « l'air ». Une station peut porter plus
+    # d'ozone et moins de dioxyde d'azote — A3 le montre à quelques centimètres de là.
+    # Le titre énonce donc l'observation, avec ses nombres, et s'arrête là.
+    titre = (f"À {rurale.title()}, les dépassements d'ozone sont plus fréquents"
+             f"<br>que dans {devancees} des {len(autres)} stations "
+             f"{enumeration(autres['implantation'])}")
     couleurs = [AIR_OZONE if s == rurale else PALETTE["muted"] for s in df["station"]]
     # Explicitation (04/08/2026) : chaque station dit son implantation, et non la seule
     # rurale — sans quoi le lecteur doit deviner celle des autres.
@@ -603,19 +620,22 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
                       "<br>sur %{customdata} journées mesurées<extra></extra>",
     ))
     fig.add_annotation(
-        # L'explication avancée est celle que la figure précédente établit sur nos propres
-        # mesures (le pic de NO2 coïncide avec le creux d'ozone) — pas un mécanisme importé.
-        text=(f"{rurale.title()}, seule station {adjectif(implantation_rurale)} de l'île,"
-              f"<br>dépasse plus souvent que <b>{devancees} des {len(autres)} stations"
-              f"<br>{enumeration(autres['implantation'])}</b> : en ville, les gaz"
-              "<br>d'échappement détruisent une partie de l'ozone."),
+        # L'encart ne répète plus le décompte : depuis que le titre le porte, il ne lui
+        # reste que l'explication — et deux lignes au lieu de quatre rendent au tracé la
+        # hauteur que le titre sur deux lignes lui prend.
+        # « Peuvent détruire » : le mécanisme est établi, son poids dans l'écart mesuré ici
+        # ne l'est pas. Ce que nous montrons est une coïncidence sur nos propres mesures
+        # (le pic de NO2 tombe dans le creux d'ozone, cf. A3) — pas la démonstration que
+        # c'est elle qui creuse l'écart entre ces cinq stations.
+        text=("En ville, les gaz d'échappement peuvent"
+              "<br>détruire une partie de l'ozone."),
         xref="paper", yref="paper", x=0.99, y=0.04, xanchor="right", yanchor="bottom",
         showarrow=False, align="right",
         font=dict(family=SANS, size=17, color=PALETTE["ink"]),
         bgcolor=PALETTE["page"], borderpad=12,
     )
     fig.update_layout(
-        title=dict(text="La campagne n'est pas l'endroit où l'air est le plus pur"),
+        title=dict(text=titre),
         xaxis=dict(title=dict(text=f"Part des journées d'été où l'ozone dépasse "
                                    f"l'objectif de qualité ({OBJECTIF_QUALITE} µg/m³)",
                               font=AXE),
@@ -624,7 +644,10 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
                    # hors barre et se faisait rogner au bord du tracé.
                    range=[0, float(df["taux"].max()) * 1.14]),
         yaxis=dict(title=""),
-        margin=dict(t=170, b=190, l=300, r=90),
+        # t=175 et non 170 : le titre sur deux lignes en exige exactement 175, mesuré par
+        # `marge_haute_minimale`, qui refusait la figure sinon. Les cinq pixels rendus par
+        # le tracé sont largement repris à l'encart, passé de quatre lignes à deux.
+        margin=dict(t=175, b=190, l=300, r=90),
         height=580,
     )
     return fig
