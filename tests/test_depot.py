@@ -239,3 +239,22 @@ def test_la_configuration_se_lit_dans_l_environnement(monkeypatch):
     assert configure.hote == "archive-corse.s3.fr-par.scw.cloud", (
         "style virtual-hosted : le bucket est dans l'hôte, pas dans le chemin"
     )
+
+
+def test_un_client_inconstructible_est_converti_pas_propage(tmp_path, monkeypatch):
+    """L'environnement peut casser AVANT qu'une seule requête ne parte.
+
+    `httpx.Client()` lève sur un `SSL_CERT_FILE` introuvable ou une variable de proxy mal
+    formée. Cette construction était hors du `try` : l'exception traversait alors
+    `archive._deposer`, qui ne rattrape que `DepotIndisponible`, et emportait la collecte
+    — donc l'intervalle de connaissance, la seule chose qui ne se rattrape jamais. C'est
+    la famille de panne du 28/08/2026 : le code n'a pas bougé, l'environnement si.
+    """
+    def refuser(*_args, **_kwargs):
+        raise httpx.ConnectError("SSL_CERT_FILE introuvable")
+
+    monkeypatch.setattr(depot.httpx, "Client", refuser)
+
+    with pytest.raises(depot.DepotIndisponible, match="inconstructible"):
+        _depot().deposer("archive/mix/2026/08/20260819T060011Z_abc.csv.gz",
+                         _fichier(tmp_path))

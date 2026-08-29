@@ -223,7 +223,19 @@ class Depot:
         définitivement manquante une version que l'index dit pourtant connaître.
         """
         empreinte = empreinte_octets(chemin)
-        session = client or httpx.Client(timeout=_DELAI)
+        try:
+            session = client or httpx.Client(timeout=_DELAI)
+        except Exception as exc:  # noqa: BLE001
+            # DANS le try, et pas au-dessus : construire un client échoue pour des raisons
+            # d'ENVIRONNEMENT (SSL_CERT_FILE absent, variable de proxy mal formée), sans
+            # qu'aucune requête ne parte. Laissée à découvert, l'exception traversait
+            # `archive._deposer` — qui ne rattrape que `DepotIndisponible` — et emportait
+            # la collecte, donc l'intervalle de connaissance, que la docstring de
+            # `_deposer` promet précisément de ne jamais sacrifier à un stockage fâché.
+            # C'est la famille de panne qui a suspendu la publication le 28/08/2026.
+            raise DepotIndisponible(
+                f"client HTTP inconstructible — {type(exc).__name__} : {exc}"
+            ) from exc
         try:
             for tentative in range(1, essais + 1):
                 try:

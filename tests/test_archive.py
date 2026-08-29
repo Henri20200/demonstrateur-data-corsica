@@ -26,6 +26,7 @@ n'est écrit dans le vrai `data/`, rien ne sort sur le réseau.
 
 import json
 
+import httpx
 import pytest
 from conftest import SOURCES_FICTIVES
 
@@ -377,3 +378,32 @@ def test_le_registre_reel_ne_contient_aucune_source_fictive():
         f"Les retirer de {reel} AVANT tout commit — elles ne se distingueront plus "
         "d'un millésime réel une fois dans l'historique Git."
     )
+
+
+def test_un_stockage_inconstructible_n_emporte_pas_la_collecte(archive_isolee, monkeypatch):
+    """`_deposer` promet de NE JAMAIS lever. La promesse se vérifie, elle ne se lit pas.
+
+    Elle tenait pour une panne d'envoi, pas pour une panne d'environnement survenant à la
+    construction du client : l'exception traversait et la collecte tombait avec elle. Or
+    l'octet manquant se rattrape au run suivant, l'intervalle de connaissance jamais.
+    Le test exige donc les trois : la version est indexée, elle se sait non déposée, et
+    elle figure parmi les reprises possibles.
+    """
+    reel = depot.Depot(bucket="archive-corse", endpoint="https://s3.fr-par.scw.cloud",
+                       region="fr-par", cle_acces="SCWAAAAAAAAAAAAAAAAA",
+                       cle_secrete="secret-de-test")
+    monkeypatch.setattr(archive, "_depot_durable", lambda: reel)
+    monkeypatch.setattr(depot.httpx, "Client", _refuser_le_client)
+
+    fichier = _source(archive_isolee, "a,b\n1,2\n")
+    entree = archive.enregistrer_version("mix", GLISSANT, fichier, "sha_aaa")
+
+    assert entree is not None, "l'intervalle de connaissance survit à un stockage fâché"
+    assert entree["payload_archived"] is False
+    assert ("mix", "sha_aaa") in archive.versions_non_deposees(), (
+        "une version non déposée doit rester rattrapable, sinon personne n'y revient"
+    )
+
+
+def _refuser_le_client(*_args, **_kwargs):
+    raise httpx.ConnectError("variable de proxy mal formée")
