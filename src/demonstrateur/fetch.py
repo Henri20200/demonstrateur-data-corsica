@@ -61,6 +61,7 @@ from pathlib import Path
 import httpx
 import yaml
 
+from . import archive
 from .config import DATA_RAW, MANIFEST_FILE, SOURCES_FILE
 from .provenance import empreinte
 
@@ -426,6 +427,18 @@ def _valider(dest: Path, meta: dict, content_type: str) -> None:
     # format inconnu : on s'en tient au rideau HTML ci-dessus.
 
 
+def _suffixe_millesime(entree: dict | None) -> str:
+    """Ce qu'un run a retenu d'une version, pour la ligne de log.
+
+    Dire « archivé » quand seul l'index a été écrit serait un mensonge de journal : les
+    octets peuvent n'être nulle part. L'état se lit donc en toutes lettres.
+    """
+    if not entree:
+        return ""
+    etat = "déposé" if entree["payload_archived"] else "octets NON déposés, à reprendre"
+    return f" — millésime {entree['sha256'][:8]} conservé ({etat})"
+
+
 def main(argv: list[str] | None = None) -> int:
     parseur = argparse.ArgumentParser(
         prog="fetch-data",
@@ -521,7 +534,17 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             modifies = _sync_declaratif(already, meta)
             suffixe = f" — métadonnées resynchronisées ({', '.join(modifies)})" if modifies else ""
-            print(f"[=] {source_id} : présent et vérifié ({dest.name}){suffixe}.")
+            # Vérifiée sans être re-téléchargée : rien de neuf à conserver, mais la
+            # chaîne a bien REGARDÉ, et `enregistrer_version` note ce contrôle — sans cette
+            # trace, un trou dans les millésimes serait ambigu (source inchangée, ou source
+            # non consultée ?). Elle fait deux autres choses ici, et c'est voulu : elle
+            # dépose la COPIE INITIALE d'une source figée, dont l'unique exemplaire était
+            # jusqu'ici data/raw — soit, en CI, un cache d'Actions ; et elle retente le
+            # dépôt d'une version que le stockage n'aurait pas reçue. Aucune deuxième
+            # entrée à craindre : l'empreinte vient d'être vérifiée identique.
+            millesime = archive.enregistrer_version(source_id, meta, dest, obtenue)
+            print(f"[=] {source_id} : présent et vérifié ({dest.name}){suffixe}"
+                  f"{_suffixe_millesime(millesime)}.")
             continue
 
         # --- Téléchargement (source neuve, ou rafraîchissement d'un jeu glissant) ----
@@ -556,11 +579,23 @@ def main(argv: list[str] | None = None) -> int:
             content_type=content_type, date_collecte=date.today().isoformat(),
         )
         _save_manifest(manifest)
-        print(f"[ok] {source_id} : {dest.name} ({dest.stat().st_size:,} octets, {content_type})")
+        # Millésime : le fichier qu'on vient de remplacer n'existe plus, mais celui qu'on
+        # vient d'écrire, lui, peut encore être conservé — et daté de l'instant où NOTRE
+        # chaîne l'a observé pour la première fois. N'écrit rien si l'empreinte est déjà
+        # connue : le cron passe toutes les 6 h, archiver à chaque passage ferait quatre
+        # copies identiques par jour. Purement additif — `dest` est intouché.
+        millesime = archive.enregistrer_version(source_id, meta, dest, sha)
+        print(f"[ok] {source_id} : {dest.name} ({dest.stat().st_size:,} octets, "
+              f"{content_type}){_suffixe_millesime(millesime)}")
 
     # Réécrit le manifeste même sans téléchargement : resynchronisations de métadonnées
     # (licences…) et re-certifications doivent être visibles à chaque run.
     _save_manifest(manifest)
+
+    # Dernier filet, et le seul qui couvre une version DÉPASSÉE dont les octets ne sont
+    # jamais partis : sa copie locale existe encore, le stockage est peut-être revenu.
+    # C'est l'unique occasion de les réunir avant que la copie disparaisse à son tour.
+    archive.retenter_depots_en_attente()
 
     if failures:
         print(f"\n{len(failures)} source(s) en échec : {', '.join(failures)}")

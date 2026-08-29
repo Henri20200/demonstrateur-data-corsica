@@ -74,7 +74,12 @@ def _client_espion(etapes: list[_Reponse], vus: list):
 
 
 def _mini_depot(tmp_path, monkeypatch, **surcharges):
-    """Isole fetch sur un dépôt jetable : sources.yaml, data/raw, manifeste."""
+    """Isole fetch sur un dépôt jetable : sources.yaml, data/raw, manifeste.
+
+    Ne couvre PAS l'archive des millésimes, dont les chemins vivent dans les globales de
+    `archive.py` et non dans celles de `fetch` : c'est `tests/conftest.py` qui les
+    redirige, pour toute la suite et pas seulement ici.
+    """
     raw = tmp_path / "raw"
     raw.mkdir()
     source = {

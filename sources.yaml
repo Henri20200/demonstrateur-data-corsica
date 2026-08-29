@@ -26,6 +26,29 @@
 #                        Un test refuse tout en-tête d'authentification écrit en dur.
 #   glissant           : true = jeu à fenêtre glissante, re-téléchargé à CHAQUE
 #                        run (le cache n'est jamais un succès pour un jeu périssable)
+#   revision_policy    : immutable | append_only | revisable | unknown (défaut).
+#                        RÉPOND À UNE AUTRE QUESTION QUE `glissant`, et les deux ne
+#                        doivent pas être confondus : `glissant` est une propriété de
+#                        COLLECTE (faut-il re-télécharger ?), `revision_policy` une
+#                        propriété de la DONNÉE (les valeurs passées peuvent-elles
+#                        changer ?). Une fenêtre glissante purement additive n'est pas
+#                        révisable ; une série mensuelle figée entre deux publications
+#                        peut l'être. Sert à décider de l'archivage des millésimes.
+#   archive_versions   : true|false — force ou désactive la conservation des versions
+#                        SUCCESSIVES sous data/archive/<source_id>/. Défaut : conserver
+#                        toute source glissante dont la politique n'est ni `immutable`
+#                        ni `append_only` — donc `unknown` conserve, par prudence. Une
+#                        source NON glissante n'a pas de versions successives : elle
+#                        n'est téléchargée qu'une fois. NE DÉCIDE PAS DU DÉPÔT DURABLE :
+#                        toute source y reçoit une copie initiale, figée comprise, car
+#                        son seul exemplaire était sinon data/raw — soit, en CI, un
+#                        cache d'Actions, qui n'est pas une archive patrimoniale.
+#                        Une archive n'est écrite que si l'empreinte a CHANGÉ (sinon le
+#                        cron de 6 h produirait quatre copies identiques par jour).
+#                        L'index data/archive/_versions.json, lui, est versionné : il
+#                        porte l'intervalle [first_observed_at ; superseded_at[ de
+#                        chaque version, seule information qui ne se reconstruit pas
+#                        après coup. Cf. src/demonstrateur/archive.py.
 #   date_url           : hier | aujourdhui — résout les jetons {AAAA}/{MM}/{JJ} de
 #                        l'url pour les producteurs qui publient UN FICHIER PAR JOUR
 #                        sans url stable (LCSQA). Contrairement à un secret, la date
