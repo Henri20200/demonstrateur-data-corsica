@@ -144,6 +144,82 @@ def test_la_note_air_dit_vrai_sur_la_profondeur_des_stations():
     )
 
 
+# --- La classification a-t-elle bougé pendant la fenêtre publiée ? -------------------
+# Le référentiel VERSIONNE chaque fiche de site : une caractéristique qui change (dont
+# l'implantation) ouvre une version, datée et motivée. Il ne publie que la version
+# COURANTE — on lit donc l'intervalle en cours, pas l'histoire de ce qui a changé avant.
+# Cela suffit à la question posée : si la version courante d'une station a commencé AVANT
+# la fenêtre publiée et n'est pas close, aucune reclassification n'a eu lieu pendant
+# cette fenêtre.
+#
+# RELEVÉ DU 29/08/2026, sur les six stations du périmètre. Quatre stations de fond
+# (Canetto, Giraud, Montesoro, Venaco) portent la même version 2 depuis le 01/01/2017,
+# motif « Changement de ZAS avec nouveau zonage 2017 » — rien n'a donc bougé chez elles
+# entre 2020 et 2025. Ajaccio Confina 2 est en version 1 depuis le 31/01/2024, qui est
+# le jour de son ouverture : une création, pas une reclassification. Reste Bastia La
+# Marana, version 3 au 01/07/2021 — motif « ajout pesticides », et son « type de site »
+# est passé à « classique et pesticide » : un programme de mesure ajouté. Elle est de
+# toute façon hors des figures, d'influence industrielle.
+#
+# CE QUE CE VERROU ACHÈTE. La question « faut-il une dimension à date d'effet pour
+# l'implantation ? » se répond aujourd'hui par non, sur pièce. Le jour où elle se
+# reposera — une version qui s'ouvre au milieu de la fenêtre, sur une station tracée —
+# ce test le dira, au lieu qu'une figure agrège en silence deux classifications
+# successives sous la plus récente.
+#
+# CE QU'IL N'ACHÈTE PAS : l'influence. Le référentiel ne la publie pas, et le flux qui la
+# porte est une fenêtre de 24 h. Nous n'avons AUCUNE source de son historique sur
+# 2020-2025 : c'est une inconnue, et elle se dit comme telle plutôt que de se combler.
+DEBUT_FENETRE = "2020-01-01"  # les figures d'air couvrent les étés 2020 à 2025
+
+
+def _iso(jj_mm_aaaa: str) -> str:
+    jour, mois, annee = jj_mm_aaaa.split("/")
+    return f"{annee}-{mois}-{jour}"
+
+
+@besoin_referentiel
+def test_aucune_reclassification_pendant_la_fenetre_publiee():
+    """Aucune station tracée n'a changé de version au milieu des six étés publiés.
+
+    Une version ouverte pendant la fenêtre signalerait que la fiche du site a changé
+    alors que les figures traitent la période d'un seul tenant. La bonne réponse serait
+    alors d'aller lire CE qui a changé — pas de desserrer ce test.
+    """
+    ref = _referentiel()
+    tardives = {}
+    for code, (nom, *_reste, influence) in STATIONS_AIR.items():
+        if influence != "Fond":
+            continue  # La Marana est hors des figures, cf. le relevé ci-dessus
+        site = ref[code]
+        debut = _iso(site["Date de début de version (à 00h00)"])
+        # Une version qui s'ouvre le jour de l'entrée en service est une CRÉATION de
+        # fiche, pas une reclassification : c'est le cas d'Ajaccio Confina 2 (31/01/2024).
+        if debut > DEBUT_FENETRE and debut != _iso(site["Date d'entrée en service (à 00h00)"]):
+            tardives[code] = (nom, site["Version"], debut,
+                              site["Motif de création de la version"])
+    assert not tardives, (
+        f"version ouverte pendant la fenêtre publiée : {tardives} — lire le motif, et "
+        "vérifier si l'implantation a changé. Si oui, les figures agrègent deux "
+        "classifications successives sous la plus récente."
+    )
+
+
+@besoin_referentiel
+def test_le_referentiel_ne_publie_pas_l_historique_d_influence():
+    """L'inconnue se tient par un test, sinon elle se comble toute seule un jour.
+
+    Tant que le référentiel ne publie pas l'influence, il ne peut rien dire de son
+    historique — et le flux qui la porte ne remonte pas au-delà de 24 h. Le jour où une
+    colonne d'influence y apparaît, ce test échoue : ce sera une bonne nouvelle, et la
+    question de la profondeur historique se rouvrira.
+    """
+    colonnes = [c.lower() for c in next(iter(_referentiel().values()))]
+    assert not [c for c in colonnes if "influence" in c], (
+        f"le référentiel publie désormais l'influence ({colonnes}) — rouvrir la question "
+        "de son historique sur 2020-2025, aujourd'hui inconnu"
+    )
+
 # --- Seconde ancre : l'influence, contre le flux LCSQA temps réel ---------------------
 def influences_declarees() -> dict[str, str]:
     """Ce que la table RECOPIE : l'influence de chaque station du périmètre."""

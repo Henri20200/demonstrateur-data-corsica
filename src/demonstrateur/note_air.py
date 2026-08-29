@@ -122,7 +122,8 @@ Les figures ne retiennent que les stations dites « de fond », celles qu'aucune
 proche n'influence. {c["hors_noms"]} n'en fait pas partie : son producteur la classe
 « {c["hors_type"]} » — un mot qui dit ce que la station a été installée pour observer, et
 non la nature du lieu ni l'origine de ce qu'elle mesure. La mêler aux autres reviendrait à
-comparer des populations différentes, quand ces figures opposent la ville à la campagne.
+comparer des populations différentes, quand ces figures opposent une station rurale à
+des stations urbaines ou périurbaines.
 Ses mesures sont collectées et vérifiables comme les autres ; elles ne servent simplement
 aucune figure.</p>
 
@@ -181,7 +182,7 @@ côté air comme côté température.</p>
 <ul>
 <li><strong>Le thermomètre n'est pas au pied de l'analyseur.</strong> Chaque station d'air a
     été rapprochée du poste météo dont le climat ressemble le plus au sien — pas
-    nécessairement le plus proche. Pour Venaco, seule station de campagne, c'est Vivario :
+    nécessairement le plus proche. Pour Venaco, seule station rurale, c'est Vivario :
     Corte est plus près, mais sa cuvette encaissée creuse les écarts de température d'une
     façon qui fausserait la comparaison. Chaque figure nomme le poste utilisé.</li>
 <li><strong>Une station est récente.</strong> Ajaccio Confina 2 ne mesure que depuis

@@ -1687,23 +1687,22 @@ def test_a1_ecarte_la_station_recente_sans_perdre_une_journee(con):
 
 
 @besoin_serie
-def test_a4_annonce_les_milieux_qu_elle_trace(con):
+def test_a4_annonce_les_implantations_qu_elle_trace(con):
     """A4 : le sous-titre, les libellés et l'encart comptent le MÊME périmètre.
 
-    Ce verrou ne protège pas une phrase. « Une station de campagne, quatre de ville » est
-    un DÉCOMPTE : si une station change légitimement de catégorie chez le producteur, le
-    texte doit suivre la donnée sans qu'on réécrive un test éditorial. Ce qui se tient
-    ici, c'est l'accord des trois rendus du même périmètre — et le fait que le milieu se
-    dérive de l'IMPLANTATION publiée, jamais du nom de la station comme jusqu'au
-    29/08/2026.
+    Ce verrou ne protège pas une phrase. « Une station rurale régionale, quatre urbaines
+    ou périurbaines » est un DÉCOMPTE : si une station change légitimement de catégorie
+    chez son producteur, le texte doit suivre la donnée sans qu'on réécrive un test
+    éditorial. Ce qui se tient ici, c'est l'accord des trois rendus du même périmètre.
 
-    Trois niveaux à ne pas mêler, et le test les sépare : l'influence (filtre du
-    périmètre, contrôlée contre le flux LCSQA dans `test_stations_air.py`),
-    l'implantation (nomenclature du producteur), et le couple ville/campagne, qui est
-    NOTRE agrégation — aujourd'hui Urbaine et Périurbaine réunies sous « ville ».
+    Et les mots publiés sont ceux du producteur. Le couple ville/campagne, supprimé le
+    29/08/2026, fusionnait Urbaine et Périurbaine sous un nom d'aucun référentiel : une
+    nomenclature de plus, que rien dans l'analyse ne demandait. Une phrase qui désigne
+    plusieurs catégories les énumère.
     """
     from demonstrateur.figures_air import (
-        MILIEUX, fig_a4_campagne_contre_ville, milieu, perimetre_a4, st_a4,
+        IMPLANTATIONS, adjectif, enumeration, est_rurale, fig_a4_campagne_contre_ville,
+        perimetre_a4, st_a4,
     )
 
     src = MDA8.as_posix()
@@ -1711,65 +1710,65 @@ def test_a4_annonce_les_milieux_qu_elle_trace(con):
             "AND extract('month' FROM date_locale) IN (6, 7, 8) "
             "AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025")
 
-    # 1. Le décompte de référence se fait DANS la donnée, en passant par la seule table
-    #    d'agrégation. Une implantation qui n'y figure pas fait échouer ici, pas au
-    #    moment de tracer : c'est une décision de rédaction à prendre, cf. `milieu()`.
+    # 1. Le décompte de référence se fait DANS la donnée. Une implantation hors
+    #    nomenclature échoue ici, pas au moment de tracer : l'inscrire et relire le texte
+    #    est une décision de rédaction, cf. `adjectif()`.
     attendu = {}
     for station, implantation in con.execute(
             f"SELECT DISTINCT station, implantation FROM '{src}' WHERE {fond}").fetchall():
-        assert implantation in MILIEUX, (
-            f"{station} : implantation « {implantation} » sans milieu éditorial — "
-            "la ranger côté ville ou côté campagne, puis relire le texte des figures"
+        assert implantation in IMPLANTATIONS, (
+            f"{station} : implantation « {implantation} » hors nomenclature connue "
+            f"{list(IMPLANTATIONS)} — l'y inscrire, puis relire le texte des figures"
         )
-        attendu[MILIEUX[implantation]] = attendu.get(MILIEUX[implantation], 0) + 1
+        attendu[implantation] = attendu.get(implantation, 0) + 1
 
-    # 2. La structure du périmètre dit la même chose, et son milieu ne sort que de
-    #    l'implantation — deux stations de même implantation ne peuvent pas se ranger
-    #    de deux côtés.
     df = perimetre_a4()
-    assert [milieu(i) for i in df["implantation"]] == list(df["milieu"])
-    assert dict(df["milieu"].value_counts()) == attendu
+    assert dict(df["implantation"].value_counts()) == attendu
 
-    # 3. Ce que la figure DESSINE : un libellé par station, chacun portant son milieu.
+    # 2. Ce que la figure DESSINE : un libellé par station, chacun portant la catégorie
+    #    que son producteur lui donne — et rien qui vienne de son nom.
     fig = fig_a4_campagne_contre_ville()
     etiquettes = [str(y) for y in fig.data[0].y]
-    traces = {m: sum(1 for e in etiquettes if f"({m})" in e) for m in attendu}
+    traces = {i: sum(1 for e in etiquettes if f"({adjectif(i)})" in e) for i in attendu}
     assert traces == attendu, (
         f"A4 trace {traces} là où la donnée compte {attendu} : {etiquettes}"
     )
 
-    # 4. Ce que le sous-titre ANNONCE. On n'y cherche pas la phrase, on y cherche les
+    # 3. Ce que le sous-titre ANNONCE. On n'y cherche pas la phrase, on y cherche les
     #    nombres — écrits en lettres, et transcrits ici indépendamment de la fonction qui
-    #    les rend. C'est ce qui manquait : le sous-titre était une constante quand
-    #    l'encart, lui, comptait dans la donnée.
-    import re
-
+    #    les rend — puis l'énumération des catégories de chaque groupe. C'est ce qui
+    #    manquait : le sous-titre était une constante quand l'encart comptait, lui, dans
+    #    la donnée.
     mots = {1: "une", 2: "deux", 3: "trois", 4: "quatre", 5: "cinq", 6: "six"}
     annonce = st_a4().lower()
-    for milieu_dit, combien in attendu.items():
-        # Le nombre doit précéder SON milieu : « quatre de ville » et « une station de
-        # campagne » comptent, deux nombres présents chacun de son côté ne suffisent pas.
-        assert re.search(rf"{mots[combien]}\s+(stations?\s+)?(de\s+)?{milieu_dit}", annonce), (
-            f"le sous-titre d'A4 n'annonce plus {mots[combien]} station(s) de "
-            f"{milieu_dit} : « {annonce} »"
+    for rural in (True, False):
+        groupe = [i for i in df["implantation"] if est_rurale(i) == rural]
+        dits = enumeration(groupe, len(groupe) > 1)
+        assert f"{mots[len(groupe)]} " in annonce and dits in annonce, (
+            f"le sous-titre d'A4 n'annonce plus {mots[len(groupe)]} station(s) "
+            f"« {dits} » : « {annonce} »"
         )
 
-    # 5. Ce que l'encart AFFIRME : « seule station de campagne de l'île », nommée, et un
-    #    dénominateur qui est celui des barres tracées.
-    campagne = [e for e in etiquettes if "(campagne)" in e]
-    assert len(campagne) == 1, f"« seule station de campagne » en vaut {len(campagne)}"
+    # 4. Ce que l'encart AFFIRME : une seule station rurale, nommée, et un dénominateur
+    #    qui est celui des barres tracées.
+    cats_rurales = [i for i in attendu if est_rurale(i)]
+    rurales = [e for e in etiquettes
+               if any(f"({adjectif(i)})" in e for i in cats_rurales)]
+    assert len(rurales) == 1, f"« seule station rurale » en vaut {len(rurales)}"
     encart = fig.layout.annotations[0].text
-    assert encart.startswith(campagne[0].split(" <i>")[0]), (
-        f"l'encart ne nomme plus la station de campagne tracée : « {encart} »"
+    assert encart.startswith(rurales[0].split(" <i>")[0]), (
+        f"l'encart ne nomme plus la station rurale tracée : « {encart} »"
     )
-    assert f"des {traces['ville']} stations" in encart, (
-        f"l'encart compte un autre nombre de stations de ville que la figure : « {encart} »"
+    autres = [i for i in df["implantation"] if not est_rurale(i)]
+    assert f"des {len(autres)} stations" in encart and enumeration(autres) in encart, (
+        f"l'encart ne compte plus les mêmes stations que la figure : « {encart} »"
     )
 
-    # 6. Falsificateur : une catégorie que la table ne connaît pas arrête la figure au
-    #    lieu de la ranger d'office du côté campagne.
-    with pytest.raises(ValueError, match="milieu éditorial"):
-        milieu("Rurale nationale")
+    # 5. Falsificateur : une catégorie hors nomenclature arrête la figure au lieu d'être
+    #    rangée d'office avec les rurales.
+    with pytest.raises(ValueError, match="hors nomenclature"):
+        adjectif("Rurale nationale")
+
 
 # --- Verrous de l'étude en prose (docs/etude.md) -----------------------------
 # Chaque chiffre écrit dans l'étude est tenu par un test : une révision de la donnée
