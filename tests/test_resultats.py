@@ -1685,6 +1685,92 @@ def test_a1_ecarte_la_station_recente_sans_perdre_une_journee(con):
         "l'inversion qui motivait l'exclusion a disparu, la figure est à rejuger"
     )
 
+
+@besoin_serie
+def test_a4_annonce_les_milieux_qu_elle_trace(con):
+    """A4 : le sous-titre, les libellés et l'encart comptent le MÊME périmètre.
+
+    Ce verrou ne protège pas une phrase. « Une station de campagne, quatre de ville » est
+    un DÉCOMPTE : si une station change légitimement de catégorie chez le producteur, le
+    texte doit suivre la donnée sans qu'on réécrive un test éditorial. Ce qui se tient
+    ici, c'est l'accord des trois rendus du même périmètre — et le fait que le milieu se
+    dérive de l'IMPLANTATION publiée, jamais du nom de la station comme jusqu'au
+    29/08/2026.
+
+    Trois niveaux à ne pas mêler, et le test les sépare : l'influence (filtre du
+    périmètre, contrôlée contre le flux LCSQA dans `test_stations_air.py`),
+    l'implantation (nomenclature du producteur), et le couple ville/campagne, qui est
+    NOTRE agrégation — aujourd'hui Urbaine et Périurbaine réunies sous « ville ».
+    """
+    from demonstrateur.figures_air import (
+        MILIEUX, fig_a4_campagne_contre_ville, milieu, perimetre_a4, st_a4,
+    )
+
+    src = MDA8.as_posix()
+    fond = ("valide AND influence = 'Fond' "
+            "AND extract('month' FROM date_locale) IN (6, 7, 8) "
+            "AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025")
+
+    # 1. Le décompte de référence se fait DANS la donnée, en passant par la seule table
+    #    d'agrégation. Une implantation qui n'y figure pas fait échouer ici, pas au
+    #    moment de tracer : c'est une décision de rédaction à prendre, cf. `milieu()`.
+    attendu = {}
+    for station, implantation in con.execute(
+            f"SELECT DISTINCT station, implantation FROM '{src}' WHERE {fond}").fetchall():
+        assert implantation in MILIEUX, (
+            f"{station} : implantation « {implantation} » sans milieu éditorial — "
+            "la ranger côté ville ou côté campagne, puis relire le texte des figures"
+        )
+        attendu[MILIEUX[implantation]] = attendu.get(MILIEUX[implantation], 0) + 1
+
+    # 2. La structure du périmètre dit la même chose, et son milieu ne sort que de
+    #    l'implantation — deux stations de même implantation ne peuvent pas se ranger
+    #    de deux côtés.
+    df = perimetre_a4()
+    assert [milieu(i) for i in df["implantation"]] == list(df["milieu"])
+    assert dict(df["milieu"].value_counts()) == attendu
+
+    # 3. Ce que la figure DESSINE : un libellé par station, chacun portant son milieu.
+    fig = fig_a4_campagne_contre_ville()
+    etiquettes = [str(y) for y in fig.data[0].y]
+    traces = {m: sum(1 for e in etiquettes if f"({m})" in e) for m in attendu}
+    assert traces == attendu, (
+        f"A4 trace {traces} là où la donnée compte {attendu} : {etiquettes}"
+    )
+
+    # 4. Ce que le sous-titre ANNONCE. On n'y cherche pas la phrase, on y cherche les
+    #    nombres — écrits en lettres, et transcrits ici indépendamment de la fonction qui
+    #    les rend. C'est ce qui manquait : le sous-titre était une constante quand
+    #    l'encart, lui, comptait dans la donnée.
+    import re
+
+    mots = {1: "une", 2: "deux", 3: "trois", 4: "quatre", 5: "cinq", 6: "six"}
+    annonce = st_a4().lower()
+    for milieu_dit, combien in attendu.items():
+        # Le nombre doit précéder SON milieu : « quatre de ville » et « une station de
+        # campagne » comptent, deux nombres présents chacun de son côté ne suffisent pas.
+        assert re.search(rf"{mots[combien]}\s+(stations?\s+)?(de\s+)?{milieu_dit}", annonce), (
+            f"le sous-titre d'A4 n'annonce plus {mots[combien]} station(s) de "
+            f"{milieu_dit} : « {annonce} »"
+        )
+
+    # 5. Ce que l'encart AFFIRME : « seule station de campagne de l'île », nommée, et un
+    #    dénominateur qui est celui des barres tracées.
+    campagne = [e for e in etiquettes if "(campagne)" in e]
+    assert len(campagne) == 1, f"« seule station de campagne » en vaut {len(campagne)}"
+    encart = fig.layout.annotations[0].text
+    assert encart.startswith(campagne[0].split(" <i>")[0]), (
+        f"l'encart ne nomme plus la station de campagne tracée : « {encart} »"
+    )
+    assert f"des {traces['ville']} stations" in encart, (
+        f"l'encart compte un autre nombre de stations de ville que la figure : « {encart} »"
+    )
+
+    # 6. Falsificateur : une catégorie que la table ne connaît pas arrête la figure au
+    #    lieu de la ranger d'office du côté campagne.
+    with pytest.raises(ValueError, match="milieu éditorial"):
+        milieu("Rurale nationale")
+
 # --- Verrous de l'étude en prose (docs/etude.md) -----------------------------
 # Chaque chiffre écrit dans l'étude est tenu par un test : une révision de la donnée
 # EDF qui déplacerait un nombre publié doit casser la suite, pas passer inaperçue.

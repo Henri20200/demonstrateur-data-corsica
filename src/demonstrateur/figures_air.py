@@ -100,6 +100,73 @@ def stations_a3() -> list[str]:
     """).fetchall()]
 
 
+# --- Ville et campagne : une agrégation ÉDITORIALE, et elle se sait ----------
+# TROIS NIVEAUX, à ne pas mêler. Le producteur publie une INFLUENCE (Fond, Trafic,
+# Industrielle) — c'est le filtre du périmètre commun, et elle se contrôle contre le flux
+# LCSQA temps réel (`tests/test_stations_air.py`). Il publie aussi une IMPLANTATION en
+# nomenclature LCSQA — Urbaine, Périurbaine, Rurale régionale pour nos six stations.
+# « Ville » et « campagne », en revanche, ne sont d'aucune nomenclature : ce sont NOS mots,
+# et ils fusionnent Urbaine et Périurbaine sous un seul. L'agrégation est défendable en
+# langue courante — elle ne doit simplement pas passer pour officielle, et elle s'écrit
+# donc ici, en toutes lettres, plutôt que de se deviner dans les figures.
+# Elle était jusqu'ici un `'campagne' if station == 'VENACO' else 'ville'` recopié dans A1
+# et dans A4 : accroché au NOM d'une station, le libellé aurait continué d'annoncer un
+# milieu que la donnée du producteur ne disait plus.
+MILIEUX = {
+    "Urbaine": "ville",
+    "Périurbaine": "ville",
+    "Rurale régionale": "campagne",
+}
+
+
+def milieu(implantation: str) -> str:
+    """Traduit une implantation du producteur en milieu éditorial. Inconnue = arrêt.
+
+    La nomenclature compte des catégories que la Corse n'a pas (« Rurale proche »,
+    « Rurale nationale »). Le jour où l'une arrive, la ranger d'office du côté campagne
+    serait un choix de rédaction pris par défaut, sur une figure déjà publiée : il se
+    décide, il ne se déduit pas.
+    """
+    if implantation not in MILIEUX:
+        raise ValueError(
+            f"implantation « {implantation} » sans milieu éditorial (connus : "
+            f"{sorted(MILIEUX)}) — la ranger côté ville ou côté campagne est une décision "
+            "de rédaction, et le texte des figures est à relire après."
+        )
+    return MILIEUX[implantation]
+
+
+def libelles(stations, implantations) -> list[str]:
+    """Libellés de barres, communs à A1 et A4 : mêmes stations, mêmes mots.
+
+    Les deux figures se suivent dans la page — une station ne peut pas s'y appeler de deux
+    façons, ni y changer de milieu. Casse de phrase plutôt que capitales de fichier : ce
+    sont des lieux.
+    """
+    return [f"{s.title()} <i>({milieu(i)})</i>" for s, i in zip(stations, implantations)]
+
+
+def perimetre_a4():
+    """Le périmètre d'A4 calculé UNE fois : par station, son milieu et son taux.
+
+    Une seule structure, trois rendus — le sous-titre y compte ses stations, la figure y
+    prend ses barres, son encart et ses libellés. Le sous-titre était une CONSTANTE
+    (« une station de campagne, quatre de ville ») pendant que l'encart de la même figure
+    dérivait son `len(urbaines)` de la donnée : deux décomptes indépendants du même
+    périmètre, libres de se contredire sans que rien ne le dise.
+    """
+    df = _con().execute(f"""
+        SELECT station, implantation,
+               100.0 * count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE}) / count(*) AS taux,
+               count(*) AS jours
+        FROM '{MDA8}'
+        WHERE valide AND influence = 'Fond' AND {ETES} AND {ANNEES}
+        GROUP BY 1, 2 ORDER BY 3
+    """).df()
+    df["milieu"] = [milieu(i) for i in df["implantation"]]
+    return df
+
+
 # Sous-titres et notes DÉFINIS UNE FOIS et consommés à la fois par `main()` (fichiers
 # individuels) et par `page_air` (page assemblée). Ils étaient recopiés dans les deux
 # modules : toute correction n'était appliquée que d'un côté, et les deux versions d'une
@@ -151,6 +218,16 @@ NOMBRES = {2: "Deux", 3: "Trois", 4: "Quatre", 5: "Cinq", 6: "Six", 7: "Sept",
            8: "Huit", 9: "Neuf", 10: "Dix"}
 
 
+def _stations(n: int) -> str:
+    """« une station » ou « quatre stations ».
+
+    `NOMBRES` commence à deux, et pour cause : au singulier le nombre s'accorde en genre
+    (« une station », mais « un été ») quand la table sert les deux. L'accord se fait donc
+    ici, où le nom est connu.
+    """
+    return "une station" if n == 1 else f"{NOMBRES[n].lower()} stations"
+
+
 def st_a3() -> str:
     """Sous-titre de A3 — une fonction, pas une constante : il compte ses stations.
 
@@ -182,9 +259,20 @@ def note_a1() -> str:
     return f"Ses {depassements} dépassements tombent tous des jours déjà comptés."
 
 
-ST_A4 = _sous_titre(
-    "En part des journées mesurées, et non en nombre de jours — "
-    "une station de campagne, quatre de ville.")
+def st_a4() -> str:
+    """Sous-titre d'A4 — une fonction, parce qu'il annonce un DÉCOMPTE de milieux.
+
+    Ce qu'il dit se compte dans la structure que la figure trace, jamais à côté d'elle.
+    Le verrou porte sur cet accord, pas sur la phrase : si une station change légitimement
+    de catégorie, le texte doit suivre la donnée sans qu'on réécrive un test éditorial.
+    """
+    par_milieu = perimetre_a4()["milieu"].value_counts()
+    campagne, ville = int(par_milieu.get("campagne", 0)), int(par_milieu.get("ville", 0))
+    return _sous_titre(
+        "En part des journées mesurées, et non en nombre de jours — "
+        f"{_stations(campagne)} de campagne, {NOMBRES[ville].lower()} de ville.")
+
+
 ST_A5 = _sous_titre("Moyenne de chaque heure de la journée.")
 NOTE_A5 = ("Le creux du petit matin est aussi le maximum de dioxyde d'azote : l'air y est "
            "moins chargé en ozone, pas plus pur.")
@@ -202,14 +290,14 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     con = _con()
     df = con.execute(f"""
         WITH j AS (
-          SELECT date_locale, station, mda8 FROM '{MDA8}' WHERE {OU_A1}),
+          SELECT date_locale, station, implantation, mda8 FROM '{MDA8}' WHERE {OU_A1}),
         h AS (SELECT date_locale, station, max(valeur) AS horaire_max
               FROM '{SERIE}' WHERE polluant = 'O3' GROUP BY 1, 2)
-        SELECT j.station,
+        SELECT j.station, j.implantation,
                count(*) FILTER (WHERE j.mda8 > {OBJECTIF_QUALITE})                    AS depassements,
                count(*) FILTER (WHERE h.horaire_max >= {SEUIL_INFORMATION})           AS alertes
         FROM j JOIN h USING (date_locale, station)
-        GROUP BY 1 ORDER BY 2
+        GROUP BY 1, 2 ORDER BY 3
     """).df()
     # Le total affiché compte des JOURNÉES DISTINCTES, jamais la somme des barres : une
     # journée chargée déclenche plusieurs stations à la fois, et additionner les colonnes
@@ -231,13 +319,12 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
             "affirme qu'aucune n'alerte. À réécrire avant de publier."
         )
 
-    # Mêmes libellés qu'en A4 (casse de phrase, milieu précisé) : les deux figures se
-    # suivent dans la page, et une station ne peut pas s'y appeler de deux façons.
-    libelles = [f"{s.title()} <i>({'campagne' if s == 'VENACO' else 'ville'})</i>"
-                for s in df["station"]]
+    # Mêmes libellés qu'en A4, et par la MÊME fonction : le milieu vient de l'implantation
+    # publiée par le producteur, jamais du nom de la station.
+    etiquettes = libelles(df["station"], df["implantation"])
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=df["depassements"], y=libelles, orientation="h",
+        x=df["depassements"], y=etiquettes, orientation="h",
         marker=dict(color=AIR_OZONE, line=dict(color=PALETTE["surface"], width=2)),
         text=[str(v) for v in df["depassements"]], textposition="outside",
         textfont=dict(family=SANS, size=17, color=PALETTE["ink"]),
@@ -450,39 +537,38 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
     rurale) ; les autres restent en retrait, ce qui évite une palette de cinq couleurs
     pour une lecture qui n'en demande que deux.
     """
-    con = _con()
-    df = con.execute(f"""
-        SELECT station,
-               100.0 * count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE}) / count(*) AS taux,
-               count(*) AS jours
-        FROM '{MDA8}'
-        WHERE valide AND influence = 'Fond' AND {ETES} AND {ANNEES}
-        GROUP BY 1 ORDER BY 2
-    """).df()
-    rurale = "VENACO"
+    df = perimetre_a4()
+    campagne = df.loc[df["milieu"] == "campagne", "station"]
+    # L'encart écrit « seule station de campagne de l'île » : c'est une affirmation, et
+    # elle se vérifie. Deux stations de campagne, et c'est la phrase qui est fausse, pas
+    # la figure — d'où l'arrêt, plutôt qu'un `iloc[0]` qui en choisirait une au hasard.
+    if len(campagne) != 1:
+        raise ValueError(
+            f"A4 : {len(campagne)} station(s) de campagne ({list(campagne)}) — l'encart "
+            "n'en nomme qu'une, « seule de l'île ». À réécrire avant de publier."
+        )
+    rurale = campagne.iloc[0]
     taux_rural = float(df.loc[df["station"] == rurale, "taux"].iloc[0])
-    urbaines = df.loc[df["station"] != rurale, "taux"]
-    devancees = int((urbaines < taux_rural).sum())
+    de_ville = df.loc[df["milieu"] == "ville", "taux"]
+    devancees = int((de_ville < taux_rural).sum())
     # Le titre affirme que la campagne n'est pas MEILLEURE — pas qu'elle mène. Une garde
     # exigeant la première place serait plus stricte que l'affirmation publiée, et elle a
     # d'ailleurs sauté : Bastia Montesoro dépasse plus souvent que Venaco. Ce qu'il faut
     # tenir, c'est que la station rurale devance la majorité des urbaines.
-    if devancees * 2 <= len(urbaines):
+    if devancees * 2 <= len(de_ville):
         raise ValueError(
-            f"A4 : {rurale} ne devance que {devancees} station(s) urbaine(s) sur "
-            f"{len(urbaines)} — le titre « l'air de campagne n'est pas meilleur » ne tient "
+            f"A4 : {rurale} ne devance que {devancees} station(s) de ville sur "
+            f"{len(de_ville)} — le titre « l'air de campagne n'est pas meilleur » ne tient "
             "plus. À réécrire avant de publier."
         )
     couleurs = [AIR_OZONE if s == rurale else PALETTE["muted"] for s in df["station"]]
-    # Explicitation (04/08/2026) : chaque station dit à quel milieu elle appartient, et
-    # non la seule rurale — sans quoi le lecteur doit deviner que les quatre autres sont
-    # urbaines. Casse de phrase plutôt que capitales de fichier : ce sont des lieux.
-    libelles = [f"{s.title()} <i>({'campagne' if s == rurale else 'ville'})</i>"
-                for s in df["station"]]
+    # Explicitation (04/08/2026) : chaque station dit à quel milieu elle appartient, et non
+    # la seule rurale — sans quoi le lecteur doit deviner que les autres sont urbaines.
+    etiquettes = libelles(df["station"], df["implantation"])
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=df["taux"], y=libelles, orientation="h",
+        x=df["taux"], y=etiquettes, orientation="h",
         marker=dict(color=couleurs, line=dict(color=PALETTE["surface"], width=2)),
         # L'unité est portée par chaque étiquette : « 15 » seul se lit comme un nombre
         # de jours, ce que la figure ne montre justement pas.
@@ -496,9 +582,9 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
     fig.add_annotation(
         # L'explication avancée est celle que la figure précédente établit sur nos propres
         # mesures (le pic de NO2 coïncide avec le creux d'ozone) — pas un mécanisme importé.
-        text=(f"Venaco, seule station de campagne de l'île,<br>dépasse plus souvent que "
-              f"<b>{devancees} des {len(urbaines)} stations<br>de ville</b> : en ville, "
-              "les gaz d'échappement<br>détruisent une partie de l'ozone."),
+        text=(f"{rurale.title()}, seule station de campagne de l'île,<br>dépasse plus "
+              f"souvent que <b>{devancees} des {len(de_ville)} stations<br>de ville</b> : "
+              "en ville, les gaz d'échappement<br>détruisent une partie de l'ozone."),
         xref="paper", yref="paper", x=0.99, y=0.04, xanchor="right", yanchor="bottom",
         showarrow=False, align="right",
         font=dict(family=SANS, size=17, color=PALETTE["ink"]),
@@ -592,7 +678,7 @@ def main() -> int:
     export_html(fig_a3_ozone_contre_azote(), "a3_ozone_contre_azote",
                 SRC_AIR, d_air, sous_titre=st_a3())
     export_html(fig_a4_campagne_contre_ville(), "a4_campagne_contre_ville",
-                SRC_AIR, d_air, sous_titre=ST_A4)
+                SRC_AIR, d_air, sous_titre=st_a4())
     export_html(fig_a5_creneau_a_eviter(), "a5_creneau_a_eviter",
                 SRC_AIR, d_air, sous_titre=ST_A5, note=NOTE_A5)
     return 0

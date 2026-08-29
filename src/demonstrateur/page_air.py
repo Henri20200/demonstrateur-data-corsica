@@ -75,7 +75,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             "a4",
             preparer_figure(
                 fa.fig_a4_campagne_contre_ville(), fa.SRC_AIR, d_air,
-                sous_titre=fa.ST_A4,
+                sous_titre=fa.st_a4(),
             ),
         ),
         (
