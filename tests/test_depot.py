@@ -139,7 +139,12 @@ def test_une_panne_passagere_est_retentee_avec_le_corps_complet(tmp_path, monkey
 
 
 def test_une_erreur_definitive_n_est_pas_retentee(tmp_path, monkeypatch):
-    """Insister sur un 403 ne fait que retarder le message qui dit quoi corriger."""
+    """Insister sur un 403 ne fait que retarder le message qui dit quoi corriger.
+
+    Et depuis le 30/08/2026 le TYPE le dit aussi : un 403 est un refus d'identifiants ou
+    de politique, donc `DepotMalConfigure`. Le distinguer d'une panne n'est pas cosmétique
+    — c'est ce qui décide si `archive` promet une reprise ou réclame une correction.
+    """
     monkeypatch.setattr(depot, "_PAUSE", 0.0)
     appels = []
 
@@ -147,10 +152,68 @@ def test_une_erreur_definitive_n_est_pas_retentee(tmp_path, monkeypatch):
         appels.append(requete)
         return httpx.Response(403, text="AccessDenied")
 
-    with _client(repondre) as client, pytest.raises(depot.DepotIndisponible, match="403"):
+    with _client(repondre) as client, pytest.raises(depot.DepotMalConfigure, match="403"):
         _depot().deposer("archive/mix/x.csv.gz", _fichier(tmp_path), client=client)
 
     assert len(appels) == 1
+
+
+def test_une_requete_impossible_a_former_ne_se_retente_pas(tmp_path, monkeypatch):
+    """LE défaut du 30/08/2026, et il ne tenait qu'à un ordre de `except`.
+
+    `httpx.LocalProtocolError` descend de `httpx.HTTPError`. Il tombait donc dans la
+    branche des pannes réseau : trois tentatives, des pauses, puis un `DepotIndisponible`
+    qu'`archive` indexait en « reprise au prochain run ». Or rien n'était parti sur le
+    réseau — h11 refusait d'écrire l'en-tête `authorization`, la clé d'accès portant un
+    caractère de contrôle (il n'en refuse que cinq : NUL, LF, VT, FF, CR). Un échec qui
+    ne peut pas ne pas se reproduire était traité comme un incident passager : 71 dépôts
+    tentés, 0 réussi, run VERT.
+
+    Le message doit nommer ce qu'il faut aller corriger : c'est tout ce qui reste pour
+    diagnostiquer, le log masquant la clé fautive par `***`.
+    """
+    monkeypatch.setattr(depot, "_PAUSE", 0.0)
+    appels = []
+
+    def repondre(requete):
+        appels.append(requete)
+        raise httpx.LocalProtocolError("Illegal header value (retour chariot dans la clé)")
+
+    with _client(repondre) as client, pytest.raises(depot.DepotMalConfigure) as leve:
+        _depot().deposer("archive/mix/x.csv.gz", _fichier(tmp_path), client=client)
+
+    assert len(appels) == 1, (
+        "une requête impossible à former a été retentée — elle ne peut pas réussir, et "
+        "chaque reprise coûte une pause pour rien"
+    )
+    assert "ARCHIVE_ACCESS_KEY" in str(leve.value), (
+        "le message doit nommer la variable à corriger : le log masque la clé par ***, "
+        "il ne reste que ce texte pour savoir où chercher"
+    )
+
+
+def test_une_panne_reseau_reste_une_panne_et_se_retente(tmp_path, monkeypatch):
+    """Le pendant du précédent, et la moitié qu'il ne faut pas casser en le corrigeant.
+
+    Un stockage injoignable revient : il doit continuer d'être retenté, et de se rendre
+    comme une indisponibilité SANS être une mauvaise configuration — sans quoi la
+    première coupure réseau ferait rougir le cron et réclamerait une correction qui n'a
+    pas lieu d'être.
+    """
+    monkeypatch.setattr(depot, "_PAUSE", 0.0)
+    appels = []
+
+    def repondre(requete):
+        appels.append(requete)
+        raise httpx.ConnectError("stockage injoignable")
+
+    with _client(repondre) as client, pytest.raises(depot.DepotIndisponible) as leve:
+        _depot().deposer("archive/mix/x.csv.gz", _fichier(tmp_path), client=client, essais=3)
+
+    assert len(appels) == 3, "une panne réseau doit être retentée"
+    assert not isinstance(leve.value, depot.DepotMalConfigure), (
+        "une coupure réseau n'est pas une configuration à corriger"
+    )
 
 
 def test_une_panne_persistante_finit_par_etre_signalee(tmp_path, monkeypatch):

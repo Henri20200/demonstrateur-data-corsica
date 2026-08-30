@@ -605,13 +605,24 @@ def main(argv: list[str] | None = None) -> int:
     if suspension:
         print(f"[!] DÉPÔT D'ARCHIVE SUSPENDU — {suspension}")
 
+    # Même arbitrage, autre cause — et celle-ci ne se résout pas toute seule. Un stockage
+    # injoignable revient ; une clé malformée reste malformée. Tant que ce cas se rendait
+    # comme une panne passagère, il tenait derrière un cron vert : le 30/08/2026, 71 dépôts
+    # tentés, 0 réussi, run en succès, et les versions dépassées perdant leurs octets
+    # pendant ce temps (47 le matin, 86 le soir).
+    mauvaise_conf = archive.configuration_refusee()
+    if mauvaise_conf:
+        print(f"[!] DÉPÔT D'ARCHIVE MAL CONFIGURÉ — {mauvaise_conf}")
+        print("[!] Ce n'est PAS une panne : aucun run suivant ne le corrigera de lui-même. "
+              "La collecte, elle, est allée à son terme et l'index est à jour.")
+
     if failures:
         print(f"\n{len(failures)} source(s) en échec : {', '.join(failures)}")
         if not recertifier:
             print("Vérifier les URL / formats dans sources.yaml (ils peuvent avoir changé), "
                   "ou une empreinte divergente signalée ci-dessus.")
         return 1
-    if suspension:
+    if suspension or mauvaise_conf:
         return 1
 
     action = "Re-certification" if recertifier else "Collecte"

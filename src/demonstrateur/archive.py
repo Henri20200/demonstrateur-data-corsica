@@ -208,6 +208,12 @@ def _depot_durable() -> depot.Depot | None:
 # un état que personne ne saurait relire, alors qu'un disjoncteur se voit d'un bloc.
 _VOLUME_DEPOSE: int | None = None
 _DISJONCTEUR: str | None = None
+# Second verrou de run, même forme et raison OPPOSÉE. Le disjoncteur arrête un dépôt qui
+# marche trop ; celui-ci arrête un dépôt qui ne peut pas marcher. Une configuration
+# refusée le sera pour toutes les sources du run : continuer à essayer, c'est produire
+# cinquante-trois fois le même message et trois cents secondes de pauses inutiles — c'est
+# ce qu'a fait le run 33318617637 du 30/08/2026, en restant vert.
+_MAL_CONFIGURE: str | None = None
 
 
 def volume_depose() -> int:
@@ -238,6 +244,20 @@ def seuil_franchi() -> str | None:
     return _DISJONCTEUR
 
 
+def configuration_refusee() -> str | None:
+    """Message si le dépôt a été refusé pour cause de CONFIGURATION pendant ce run.
+
+    Jumeau de `seuil_franchi`, et même usage dans `fetch` : rougir le run sans interrompre
+    la collecte. Ce qui les sépare est ce qu'il faut faire ensuite — un seuil se rediscute,
+    une configuration se corrige — et c'est pourquoi les deux messages ne se mélangent pas.
+
+    Sans lui, une clé malformée était indiscernable d'une coupure réseau : elle aurait
+    échoué à chaque run, indéfiniment, derrière un cron vert, pendant que les versions
+    dépassées perdaient leurs octets pour de bon (47 le matin du 30/08/2026, 86 le soir).
+    """
+    return _MAL_CONFIGURE
+
+
 def _deposer(source_id: str, cle: str, fichier: Path) -> bool:
     """Dépose les octets. True SEULEMENT si le stockage distant les détient à coup sûr.
 
@@ -250,12 +270,12 @@ def _deposer(source_id: str, cle: str, fichier: Path) -> bool:
     retente au run suivant, le seuil franchi ferme le robinet pour tout le run et se
     rediscute avant de rouvrir.
     """
-    global _VOLUME_DEPOSE, _DISJONCTEUR
+    global _VOLUME_DEPOSE, _DISJONCTEUR, _MAL_CONFIGURE
 
     distant = _depot_durable()
     if distant is None:
         return False
-    if _DISJONCTEUR is not None:
+    if _DISJONCTEUR is not None or _MAL_CONFIGURE is not None:
         # Déjà refusé ce run : on ne mesure même plus, et surtout on n'envoie rien.
         return False
 
@@ -273,6 +293,15 @@ def _deposer(source_id: str, cle: str, fichier: Path) -> bool:
 
     try:
         distant.deposer(cle, fichier)
+    except depot.DepotMalConfigure as exc:
+        # AVANT `DepotIndisponible`, dont il descend. Et le message ne promet PAS de
+        # reprise : il n'y en aura pas tant que la configuration n'aura pas changé.
+        _MAL_CONFIGURE = str(exc)
+        print(f"[!] {source_id} : dépôt REFUSÉ — {exc}")
+        print("[!] Configuration en cause : plus aucun octet ne partira pendant ce run, et "
+              "aucune reprise n'y changera rien. Les versions restent indexées "
+              "`payload_archived: false` ; le run se termine en ÉCHEC.")
+        return False
     except depot.DepotIndisponible as exc:
         print(f"[!] {source_id} : octets NON déposés ({exc}) — version indexée "
               "`payload_archived: false`, reprise au prochain run.")
@@ -430,26 +459,88 @@ def retenter_depots_en_attente() -> list[str]:
     return deposees
 
 
-def versions_non_deposees() -> list[tuple[str, str]]:
-    """(source_id, sha256) des versions dont le stockage durable n'a pas les octets.
+def _redeposable(source_id: str, version: dict) -> bool:
+    """Une reprise peut-elle encore déposer les octets de cette version ?
 
-    Un index a toujours l'air complet — c'est sa nature de ne porter que des métadonnées.
-    Cette liste est le seul endroit où le trou se voit AVANT qu'on aille chercher un
-    contenu qui n'existe plus.
+    La question n'est pas « manque-t-il des octets » mais « peut-on encore les fournir »,
+    et la réponse suit EXACTEMENT ce que `retenter_depots_en_attente` sait faire — sans
+    quoi l'avertissement annonce des reprises que la reprise ne fera jamais.
 
-    Elle ne retient QUE LES TROUS RATTRAPABLES : une entrée sans `payload_key` n'a aucune
-    adresse où déposer quoi que ce soit — c'est le cas des versions reconstituées depuis
-    l'historique du manifeste, dont les octets ont disparu avant que l'archive n'existe.
-    Les compter ici ferait avertir le CI, toutes les six heures et pour toujours, de mille
-    versions qu'aucune reprise ne peut sauver ; l'avertissement qui compte, celui de la
-    panne réseau d'hier, s'y perdrait. Elles ont leur propre liste, `versions_sans_octets`.
+    Deux chemins, et deux seulement : la version COURANTE repasse par
+    `enregistrer_version`, puisque `fetch` en retélécharge ou en revérifie les octets à
+    chaque run ; une version DÉPASSÉE n'a plus que sa copie de service. Si cette copie
+    n'existe pas, personne ne produira jamais ces octets — `data/archive/` n'est ni
+    versionné ni transporté par le cache d'Actions, qui ne porte que `data/raw`.
     """
+    if version.get("payload_archived") or not version.get("payload_key"):
+        return False
+    if version.get("superseded_at") is None:
+        return True
+    nom = version.get("fichier_archive")
+    return bool(nom) and (DATA_ARCHIVE / source_id / nom).exists()
+
+
+def _millesimes(predicat) -> list[tuple[str, str]]:
+    """(source_id, sha256) des versions que `predicat(source_id, version)` retient."""
     return [
         (source_id, version.get("sha256", ""))
         for source_id, versions in _charger(VERSIONS_FILE).items()
         for version in versions
-        if not version.get("payload_archived") and version.get("payload_key")
+        if predicat(source_id, version)
     ]
+
+
+def versions_non_deposees() -> list[tuple[str, str]]:
+    """Les versions dont les octets manquent ET qu'une reprise peut encore déposer.
+
+    C'est l'INCIDENT ACTIF : cette liste non vide veut dire qu'il reste quelque chose à
+    faire, et qu'une reprise le fera.
+
+    Elle a compté trop large jusqu'au 30/08/2026, ne filtrant que sur `payload_key`. Ce
+    jour-là elle annonçait 86 reprises dues dont AUCUNE n'était possible : des versions
+    dépassées avant l'ouverture du bucket, dont la copie de service avait disparu avec le
+    runner. Un compteur qui ne descend jamais à zéro cesse d'être lu — et c'est
+    précisément derrière ce bruit que la clé malformée a tenu une journée.
+
+    Trois listes, trois questions qui ne se répondent pas l'une l'autre :
+    celle-ci « que reste-t-il à faire », `versions_octets_perdus` « qu'avons-nous perdu
+    et ne retrouverons pas », `versions_sans_octets` « que n'avons-nous jamais eu ».
+    """
+    return _millesimes(_redeposable)
+
+
+def versions_courantes_sans_octets() -> list[tuple[str, str]]:
+    """Les versions VIVANTES dont le stockage durable n'a pas les octets.
+
+    Le critère d'exploitation, et le seul qui réponde « l'archive fonctionne-t-elle » :
+    zéro veut dire que tout contenu actuellement détenu par la chaîne est durable. Une
+    dette historique, si lourde soit-elle, ne dit rien sur cette question-là.
+    """
+    return _millesimes(
+        lambda sid, v: (not v.get("payload_archived") and v.get("payload_key")
+                        and v.get("superseded_at") is None)
+    )
+
+
+def versions_octets_perdus() -> list[tuple[str, str]]:
+    """Les versions COLLECTÉES dont les octets n'existent plus nulle part.
+
+    La chaîne les a bel et bien détenues — l'intervalle de connaissance est sûr — mais
+    elles ont été dépassées avant que leurs octets n'atteignent le stockage durable, et
+    leur copie de service n'a pas survécu au runner. Aucune reprise ne les sauvera : c'est
+    un CONSTAT, stable et non bloquant, pas une tâche en attente.
+
+    À distinguer de `versions_sans_octets`, qui liste ce que la chaîne n'a jamais détenu
+    (versions reconstituées depuis l'historique du manifeste). Ici nous les avions.
+
+    86 au 30/08/2026, contre 47 le matin du même jour : l'écart est le coût mesuré d'une
+    journée où le dépôt échouait derrière un cron vert.
+    """
+    return _millesimes(
+        lambda sid, v: (not v.get("payload_archived") and v.get("payload_key")
+                        and v.get("superseded_at") is not None
+                        and not _redeposable(sid, v))
+    )
 
 
 def versions_sans_octets() -> list[tuple[str, str]]:

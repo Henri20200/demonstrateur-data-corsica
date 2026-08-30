@@ -504,3 +504,139 @@ def test_un_seuil_franchi_rougit_le_run_sans_interrompre_la_collecte(
     assert manifeste.exists(), "la collecte, elle, doit être allée au bout"
     assert json.loads(archive.VERSIONS_FILE.read_text(encoding="utf-8"))[
         "faux_geodair"][0]["payload_archived"] is False
+
+
+
+class DepotMalConfigureFactice:
+    """Stockage dont la CONFIGURATION est refusée — l'échec du 30/08/2026.
+
+    Ne se confond pas avec `DepotFactice(en_panne=True)`, et c'est tout l'objet des tests
+    qui suivent : l'un revient au run suivant, l'autre pas.
+    """
+
+    def __init__(self):
+        self.tentatives: list[str] = []
+
+    def deposer(self, cle: str, chemin, **_):
+        self.tentatives.append(cle)
+        raise depot.DepotMalConfigure(
+            "LocalProtocolError : Illegal header value — vérifier ARCHIVE_ACCESS_KEY"
+        )
+
+
+def test_une_configuration_refusee_arrete_les_depots_du_run(archive_isolee, monkeypatch, capsys):
+    """Une seule tentative pour tout le run, et la collecte va quand même à son terme.
+
+    Le 30/08/2026, la même clé malformée a été essayée 71 fois — des sources multipliées
+    par trois tentatives, avec leurs pauses, pour un échec identique à chaque fois. Ce qui
+    est refusé pour une source l'est pour toutes : la configuration ne dépend d'aucune.
+
+    Ce que ce verrou ne doit PAS faire : emporter la collecte. Les octets se redéposent,
+    un intervalle de connaissance ne se rattrape pas.
+    """
+    faux = DepotMalConfigureFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: faux)
+    premier = _source(archive_isolee, "un", "mix.csv.gz")
+    second = _source(archive_isolee, "deux", "autre.csv.gz")
+
+    archive.enregistrer_version("mix", GLISSANT, premier, "sha_aaa")
+    archive.enregistrer_version("autre", GLISSANT, second, "sha_bbb")
+
+    assert len(faux.tentatives) == 1, (
+        f"{len(faux.tentatives)} tentatives — une configuration refusée l'est pour tout "
+        "le run ; insister ne fait que répéter le même message"
+    )
+    assert archive.configuration_refusee() is not None, "le run doit pouvoir rougir"
+    assert archive.seuil_franchi() is None, (
+        "un seuil de volume et une configuration refusée ne se confondent pas : "
+        "l'un se rediscute, l'autre se corrige"
+    )
+    assert "aucune reprise" in capsys.readouterr().out, (
+        "le message ne doit PAS promettre une reprise qui n'aura pas lieu"
+    )
+
+    for source_id, sha in (("mix", "sha_aaa"), ("autre", "sha_bbb")):
+        versions = _versions(source_id)
+        assert len(versions) == 1 and versions[0]["sha256"] == sha, (
+            "la collecte a été emportée par un stockage fâché"
+        )
+        assert versions[0]["payload_archived"] is False
+
+
+def test_l_avertissement_ne_promet_que_les_reprises_realisables(archive_isolee, monkeypatch):
+    """Le second défaut du 30/08/2026 : 86 reprises annoncées, aucune possible.
+
+    `versions_non_deposees` ne filtrait que sur `payload_key`. Elle comptait donc des
+    versions DÉPASSÉES dont la copie de service avait disparu avec le runner —
+    `data/archive/` n'est ni versionné ni porté par le cache d'Actions, qui ne transporte
+    que `data/raw`. Un compteur qui ne descend jamais à zéro cesse d'être lu, et c'est
+    derrière ce bruit qu'une clé malformée a tenu une journée entière.
+
+    Le critère devient vérifiable : ce que l'avertissement annonce, la reprise le fait.
+    """
+    monkeypatch.setattr(archive, "_depot_durable", lambda: DepotFactice(en_panne=True))
+    fichier = _source(archive_isolee, "v1")
+    v1 = archive.enregistrer_version("mix", GLISSANT, fichier, "sha_aaa")
+    fichier.write_text("v2", encoding="utf-8")
+    archive.enregistrer_version("mix", GLISSANT, fichier, "sha_bbb")
+
+    # Tant que la copie de service existe, la reprise est réellement possible.
+    assert ("mix", "sha_aaa") in archive.versions_non_deposees()
+    assert archive.versions_octets_perdus() == []
+
+    # Le run suivant repart d'un runner neuf : la copie n'a pas survécu.
+    (archive.DATA_ARCHIVE / "mix" / v1["fichier_archive"]).unlink()
+
+    assert archive.versions_non_deposees() == [("mix", "sha_bbb")], (
+        "seule la version courante reste déposable — `fetch` en revérifie les octets à "
+        "chaque run, ce que rien ne fera plus pour la version dépassée"
+    )
+    assert archive.versions_octets_perdus() == [("mix", "sha_aaa")], (
+        "la version dépassée sans copie est un CONSTAT, pas une tâche en attente"
+    )
+    assert archive.versions_courantes_sans_octets() == [("mix", "sha_bbb")]
+
+    # Et le pronostic se vérifie : même un stockage revenu ne peut rien pour elle. La
+    # reprise dépose bien la version COURANTE, dont la copie existe encore — c'est
+    # justement le partage que l'avertissement doit refléter, et ne reflétait pas.
+    revenu = DepotFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: revenu)
+    reprises = archive.retenter_depots_en_attente()
+    assert v1["payload_key"] not in reprises, (
+        "l'avertissement annonçait une reprise que la reprise ne peut pas faire"
+    )
+    assert v1["payload_key"] not in revenu.objets
+    assert archive.versions_octets_perdus() == [("mix", "sha_aaa")], (
+        "après la reprise, la dette historique est exactement ce qui reste"
+    )
+    assert archive.versions_non_deposees() == [], "tout ce qui était déposable l'a été"
+
+
+def test_l_archive_operationnelle_se_lit_sur_les_versions_vivantes(archive_isolee, monkeypatch):
+    """Le critère d'exploitation, et il ne dépend pas de la dette historique.
+
+    Zéro version vivante sans octets = tout contenu actuellement détenu par la chaîne est
+    durable. C'est ce qui a permis de déclarer l'archive opérationnelle le 30/08/2026
+    alors que 86 millésimes dépassés restaient définitivement sans octets.
+    """
+    monkeypatch.setattr(archive, "_depot_durable", lambda: DepotFactice(en_panne=True))
+    fichier = _source(archive_isolee, "v1")
+    v1 = archive.enregistrer_version("mix", GLISSANT, fichier, "sha_aaa")
+    fichier.write_text("v2", encoding="utf-8")
+    archive.enregistrer_version("mix", GLISSANT, fichier, "sha_bbb")
+    (archive.DATA_ARCHIVE / "mix" / v1["fichier_archive"]).unlink()
+
+    assert archive.versions_courantes_sans_octets(), (
+        "l'archive ne dépose rien : elle n'est pas opérationnelle"
+    )
+
+    # Le stockage revient : la version COURANTE repasse par le chemin ordinaire.
+    monkeypatch.setattr(archive, "_depot_durable", lambda: DepotFactice())
+    assert archive.enregistrer_version("mix", GLISSANT, fichier, "sha_bbb") is None
+
+    assert archive.versions_courantes_sans_octets() == [], (
+        "toute version vivante est désormais durable — c'est cela, une archive qui marche"
+    )
+    assert len(archive.versions_octets_perdus()) == 1, (
+        "et la dette historique n'a pas bougé : elle ne dit rien de l'état d'exploitation"
+    )
