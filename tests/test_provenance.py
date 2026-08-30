@@ -267,6 +267,43 @@ def test_la_note_dit_ce_que_les_chiffres_ne_disent_pas():
     )
 
 
+besoin_note_et_mda8 = pytest.mark.skipif(
+    not (NOTE.exists() and (DATA_PROCESSED / "air_o3_mda8.parquet").exists()),
+    reason="note ou MDA8 absent — lancer prepare puis note_air",
+)
+
+
+@besoin_note_et_mda8
+def test_la_note_de_l_air_publie_le_meme_contraste_que_la_figure():
+    """Le verrou de TEXTE qui manquait à la correction du 29/08/2026.
+
+    Ce jour-là, « c'est à la campagne qu'on en mesure le plus » a été jugé faux et
+    réécrit dans le titre d'A4 et dans l'encadré de la page — Bastia Montesoro dépasse
+    15,1 % de ses journées contre 10,4 % à Venaco. La note méthodologique a continué de
+    publier le superlatif pendant deux jours, sur les mêmes sorties du même cron : le
+    verrou de CALCUL existait bien (`test_l_air_de_campagne_n_est_pas_meilleur`), et il
+    passait — c'est le verrou de texte qui manquait, et la correction s'est arrêtée où
+    s'arrêtaient les verrous. Les deux familles se cherchent séparément.
+
+    Ce test tient les deux bouts : le superlatif ne revient pas, et ce que la note compte
+    est ce que la figure compte — non pas la même phrase recopiée, mais la même source.
+    """
+    from demonstrateur.figures_air import contraste_a4
+
+    h = _texte_note()
+    assert "en mesure le plus" not in h, (
+        "la note republie le superlatif retiré le 29/08/2026 comme faux — une station "
+        "périurbaine dépasse plus souvent que la seule station rurale"
+    )
+    c = contraste_a4()
+    attendu = f"{c['devancees']} des {len(c['autres'])} stations {c['implantations']}"
+    assert attendu in h, (
+        f"la note doit publier le contraste tel qu'A4 le compte (« {attendu} ») — "
+        "sinon les deux pages du même build peuvent se contredire, et c'est la note, "
+        "caution méthodologique, qui porterait la version fausse"
+    )
+
+
 @besoin_note_a_jour
 def test_la_note_distingue_stations_collectees_et_stations_tracees():
     """Le lecteur qui compte les courbes en trouve cinq ; le tableau des sources en
@@ -372,6 +409,35 @@ def test_la_note_electricite_dit_ce_que_les_chiffres_ne_disent_pas():
     assert "Produit sur l'île n'est pas produit avec l'île" in h, (
         "la note doit distinguer les trois périmètres — c'est l'erreur de lecture la "
         "plus facile à commettre sur ces chiffres"
+    )
+
+
+besoin_note_elec_et_courbe = pytest.mark.skipif(
+    not (NOTE_ELEC.exists() and (DATA_PROCESSED / "edf_courbe_corse.parquet").exists()),
+    reason="note électricité ou courbe absente — lancer prepare puis note_elec",
+)
+
+
+@besoin_note_elec_et_courbe
+def test_la_note_electricite_publie_la_fenetre_que_t2b_mesure():
+    """Même mécanisme que pour l'air, sur l'autre sujet et avec deux jours de plus.
+
+    Le 23/08/2026, la fenêtre du surcroît de juillet a été remesurée : « le soir » et
+    16-22 h étaient en partie fabriqués par l'ancien horodatage, la fenêtre juste est
+    14-20 h. La figure a été corrigée ; la note a continué d'écrire « elle a lieu le
+    soir », et le verrou de la note ne tenait que le « montrent quand, pas pourquoi » —
+    pas le quand lui-même. Une remesure n'est finie que là où vivent toutes ses phrases.
+    """
+    from demonstrateur.figures import plateau_surcroit_juillet
+
+    h = _texte_note_elec()
+    assert "elle a lieu le soir" not in h, (
+        "la note republie « le soir », fenêtre remesurée le 23/08/2026"
+    )
+    _, h1, h2 = plateau_surcroit_juillet()
+    assert f"de {h1} h à {h2} h" in h, (
+        f"la note doit publier la fenêtre que T2b mesure (« de {h1} h à {h2} h ») — "
+        "figure et note se lisent dans le même livrable"
     )
 
 

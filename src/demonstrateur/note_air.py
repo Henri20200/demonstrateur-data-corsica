@@ -19,6 +19,7 @@ import sys
 import duckdb
 
 from .config import DATA_PROCESSED, OUTPUTS
+from .figures_air import contraste_a4
 from .prepare import verifier_sorties
 from .viz import PALETTE, SANS, date_collecte
 
@@ -58,6 +59,11 @@ def _chiffres() -> dict:
         jours=jours,
         collecte_air=date_collecte("aee_o3_venaco_continu"),
         collecte_meteo=date_collecte("meteo_horaire_corse"),
+        # Le contraste rural / urbain est LU à la source même qu'A4, et non réécrit :
+        # cette note a publié « c'est à la campagne qu'on en mesure le plus » pendant
+        # que la page, corrigée le 29/08/2026, publiait « la majorité ». Le superlatif
+        # était faux, et c'est ici qu'il avait survécu — là où aucun verrou ne portait.
+        a4=contraste_a4(),
     )
 
 
@@ -169,7 +175,9 @@ côté air comme côté température.</p>
     aucune source ne l'émet, il se forme dans l'air sous l'effet du soleil à partir d'autres
     polluants (Qualitair Corse, « Polluants surveillés »). Sa concentration ne peut donc pas
     se lire comme la trace des rejets d'une installation proche — c'est même à la campagne,
-    loin des moteurs, qu'on en mesure le plus. Les polluants qu'on suit au voisinage d'une
+    loin des moteurs, qu'on en dépasse l'objectif plus souvent que dans
+    {c["a4"]["devancees"]} des {len(c["a4"]["autres"])} stations
+    {c["a4"]["implantations"]}. Les polluants qu'on suit au voisinage d'une
     source — particules, dioxyde de soufre, oxydes d'azote — ne sont pas traités ici.</li>
 <li><strong>D'où vient cet ozone.</strong> Une concentration ne porte pas d'étiquette
     d'origine. Une part se forme loin de l'île et y arrive avec le vent ; la chiffrer

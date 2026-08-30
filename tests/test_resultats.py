@@ -139,8 +139,20 @@ def test_solaire_sous_thermique_ete(con):
 
 
 @besoin_courbe
-def test_surcroit_juillet_le_soir(con):
-    """T2b : surcroît juillet − juin positif aux 24 heures, maximal le soir (16-22 h)."""
+def test_surcroit_juillet_l_apres_midi(con):
+    """T2b : surcroît juillet − juin positif aux 24 heures, plateau de 14 h à 20 h.
+
+    Ce test s'appelait « le soir » et acceptait un pic n'importe où entre 16 et 22 h.
+    La fenêtre a été remesurée le 23/08/2026 en 14-20 h — et l'assertion restait vraie
+    des DEUX côtés de la correction. Un verrou qui accepte l'ancienne et la nouvelle
+    version d'un fait remesuré ne verrouille rien : il a laissé le titre de T2b porter
+    « 14 h à 20 h » en constante et la note publier « le soir », sans rien dire.
+
+    Les bornes se tiennent donc à l'heure près, comme celles d'A5. Le titre, lui, se
+    compte désormais (`figures.plateau_surcroit_juillet`) : il ne peut plus mentir, mais
+    il pourrait glisser en silence. C'est ce test qui force alors à rejuger ce qui
+    l'entoure — l'annotation, la note, et le « début de soirée » du récit.
+    """
     df = con.execute(
         f"""SELECT heure_locale,
               avg(production_totale_mw) FILTER (WHERE mois_local = 7)
@@ -150,9 +162,29 @@ def test_surcroit_juillet_le_soir(con):
     assert len(df) == 24 and (df["delta"] > 0).all(), (
         "le surcroît juillet − juin n'est plus positif à chaque heure — T2b à revoir"
     )
-    h_max = int(df.loc[df["delta"].idxmax(), "heure_locale"])
-    assert 16 <= h_max <= 22, (
-        f"pic du surcroît à {h_max} h — hors de la plage « le soir (16-22 h) » de T2b"
+    plateau = sorted(
+        df.loc[df["delta"] >= 0.97 * df["delta"].max(), "heure_locale"].astype(int)
+    )
+    assert plateau == list(range(plateau[0], plateau[-1] + 1)), (
+        f"plateau troué {plateau} — « de X h à Y h » suppose une plage contiguë"
+    )
+    assert plateau[0] == 14 and plateau[-1] == 20, (
+        f"plateau du surcroît {plateau[0]}-{plateau[-1]} h — T2b publie « de 14 h à 20 h »"
+    )
+    # La même fenêtre vit une TROISIÈME fois, en prose : « En juillet, la hausse est
+    # surtout marquée de 14 h à 20 h » titre un passage de `docs/etude.md`, qui ajoute
+    # deux chiffres à lui — le maximum et son heure. Ils étaient écrits sans verrou :
+    # la remesure du 23/08/2026 aurait pu les laisser derrière elle comme elle a laissé
+    # la note, et personne ne l'aurait su. La règle du dossier « chaque chiffre écrit
+    # dans l'étude est tenu par un test » s'applique aussi à ceux-là.
+    pic = int(df.loc[df["delta"].idxmax(), "heure_locale"])
+    assert 16 <= pic <= 18, (
+        f"maximum du surcroît à {pic} h — l'étude écrit « avec un maximum vers 17 h »"
+    )
+    ampleur = float(df["delta"].max())
+    assert 65 <= ampleur <= 75, (
+        f"maximum du surcroît à {ampleur:.0f} MW — l'étude écrit « environ 70 MW "
+        "supplémentaires pendant l'après-midi et le début de soirée »"
     )
 
 

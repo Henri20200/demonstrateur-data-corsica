@@ -152,18 +152,26 @@ def fig_t2_demande_mensuelle() -> go.Figure:
 # partie fabriquée par l'ancien horodatage, qui décalait la journée d'une à deux heures.
 # On ne la reconstitue pas par translation : la correction a le droit de redécouper la
 # journée. On donne le quand, jamais le pourquoi (résidents, tourisme, climatisation).
-def fig_t2b_surcroit_horaire() -> go.Figure:
-    con = _con()
-    df = con.execute(
+def plateau_surcroit_juillet() -> tuple:
+    """La fenêtre du surcroît calculée UNE fois — titre, annotation et note y puisent.
+
+    Le 23/08/2026 la fenêtre a été remesurée de « 16-22 h » à 14-20 h. La correction n'a
+    pas atteint tout ce qui l'énonçait : l'annotation de la figure la dérivait bien de la
+    donnée, mais le titre la portait en CONSTANTE, et la note méthodologique en publiait
+    une troisième version — « le soir », restée de l'horodatage d'avant. Trois énoncés du
+    même fait, dont un seul se recalculait, libres de diverger sans que rien ne le dise.
+    Ils n'en font plus qu'un.
+
+    Rend `(df, h1, h2)` : le surcroît heure par heure, et les bornes du plateau.
+    """
+    df = _con().execute(
         f"""SELECT heure_locale h,
               avg(production_totale_mw) FILTER (WHERE mois_local = 7)
               - avg(production_totale_mw) FILTER (WHERE mois_local = 6) AS delta
             FROM '{COURBE}' GROUP BY 1 ORDER BY 1"""
     ).df()
-    delta = df["delta"].round(0)
-
     # Le plateau, mesuré : les heures qui restent à 97 % du maximum. Le seuil est un
-    # choix, la fenêtre non — et les deux gardes ci-dessous tiennent le titre.
+    # choix, la fenêtre non — et les deux gardes ci-dessous tiennent ce qui s'en publie.
     plateau = sorted(df.loc[df["delta"] >= 0.97 * df["delta"].max(), "h"].astype(int))
     h1, h2 = plateau[0], plateau[-1]
     if plateau != list(range(h1, h2 + 1)):
@@ -171,12 +179,22 @@ def fig_t2b_surcroit_horaire() -> go.Figure:
             f"T2b : le surcroît ne forme plus un plateau d'un seul tenant ({plateau}) — "
             "surligner un intervalle raconterait une continuité qui n'existe pas."
         )
+    # Cette garde reste plus large que la fenêtre publiée, et c'est voulu : le titre DIT
+    # désormais les bornes mesurées, quelles qu'elles soient. Ce qu'elle tient, c'est le
+    # récit qui les entoure — « après-midi et début de soirée », dans la figure comme dans
+    # la note. Une fenêtre qui en sortirait ne rendrait pas le titre faux ; elle rendrait
+    # faux tout ce qui l'accompagne, et c'est alors qu'il faut rejuger.
     if not (12 <= h1 and h2 <= 21):
         raise ValueError(
             f"T2b : le plateau du surcroît va de {h1} h à {h2} h — il déborde de "
-            "l'après-midi et du début de soirée, titre et annotation à revoir."
+            "l'après-midi et du début de soirée ; titre, annotation et note à revoir."
         )
+    return df, h1, h2
 
+
+def fig_t2b_surcroit_horaire() -> go.Figure:
+    df, h1, h2 = plateau_surcroit_juillet()
+    delta = df["delta"].round(0)
     dans = df["h"].between(h1, h2)
     couleurs = [PALETTE["accent"] if d else PALETTE["muted"] for d in dans]
     fig = go.Figure(go.Bar(
@@ -190,7 +208,7 @@ def fig_t2b_surcroit_horaire() -> go.Figure:
         font=dict(family=SANS, size=18, color=PALETTE["accent"]),
     )
     fig.update_layout(
-        title=dict(text="En juillet, la hausse est surtout marquée de 14 h à 20 h"),
+        title=dict(text=f"En juillet, la hausse est surtout marquée de {h1} h à {h2} h"),
         xaxis=dict(title="Heure légale", dtick=3, ticksuffix="h", range=[-0.5, 23.5]),
         yaxis=dict(title="Surcroît juillet − juin (MW)"),
         bargap=0.2, height=560,
