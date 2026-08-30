@@ -26,6 +26,15 @@ def test_sources_yaml_est_valide():
         # Les deux déclarations vont par paire : un jeton de date sans `date_url` (ou
         # l'inverse) téléchargerait silencieusement la mauvaise journée.
         _expanser_date(meta["url"], meta.get("date_url"))
+        # Un en-tête déclaré porte un jeton : il ne part qu'en https. `_download` ne le
+        # transmettrait de toute façon pas en clair, mais il le tairait — la source
+        # échouerait en 401 sans que rien ne dise pourquoi. L'interdire ICI fait échouer
+        # la déclaration, où le message est lisible.
+        if meta.get("entetes"):
+            assert meta["url"].startswith("https://"), (
+                f"{source_id} : déclare des en-têtes (donc un jeton) sur une url qui "
+                "n'est pas en https — le jeton partirait en clair"
+            )
 
 
 def test_expanser_date_resout_hier_et_aujourdhui():

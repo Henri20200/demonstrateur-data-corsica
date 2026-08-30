@@ -214,12 +214,24 @@ def _download(url: str, dest: Path, entetes: dict[str, str] | None = None) -> st
     aucun message d'erreur. Ici, un en-tête déclaré ne franchit jamais un changement
     d'hôte ; le permalien data.gouv de l'écrêtement EDF, lui, continue de rediriger
     sans rien à perdre, faute d'en-tête.
+
+    **LE SCHÉMA FAIT PARTIE DE L'ORIGINE** (30/08/2026). La comparaison portait sur le
+    seul `netloc` : une réponse `302` vers `http://<même hôte>/...` restait « même
+    origine », et le jeton repartait EN CLAIR. C'est la fuite silencieuse par excellence
+    — personne n'a besoin de détourner le trafic vers un autre hôte, il suffit de faire
+    dégrader le sien, et la collecte réussit sans un message. Un hôte compromis y suffit,
+    un intermédiaire aussi. La condition est donc double : même hôte, même schéma, et ce
+    schéma est `https` — la dernière clause vise le cas où la source elle-même partirait
+    en clair, que `tests/test_smoke.py` interdit par ailleurs à la déclaration.
     """
-    origine = httpx.URL(url).netloc
+    depart = httpx.URL(url)
+    origine = (depart.scheme, depart.netloc)
     courant = url
     with httpx.Client(timeout=180.0, follow_redirects=False) as client:
         for _ in range(_MAX_REDIRECTIONS):
-            porte_secret = bool(entetes) and httpx.URL(courant).netloc == origine
+            ici = httpx.URL(courant)
+            porte_secret = (bool(entetes) and (ici.scheme, ici.netloc) == origine
+                            and ici.scheme == "https")
             with client.stream("GET", courant, headers=entetes if porte_secret else None) as r:
                 if r.is_redirect:
                     courant = str(httpx.URL(courant).join(r.headers["location"]))
