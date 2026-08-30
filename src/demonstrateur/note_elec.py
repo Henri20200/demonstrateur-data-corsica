@@ -31,6 +31,7 @@ from .figures import (
     SEUIL_CORSE,
     SEUIL_NATIONAL,
     SEUIL_VISE,
+    plateau_surcroit_juillet,
 )
 from .prepare import verifier_sorties
 from .viz import PALETTE, SANS, date_collecte
@@ -83,6 +84,11 @@ def _chiffres() -> dict:
         collecte_ecret=date_collecte("edf_ecretement_corse"),
         sard=None,
     )
+    # La fenêtre du surcroît est LUE, et à la même source que la figure qui la trace :
+    # la note disait « le soir » depuis avant la remesure du 23/08/2026, T2b disait
+    # 14-20 h depuis. Deux énoncés du même fait dans le même livrable, dont un seul
+    # était recalculé — le mot figé est celui qui avait tort.
+    _, c["h1"], c["h2"] = plateau_surcroit_juillet()
     # La Sardaigne demande un jeton ENTSO-E : sans elle, le reste de la note tient —
     # elle disparaît alors du tableau plutôt que d'y figurer sans chiffres (comme
     # `figures` saute T6). Une ligne de tableau vide serait un sourçage qui ment.
@@ -205,8 +211,9 @@ n'est pas dessinée.</p>
 <h2>Ce que ces chiffres ne disent pas</h2>
 <ul>
 <li><strong>Pourquoi la demande augmente l'été.</strong> La hausse de juillet est mesurée,
-    et elle a lieu le soir. Mais résidents, visiteurs et climatisation ne se distinguent
-    pas dans une donnée de production. Ces figures montrent quand, pas pourquoi.</li>
+    et elle a lieu de {c["h1"]} h à {c["h2"]} h. Mais résidents, visiteurs et climatisation
+    ne se distinguent pas dans une donnée de production. Ces figures montrent quand, pas
+    pourquoi.</li>
 <li><strong>Que la sécheresse fait baisser l'hydraulique.</strong> Les années les plus
     pauvres en eau sont les plus riches en thermique, c'est mesuré. La sécheresse, elle,
     vient d'une source extérieure : ces données ne contiennent aucune mesure de pluie, et

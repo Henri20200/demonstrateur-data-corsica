@@ -192,6 +192,52 @@ def perimetre_a4():
     """).df()
 
 
+def contraste_a4() -> dict:
+    """Le contraste qu'A4 publie, compté UNE fois — la figure et la note y puisent.
+
+    Même raison que `perimetre_a4`, un cran plus haut : ce n'est plus le périmètre qui
+    vivait à deux endroits, c'est la CONCLUSION. Le 29/08/2026, « c'est à la campagne
+    qu'on en mesure le plus » a été jugé faux — Bastia Montesoro dépasse 15,1 % de ses
+    journées contre 10,4 % à Venaco — puis réécrit dans le titre d'A4 et dans l'encadré
+    de la page. La note méthodologique, elle, a continué de publier le superlatif : la
+    correction s'était arrêtée où s'arrêtaient les verrous, et c'est la note — la caution
+    du sérieux — qui a porté la version fausse pendant que la page portait la juste.
+    Ce qui se compte ici ne peut plus se contredire d'un fichier à l'autre.
+
+    Rend la station rurale, les autres, et le nombre de celles qu'elle devance.
+    """
+    df = perimetre_a4()
+    rurales = df.loc[[est_rurale(i) for i in df["implantation"]]]
+    # Le titre NOMME la station rurale (« À Venaco… ») : il n'a de sens que s'il n'y en a
+    # qu'une. Deux, et c'est le titre qui est faux, pas la figure — d'où l'arrêt, plutôt
+    # qu'un `iloc[0]` qui en choisirait une au hasard.
+    if len(rurales) != 1:
+        raise ValueError(
+            f"A4 : {len(rurales)} station(s) rurale(s) ({list(rurales['station'])}) — "
+            "le titre n'en nomme qu'une. À réécrire avant de publier."
+        )
+    rurale = rurales["station"].iloc[0]
+    taux_rural = float(rurales["taux"].iloc[0])
+    autres = df.loc[[not est_rurale(i) for i in df["implantation"]]]
+    devancees = int((autres["taux"] < taux_rural).sum())
+    # Le titre se compte, donc il ne peut plus mentir. Cette garde protège désormais ce
+    # qui l'entoure : la page introduit la figure en disant que l'ozone « s'accumule loin
+    # des moteurs », la note méthodologique le redit à sa façon, et A4 n'en est la preuve
+    # que tant que la station rurale devance la MAJORITÉ des autres. Exiger la première
+    # place serait plus strict que ce qui est publié, et ce serait déjà tombé : Bastia
+    # Montesoro dépasse plus souvent que Venaco.
+    if devancees * 2 <= len(autres):
+        raise ValueError(
+            f"A4 : {rurale} ne devance que {devancees} station(s) non rurale(s) sur "
+            f"{len(autres)} — la figure ne soutient plus ni la phrase qui l'introduit "
+            "(« il peut s'accumuler loin du trafic routier »), ni l'encadré qui la conclut "
+            "(« plus souvent que la majorité »), ni la note méthodologique. À rejuger "
+            "avant de publier."
+        )
+    return dict(df=df, rurale=rurale, autres=autres, devancees=devancees,
+                implantations=enumeration(autres["implantation"]))
+
+
 # Sous-titres et notes DÉFINIS UNE FOIS et consommés à la fois par `main()` (fichiers
 # individuels) et par `page_air` (page assemblée). Ils étaient recopiés dans les deux
 # modules : toute correction n'était appliquée que d'un côté, et les deux versions d'une
@@ -568,32 +614,8 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
     rurale) ; les autres restent en retrait, ce qui évite une palette de cinq couleurs
     pour une lecture qui n'en demande que deux.
     """
-    df = perimetre_a4()
-    rurales = df.loc[[est_rurale(i) for i in df["implantation"]]]
-    # Le titre NOMME la station rurale (« À Venaco… ») : il n'a de sens que s'il n'y en a
-    # qu'une. Deux, et c'est le titre qui est faux, pas la figure — d'où l'arrêt, plutôt
-    # qu'un `iloc[0]` qui en choisirait une au hasard.
-    if len(rurales) != 1:
-        raise ValueError(
-            f"A4 : {len(rurales)} station(s) rurale(s) ({list(rurales['station'])}) — "
-            "le titre n'en nomme qu'une. À réécrire avant de publier."
-        )
-    rurale = rurales["station"].iloc[0]
-    taux_rural = float(rurales["taux"].iloc[0])
-    autres = df.loc[[not est_rurale(i) for i in df["implantation"]]]
-    devancees = int((autres["taux"] < taux_rural).sum())
-    # Le titre se compte, donc il ne peut plus mentir. Cette garde protège désormais ce
-    # qui l'entoure : la page introduit la figure en disant que l'ozone « s'accumule loin
-    # des moteurs », et A4 n'en est la preuve que tant que la station rurale devance la
-    # MAJORITÉ des autres. Exiger la première place serait plus strict que ce qui est
-    # publié, et ce serait déjà tombé : Bastia Montesoro dépasse plus souvent que Venaco.
-    if devancees * 2 <= len(autres):
-        raise ValueError(
-            f"A4 : {rurale} ne devance que {devancees} station(s) non rurale(s) sur "
-            f"{len(autres)} — la figure ne soutient plus ni la phrase qui l'introduit "
-            "(« il peut s'accumuler loin du trafic routier ») ni l'encadré qui la conclut "
-            "(« plus souvent que la majorité »). À rejuger avant de publier."
-        )
+    c = contraste_a4()
+    df, rurale, autres, devancees = c["df"], c["rurale"], c["autres"], c["devancees"]
     # LE TITRE SE COMPTE (29/08/2026). « La campagne n'est pas l'endroit où l'air est le
     # plus pur » extrapolait deux fois : une seule station rurale devenait « la campagne »,
     # et un résultat sur le seul ozone devenait « l'air ». Une station peut porter plus
@@ -601,7 +623,7 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
     # Le titre énonce donc l'observation, avec ses nombres, et s'arrête là.
     titre = (f"À {rurale.title()}, les dépassements d'ozone sont plus fréquents"
              f"<br>que dans {devancees} des {len(autres)} stations "
-             f"{enumeration(autres['implantation'])}")
+             f"{c['implantations']}")
     couleurs = [AIR_OZONE if s == rurale else PALETTE["muted"] for s in df["station"]]
     # Explicitation (04/08/2026) : chaque station dit son implantation, et non la seule
     # rurale — sans quoi le lecteur doit deviner celle des autres.
