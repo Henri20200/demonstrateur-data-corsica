@@ -142,7 +142,15 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   à l'archive est préférable : restreinte à son seul bucket, elle ne peut pas effacer la
   vitrine, et la clé de la vitrine ne peut pas atteindre l'archive. Configuration absente,
   la collecte continue et marque les versions `payload_archived: false`, reprises au run
-  suivant. **Le bucket d'archive n'est jamais
+  suivant. Configuration PRÉSENTE MAIS REFUSÉE, c'est autre chose et cela ne se confond
+  plus depuis le 30/08/2026 : une erreur déterministe (requête impossible à former,
+  401/403) arrête les dépôts pour tout le run et **rougit le run**, sans interrompre la
+  collecte. Une panne revient, une clé malformée non — la traiter en panne l'a laissée
+  tenir une journée derrière un cron vert. De même, l'avertissement de millésimes ne
+  compte QUE les reprises réalisables (`versions_non_deposees`) ; ce que plus aucune
+  reprise ne sauvera est un constat séparé (`versions_octets_perdus`), et l'état
+  d'exploitation se lit sur `versions_courantes_sans_octets` — zéro = tout contenu
+  détenu est durable. **Le bucket d'archive n'est jamais
   celui de la vitrine** — celle-ci est synchronisée avec `--delete`, qui l'effacerait, et
   `depot.configurer()` refuse explicitement ce cas.
 - **L'historique d'avant l'archive se reconstitue depuis Git, pas depuis rien.**

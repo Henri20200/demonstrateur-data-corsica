@@ -115,23 +115,42 @@ jobs:
 
       # Un index a toujours l'air complet — c'est sa nature de ne porter que des
       # métadonnées. Une version dont les octets ne sont jamais arrivés ne se verrait donc
-      # nulle part, jusqu'au jour où l'on irait chercher un contenu qui n'existe plus. La
-      # reprise est automatique au run suivant (`archive.retenter_depots_en_attente`) ;
-      # encore faut-il savoir qu'elle est due. Avertissement et non échec : la collecte est
-      # valide, et l'intervalle de connaissance — la partie irremplaçable — est sauf.
-      # Ne compte QUE les trous rattrapables. Les versions reconstituées depuis l'historique
-      # du manifeste (cf. `reconstitution.py`) n'ont aucune adresse de dépôt et n'en auront
-      # jamais : les avertir ici noierait, sous des centaines de lignes immuables, la panne
-      # réseau d'hier — la seule sur laquelle on puisse agir.
-      - name: Millésimes en attente de dépôt durable
+      # nulle part, jusqu'au jour où l'on irait chercher un contenu qui n'existe plus.
+      # TROIS LECTURES, et elles ne se répondent pas l'une l'autre — les confondre est ce
+      # qui a laissé une clé malformée tenir une journée le 30/08/2026 derrière un cron
+      # vert. Un compteur qui ne descend jamais à zéro cesse d'être lu, et emporte avec
+      # lui le signal qui comptait.
+      - name: Millésimes — ce qui reste à faire, et ce qui est perdu
         run: |
           python - <<'PY'
           from demonstrateur import archive
 
+          def nommer(millesimes):
+              return ", ".join(f"{source} {sha[:8]}" for source, sha in millesimes[:20])
+
+          vivantes = archive.versions_courantes_sans_octets()
           attente = archive.versions_non_deposees()
-          if attente:
-              details = ", ".join(f"{source} {sha[:8]}" for source, sha in attente[:20])
-              print(f"::warning::{len(attente)} millésime(s) sans octets durables : {details}")
+          perdus = archive.versions_octets_perdus()
+
+          # Le SEUL critère d'exploitation : zéro veut dire que tout contenu actuellement
+          # détenu par la chaîne est durable. Annotation et non échec du run : une panne
+          # passagère se rattrape au run suivant, et c'est `fetch` qui rougit quand la
+          # cause est une configuration, donc quand aucune reprise ne viendra.
+          if vivantes:
+              print(f"::error::{len(vivantes)} version(s) VIVANTE(S) sans octets durables — "
+                    f"l'archive ne remplit pas son office : {nommer(vivantes)}")
+          elif attente:
+              print(f"::warning::{len(attente)} millésime(s) à reprendre au prochain run : "
+                    f"{nommer(attente)}")
+          else:
+              print("::notice::Archive à jour : aucune version déposable en attente.")
+
+          # Constat stable, jamais une tâche : ces octets n'existent plus nulle part, et
+          # `data/archive/` n'est ni versionné ni porté par le cache. Les compter parmi
+          # les reprises dues annonçait 86 travaux dont aucun n'était possible.
+          if perdus:
+              print(f"::notice::{len(perdus)} millésime(s) dépassé(s) sans octets — dette "
+                    "historique, aucune reprise possible.")
           PY
 
       - name: Préparation (Parquet)

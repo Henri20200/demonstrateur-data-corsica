@@ -94,6 +94,19 @@ _DELAI = httpx.Timeout(30.0, read=300.0, write=600.0)
 # (clé fausse) ou un 404 (bucket inexistant) ne s'arrangera pas en insistant — insister ne
 # ferait que retarder le message qui dit quoi corriger.
 _STATUTS_RETENTABLES = frozenset({408, 429, 500, 502, 503, 504})
+# Identifiants ou politique de bucket refusés : déterministe, donc à corriger et non à
+# retenter — même famille que les erreurs locales ci-dessous, vu de l'autre bout du fil.
+_STATUTS_MAL_CONFIGURE = frozenset({401, 403})
+# Erreurs qui ne peuvent PAS se résoudre en réessayant, parce que rien n'a atteint le
+# réseau : la requête est mal formée, ou l'adresse est invalide. `LocalProtocolError` est
+# le cas rencontré le 30/08/2026 — un caractère de contrôle dans la clé d'accès, que h11
+# refuse d'écrire dans un en-tête (il n'en refuse que cinq : NUL, LF, VT, FF, CR).
+# `UnicodeEncodeError` en est le cousin non-ASCII, levé par httpx à la construction de la
+# requête ; il ne descend d'AUCUNE exception HTTP, donc sans cette ligne il traversait
+# `archive._deposer` — qui ne rattrape que `DepotIndisponible` — et emportait la collecte.
+_ERREURS_DETERMINISTES = (
+    httpx.LocalProtocolError, httpx.UnsupportedProtocol, httpx.InvalidURL, UnicodeEncodeError,
+)
 _PAUSE = 2.0  # secondes, multipliées par le rang de la tentative
 
 
@@ -286,18 +299,39 @@ class Depot:
             # la collecte, donc l'intervalle de connaissance, que la docstring de
             # `_deposer` promet précisément de ne jamais sacrifier à un stockage fâché.
             # C'est la famille de panne qui a suspendu la publication le 28/08/2026.
-            raise DepotIndisponible(
+            # `DepotMalConfigure` et non `DepotIndisponible` depuis le 30/08/2026 : un
+            # certificat introuvable ou une variable de proxy mal formée ne se répare pas
+            # au run suivant. La propriété acquise le 28/08 est INTACTE — la sous-classe
+            # reste rattrapée par `archive._deposer`, donc la collecte n'est toujours pas
+            # emportée ; seul le signal change, de « ça repassera » à « corrigez-moi ».
+            raise DepotMalConfigure(
                 f"client HTTP inconstructible — {type(exc).__name__} : {exc}"
             ) from exc
         try:
             for tentative in range(1, essais + 1):
                 try:
                     reponse = self._envoyer(cle, chemin, empreinte, session)
+                except _ERREURS_DETERMINISTES as exc:
+                    # AVANT `httpx.HTTPError`, dont `LocalProtocolError` descend : sans
+                    # cet ordre, une clé malformée était retentée trois fois avec pauses
+                    # — pour un échec qui ne peut pas ne pas se reproduire — puis rendue
+                    # comme une panne réseau. Le 30/08/2026, cela a laissé le cron VERT
+                    # avec 71 dépôts tentés et 0 réussi.
+                    raise DepotMalConfigure(
+                        f"{type(exc).__name__} : {exc} — requête impossible à former, "
+                        "vérifier ARCHIVE_ACCESS_KEY / ARCHIVE_ENDPOINT (un caractère de "
+                        "contrôle dans une clé suffit)."
+                    ) from exc
                 except httpx.HTTPError as exc:
                     echec = DepotIndisponible(f"{type(exc).__name__} : {exc}")
                 else:
                     if reponse.status_code < 300:
                         return cle
+                    if reponse.status_code in _STATUTS_MAL_CONFIGURE:
+                        raise DepotMalConfigure(
+                            f"HTTP {reponse.status_code} — identifiants ou politique du "
+                            f"bucket refusés : {reponse.text[:300].strip()}"
+                        )
                     echec = DepotIndisponible(
                         f"HTTP {reponse.status_code} — {reponse.text[:300].strip()}"
                     )

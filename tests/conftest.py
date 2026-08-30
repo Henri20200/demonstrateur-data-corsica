@@ -37,3 +37,7 @@ def _archive_hors_du_depot(tmp_path, monkeypatch):
     # tout point à un dépôt que personne n'a demandé.
     monkeypatch.setattr(archive, "_VOLUME_DEPOSE", None)
     monkeypatch.setattr(archive, "_DISJONCTEUR", None)
+    # Même raison pour le verrou de configuration : un test qui pose une clé malformée
+    # rendrait tous les suivants muets, et un dépôt refusé ressemble à un dépôt réussi
+    # vu de l'index — c'est exactement la confusion que ce chantier corrige.
+    monkeypatch.setattr(archive, "_MAL_CONFIGURE", None)
