@@ -481,6 +481,18 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Source(s) inconnue(s) à re-certifier : {', '.join(sorted(inconnues))}")
             return 1
 
+    # Le registre des millésimes est lu AVANT toute collecte. Illisible, il ne doit pas se
+    # laisser reconstruire : chaque source serait ré-observée « pour la première fois »,
+    # ses octets redéposés sous des clés neuves, et le cron committerait un registre d'un
+    # jour à la place de tous les intervalles de connaissance. Le fichier étant versionné,
+    # la réparation est immédiate ; c'est le silence qui coûtait.
+    try:
+        archive.verifier_registre()
+    except archive.RegistreIllisible as exc:
+        print(f"[!] REGISTRE DES MILLÉSIMES ILLISIBLE — {exc}")
+        print("[!] Rien n'a été collecté ni écrit : restaurer le fichier, puis relancer.")
+        return 1
+
     manifest = _load_manifest()
     failures = []
 

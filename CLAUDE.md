@@ -150,7 +150,12 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   compte QUE les reprises réalisables (`versions_non_deposees`) ; ce que plus aucune
   reprise ne sauvera est un constat séparé (`versions_octets_perdus`), et l'état
   d'exploitation se lit sur `versions_courantes_sans_octets` — zéro = tout contenu
-  détenu est durable. **Le bucket d'archive n'est jamais
+  détenu est durable. **Le registre lui-même ne se remplace pas en silence** : illisible,
+  il fait échouer `fetch` AVANT toute collecte — il est versionné, donc restaurable d'un
+  `git checkout` — et il s'écrit en temporaire puis remplacement d'un bloc. Les deux
+  moitiés du même défaut : l'écriture directe fabriquait le JSON tronqué que la lecture
+  avalait, et le cron committait alors un registre d'un jour à la place de tous les
+  intervalles de connaissance. **Le bucket d'archive n'est jamais
   celui de la vitrine** — celle-ci est synchronisée avec `--delete`, qui l'effacerait, et
   `depot.configurer()` refuse explicitement ce cas.
 - **L'historique d'avant l'archive se reconstitue depuis Git, pas depuis rien.**

@@ -25,6 +25,7 @@ n'est écrit dans le vrai `data/`, rien ne sort sur le réseau.
 """
 
 import json
+from pathlib import Path
 
 import httpx
 import pytest
@@ -640,3 +641,121 @@ def test_l_archive_operationnelle_se_lit_sur_les_versions_vivantes(archive_isole
     assert len(archive.versions_octets_perdus()) == 1, (
         "et la dette historique n'a pas bougé : elle ne dit rien de l'état d'exploitation"
     )
+
+
+
+# --- C-02 : l'index ne se remplace pas en silence -----------------------------
+# Le registre est la seule partie de l'archive qui ne se reconstruit pas après coup. Deux
+# défauts se complétaient pour le détruire sans un mot : une lecture qui rendait `{}` sur
+# un JSON invalide, et une écriture non atomique qui fabriquait précisément ce JSON-là.
+
+
+def test_un_registre_illisible_arrete_la_chaine_au_lieu_de_le_remplacer(archive_isolee):
+    """La lecture échoue FERMÉ, et surtout le fichier n'est pas réécrit.
+
+    Le scénario complet : `_charger` avalait le `JSONDecodeError` et rendait `{}` ; chaque
+    `enregistrer_version` redécouvrait alors toutes les sources, redéposait leurs octets
+    sous des clés NEUVES, et le cron committait le registre reconstruit — `git add
+    data/archive/_versions.json` étant inconditionnel. Les intervalles de connaissance
+    partaient sans qu'aucun verrou ne morde.
+
+    Ce qui compte ici n'est pas seulement que ça lève : c'est que le fichier tronqué soit
+    TOUJOURS LÀ après l'échec, donc restaurable depuis Git.
+    """
+    archive.VERSIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tronque = '{"mix": [{"sha256": "sha_aaa", "first_obs'
+    archive.VERSIONS_FILE.write_text(tronque, encoding="utf-8")
+
+    with pytest.raises(archive.RegistreIllisible) as leve:
+        archive.enregistrer_version("mix", GLISSANT, _source(archive_isolee, "a"), "sha_bbb")
+
+    assert "restaurer" in str(leve.value).lower(), (
+        "le message doit dire quoi faire : le fichier est versionné, la réparation est "
+        "un `git checkout`"
+    )
+    assert archive.VERSIONS_FILE.read_text(encoding="utf-8") == tronque, (
+        "le registre illisible a été RÉÉCRIT — c'est exactement la perte silencieuse "
+        "que ce verrou existe pour empêcher"
+    )
+
+
+def test_le_registre_ne_se_collecte_pas_sur_un_index_illisible(tmp_path, monkeypatch, capsys):
+    """Bout en bout : `fetch` s'arrête en tête, sans rien télécharger ni écrire.
+
+    L'erreur remonterait de toute façon du premier `enregistrer_version`, mais tard — des
+    sources déjà téléchargées, le manifeste déjà écrit, un run à moitié fait. Le
+    contrôle en tête rend l'échec propre : il n'y a qu'à restaurer et relancer.
+    """
+    from demonstrateur import fetch
+    from test_secrets import _mini_depot
+
+    manifeste = _mini_depot(tmp_path, monkeypatch)
+    archive.VERSIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    archive.VERSIONS_FILE.write_text("{ pas du json", encoding="utf-8")
+
+    telecharge = []
+    monkeypatch.setattr(fetch, "_download",
+                        lambda *a, **k: telecharge.append(a) or "text/csv")
+
+    assert fetch.main([]) == 1, "un registre illisible doit rougir le run"
+    assert telecharge == [], "rien ne doit être téléchargé avant que l'index soit lisible"
+    assert not manifeste.exists(), "aucun manifeste ne doit être écrit"
+    sortie = capsys.readouterr().out
+    assert "REGISTRE DES MILLÉSIMES ILLISIBLE" in sortie
+
+
+def test_une_ecriture_interrompue_ne_laisse_pas_un_registre_tronque(archive_isolee, monkeypatch):
+    """L'autre moitié : sans écriture atomique, le JSON tronqué se fabrique tout seul.
+
+    `write_text` direct — le code d'avant — laissait le fichier à moitié écrit si le
+    processus était tué au mauvais moment, ce que le run suivant avalait. Corriger la
+    lecture sans corriger l'écriture aurait changé une perte silencieuse en arrêt de
+    chaîne régulier : les deux vont ensemble.
+
+    L'interruption est simulée AU MILIEU de l'écriture, là où elle fait mal : la moitié
+    des octets atteint le disque, puis le processus meurt. Le test ne connaît donc pas la
+    stratégie d'écriture — il dit seulement que le registre doit survivre à ça, ce qui
+    est vrai avec un temporaire et faux sans.
+    """
+    monkeypatch.setattr(archive, "_depot_durable", lambda: DepotFactice())
+    fichier = _source(archive_isolee, "v1")
+    archive.enregistrer_version("mix", GLISSANT, fichier, "sha_aaa")
+    intact = archive.VERSIONS_FILE.read_text(encoding="utf-8")
+    fichier.write_text("v2", encoding="utf-8")
+
+    # Ciblé sur le REGISTRE, et pas sur la première écriture venue : `enregistrer_version`
+    # écrit d'abord le cache de contrôle, dont l'échec masquerait celui qu'on mesure.
+    ecrire = Path.write_text
+
+    def _ecriture_interrompue(self, contenu, **kw):
+        if "_versions.json" not in self.name:
+            return ecrire(self, contenu, **kw)
+        self.write_bytes(contenu[: len(contenu) // 2].encode("utf-8"))
+        raise OSError("processus interrompu en pleine écriture (simulé)")
+
+    monkeypatch.setattr(Path, "write_text", _ecriture_interrompue)
+    with pytest.raises(OSError):
+        archive.enregistrer_version("mix", GLISSANT, fichier, "sha_bbb")
+
+    assert archive.VERSIONS_FILE.read_text(encoding="utf-8") == intact, (
+        "l'écriture interrompue a laissé un registre à moitié écrit"
+    )
+    assert json.loads(archive.VERSIONS_FILE.read_text(encoding="utf-8")), (
+        "et il doit rester du JSON valide, sans quoi le run suivant le trouverait illisible"
+    )
+
+
+def test_le_cache_de_controle_reste_tolerant(archive_isolee):
+    """La faute inverse, qu'il ne faut pas commettre en corrigeant celle-ci.
+
+    `_last_checked.json` n'est PAS versionné — délibérément, pour que le cron « ne
+    committe que ce qui a réellement changé » — et ne porte que des dates de contrôle,
+    qui se retrouvent au run suivant. Faire échouer une collecte pour ce cache-là serait
+    aussi faux que d'avaler la corruption du registre.
+    """
+    archive.LAST_CHECKED_FILE.parent.mkdir(parents=True, exist_ok=True)
+    archive.LAST_CHECKED_FILE.write_text("{ tronqu", encoding="utf-8")
+
+    assert archive._charger_tolerant(archive.LAST_CHECKED_FILE) == {}
+    with pytest.raises(archive.RegistreIllisible):
+        archive._charger(archive.LAST_CHECKED_FILE)

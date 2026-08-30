@@ -147,24 +147,78 @@ def archive_demandee(meta: dict) -> bool:
     return politique(meta) not in _SANS_ARCHIVE
 
 
+class RegistreIllisible(RuntimeError):
+    """L'index des millésimes ne se lit pas — la chaîne s'arrête plutôt que de le remplacer."""
+
+
 def _charger(fichier: Path) -> dict:
+    """Lit un index JSON. STRICT PAR DÉFAUT : un contenu invalide lève, il ne se tait pas.
+
+    Jusqu'au 30/08/2026 cette fonction avalait un `JSONDecodeError` et rendait `{}` —
+    « on repart d'un index vide plutôt que d'interrompre la chaîne ». La suite était
+    mécanique et silencieuse : chaque `enregistrer_version` ré-observait toutes les
+    sources « pour la première fois », redéposait leurs octets sous des clés NEUVES
+    (l'instant fait partie de la clé), et le cron committait le registre reconstruit. Les
+    intervalles de connaissance — la seule partie qui ne se reconstruit pas après coup —
+    quittaient le fichier vivant sans un avertissement. Le commentaire d'alors affirmait
+    que « la perte est signalée par l'absence d'historique » : aucun code ne regardait
+    cette absence.
+
+    Rien n'était irréversible — le fichier est versionné — mais rien ne le SIGNALAIT,
+    l'inverse exact du disjoncteur de volume, qui rougit un run pour bien moins. L'erreur
+    remonte donc, et `fetch` s'arrête AVANT de collecter.
+
+    Strict par défaut, et c'est la propriété qui fait tenir le correctif : un futur
+    appelant qui oublierait de choisir hérite de la prudence, pas du silence. Le seul
+    fichier tolérant est le cache, par `_charger_tolerant`.
+    """
     if not fichier.exists():
         return {}
+    contenu = fichier.read_text(encoding="utf-8")
     try:
-        return json.loads(fichier.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        # Un index illisible ne doit pas faire échouer une collecte : on repart d'un index
-        # vide plutôt que d'interrompre la chaîne. La perte est signalée par l'absence
-        # d'historique, pas par un plantage au milieu du fetch.
+        return json.loads(contenu)
+    except json.JSONDecodeError as exc:
+        raise RegistreIllisible(
+            f"{fichier} : JSON invalide à la ligne {exc.lineno}, colonne {exc.colno} "
+            f"({exc.msg}) — {len(contenu)} octets lus. Ce fichier est VERSIONNÉ et fait "
+            "foi : le restaurer depuis Git (git checkout -- data/archive/_versions.json) "
+            "plutôt que le laisser se reconstruire, ce qui perdrait les intervalles de "
+            "connaissance qu'aucune reprise ne recalcule."
+        ) from exc
+
+
+def _charger_tolerant(fichier: Path) -> dict:
+    """Idem, pour un fichier dont la perte est SANS CONSÉQUENCE et voulue.
+
+    Réservé à `_last_checked.json`, qui n'est pas versionné (délibérément, pour que le
+    cron « ne committe que ce qui a réellement changé ») et ne porte rien qui ne se
+    retrouve : c'est un cache de dates de contrôle. Faire échouer une collecte pour un
+    cache tronqué serait la faute inverse de celle qu'on vient de corriger.
+    """
+    try:
+        return _charger(fichier)
+    except RegistreIllisible:
         return {}
 
 
 def _sauver(fichier: Path, contenu: dict) -> None:
+    """Écriture ATOMIQUE : fichier temporaire, puis remplacement d'un bloc.
+
+    L'écriture directe précédente était la MOITIÉ MANQUANTE du défaut ci-dessus : un
+    processus tué en pleine écriture laissait exactement le JSON tronqué que `_charger`
+    avalait au run suivant. Corriger la lecture sans corriger l'écriture aurait changé une
+    perte silencieuse en arrêt de chaîne régulier ; les deux vont ensemble.
+
+    Même geste que `prepare._ecrire_lignee`. Le `.tmp` reste gitignoré : `data/archive/*`
+    l'est, `_versions.json` étant la seule exception.
+    """
     fichier.parent.mkdir(parents=True, exist_ok=True)
-    fichier.write_text(
+    tmp = fichier.with_name(fichier.name + ".tmp")
+    tmp.write_text(
         json.dumps(contenu, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    tmp.replace(fichier)
 
 
 def _extension(filename: str) -> str:
@@ -182,7 +236,7 @@ def noter_controle(source_id: str) -> None:
     nouvelle parce que nous ne regardions pas ». Le backtest a besoin de cette différence :
     un trou dans les millésimes n'a pas le même sens dans les deux cas.
     """
-    index = _charger(LAST_CHECKED_FILE)
+    index = _charger_tolerant(LAST_CHECKED_FILE)
     index[source_id] = _maintenant()
     _sauver(LAST_CHECKED_FILE, index)
 
@@ -231,6 +285,20 @@ def volume_depose() -> int:
         for version in versions
         if version.get("payload_archived")
     )
+
+
+def verifier_registre() -> None:
+    """Lit l'index UNE fois, pour échouer avant que quoi que ce soit ne soit collecté.
+
+    L'erreur remonterait de toute façon du premier `enregistrer_version`, mais tard : des
+    sources auraient déjà été téléchargées, le manifeste écrit, et l'arrêt surviendrait
+    au milieu d'un run à moitié fait. Le contrôle en tête coûte une lecture de fichier et
+    rend l'échec propre : rien n'a bougé, il n'y a qu'à restaurer et relancer.
+
+    Lève `RegistreIllisible` ; ne rend rien, l'index n'étant pas gardé en mémoire (chaque
+    appelant le relit, et c'est ce qui évite deux vues divergentes dans le même run).
+    """
+    _charger(VERSIONS_FILE)
 
 
 def seuil_franchi() -> str | None:
