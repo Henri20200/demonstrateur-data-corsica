@@ -5,7 +5,7 @@
 **Périmètre :** chaîne de collecte (`fetch`, `depot`, `archive`, `provenance`), les deux workflows GitHub Actions, `sources.yaml`, la gestion des secrets et l'intégrité de l'archive.
 **Contexte :** pipeline de données ouvertes ; cron Actions qui télécharge, publie sur Scaleway et pousse sur `master`. Deux incidents passés : jeton ENTSO-E fuité dans un log CI (07/2026), cache Actions écrasant le manifeste versionné (22/07).
 **Modèle de menace retenu :** dépôt **privé** (les PR de fork anonymes ne déclenchent pas les workflows) — le vecteur réaliste n'est donc pas la PR d'un inconnu mais **une dépendance compromise, un compte collaborateur compromis, ou un serveur/MITM sur une source**. Contrôles exécutés localement, aucune correction appliquée.
-**Statut au 30/08/2026** : S-02 fermé par #48. Les autres constats restent ceux de l'audit initial, qui n'est pas réécrit — un audit est un instantané daté, pas un backlog.
+**Statut au 30/08/2026** : S-02 fermé par #48. S-01 **corrigé sur pièce et réduit** : le texte écrit « cinq secrets » en trois endroits alors qu'il en énumère SIX, et le cloisonnement par étape existait déjà — seule l'étape de collecte les réunissait, pas le job entier. Cartographie complète et trois réductions dans #51 : l'étape de collecte passe à quatre secrets, le credential Git n'est plus persisté, les actions sont épinglées sur SHA. Le constat reste OUVERT : la séparation en jobs est arbitrée non (coût récurrent disproportionné), et les droits IAM réels des identités S3 restent à vérifier. Les autres constats restent ceux de l'audit initial, qui n'est pas réécrit — un audit est un instantané daté, pas un backlog.
 
 ## Synthèse
 
