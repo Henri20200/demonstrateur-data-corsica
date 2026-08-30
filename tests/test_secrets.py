@@ -163,6 +163,35 @@ def test_le_jeton_ne_fuit_pas_apres_une_redirection(tmp_path, monkeypatch):
     assert "cdn-tiers" in vus[1][0]
 
 
+def test_le_jeton_ne_survit_pas_a_un_passage_en_clair(tmp_path, monkeypatch):
+    """S-02 : même hôte, schéma dégradé — le jeton ne doit PAS suivre.
+
+    La comparaison d'origine portait sur le seul `netloc` : une réponse `302` vers
+    `http://<même hôte>/...` restait « même origine » et le jeton repartait en clair,
+    interceptable passivement. C'est la fuite silencieuse par excellence — la collecte
+    RÉUSSIT, aucun message d'erreur, rien à relire dans un log.
+
+    Le vecteur ne demande pas de détourner le trafic vers un hôte tiers, ce que le test
+    voisin couvre déjà : il suffit de faire dégrader le sien. Un serveur de source
+    compromis y suffit, un intermédiaire en position de réécrire une réponse aussi.
+    """
+    vus: list = []
+    etapes = [
+        _Reponse(302, {"location": "http://api.exemple.fr/export/pret"}),
+        _Reponse(200, {"content-type": "text/csv"}, CSV_VALIDE),
+    ]
+    monkeypatch.setattr(fetch.httpx, "Client", _client_espion(etapes, vus))
+    fetch._download("https://api.exemple.fr/export", tmp_path / "x.csv", {"apikey": JETON})
+
+    assert len(vus) == 2, "une requête par saut"
+    assert vus[0][1] == {"apikey": JETON}, "le départ en https porte bien le jeton"
+    assert vus[1][0].startswith("http://"), "le second saut est bien celui qui dégrade"
+    assert vus[1][1] is None, (
+        "le jeton est parti EN CLAIR sur http — le schéma doit faire partie de l'origine "
+        "de confiance, au même titre que l'hôte"
+    )
+
+
 def test_la_redirection_interne_garde_l_entete(tmp_path, monkeypatch):
     """Contrepartie : une redirection sur le MÊME hôte conserve l'en-tête, sinon
     on casserait les API qui renvoient vers leur propre chemin de téléchargement."""
