@@ -38,9 +38,25 @@ jobs:
     # retrouvent dans le cache — sauf éviction, cf. la note sur le volume ci-dessous.
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Par défaut, `checkout` laisse le jeton dans `.git/config` : toute étape
+          # suivante peut alors pousser sur `master`, y compris les douze qui exécutent du
+          # code tiers non épinglé. C'est le chemin le plus direct entre un paquet PyPI
+          # compromis et l'empoisonnement du dépôt ; il se ferme en une ligne, l'étape de
+          # commit portant désormais son identifiant elle-même.
+          #
+          # DEFENSE PARTIELLE, et il faut le dire : GitHub définit les permissions du
+          # `GITHUB_TOKEN` au niveau workflow/job, jamais par étape, et `github.token`
+          # reste accessible partout. Ce qui disparaît est le credential Git PERSISTÉ,
+          # pas le jeton. Confiner véritablement `contents: write` demanderait de scinder
+          # le cron en plusieurs jobs — arbitré NON le 30/08/2026 : 193 Mo de `data/raw`
+          # à faire franchir une frontière de job quatre fois par jour, pour un pipeline
+          # qui dure deux à quatre minutes, sous un plafond de 20 EUR/mois où les minutes
+          # d'Actions sont le seul compute récurrent. Risque résiduel accepté en connaissance.
+          persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
           cache: pip
@@ -66,7 +82,7 @@ jobs:
       # définition, et s'ils ne l'étaient pas, la garde de fraîcheur de T1 le dirait
       # (avertissement au-delà de 24 h, blocage au-delà de 48 h). À surveiller si la durée des runs dérive.
       - name: Restaurer data/raw des runs précédents
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: data/raw
           key: data-raw-${{ hashFiles('sources.yaml') }}
@@ -102,15 +118,20 @@ jobs:
           # Absente, la collecte continue : les versions sont indexées
           # `payload_archived: false`, et le premier run qui en a les moyens les dépose.
           ARCHIVE_BUCKET: ${{ vars.ARCHIVE_BUCKET }}
-          # Clé PROPRE à l'archive si elle existe : restreinte à ce seul bucket, elle ne
-          # peut pas toucher la vitrine, et le `--delete` qui synchronise la vitrine ne
-          # peut pas la toucher non plus. Le garde-fou cesse alors d'être une condition
-          # dans du code pour devenir une propriété du compte. Absentes, les clés
-          # générales du dépôt servent — ce qui marche, et se surveille.
+          # Clé PROPRE à l'archive : restreinte à ce seul bucket, elle ne peut pas toucher
+          # la vitrine, et le `--delete` qui synchronise la vitrine ne peut pas la toucher
+          # non plus. Le garde-fou cesse d'être une condition dans du code pour devenir une
+          # propriété du compte.
+          #
+          # LE REPLI SUR `SCW_*` A ÉTÉ RETIRÉ le 30/08/2026. `depot.configurer()` le
+          # prévoit toujours — c'est le bon comportement pour qui démarre sans clé
+          # dédiée — mais il n'a plus lieu d'être EXPOSÉ ici : `ARCHIVE_*` est en service
+          # depuis ce jour-là, donc le repli ne servait plus, et il plaçait sous les yeux
+          # du code Python de la collecte l'identité qui déploie la vitrine — celle qui
+          # peut l'EFFACER par `--delete`. Elle n'est nécessaire qu'au déploiement, elle
+          # n'est donc plus portée que par lui. Quatre secrets ici au lieu de six.
           ARCHIVE_ACCESS_KEY: ${{ secrets.ARCHIVE_ACCESS_KEY }}
           ARCHIVE_SECRET_KEY: ${{ secrets.ARCHIVE_SECRET_KEY }}
-          SCW_ACCESS_KEY: ${{ secrets.SCW_ACCESS_KEY }}
-          SCW_SECRET_KEY: ${{ secrets.SCW_SECRET_KEY }}
         run: fetch-data
 
       # Un index a toujours l'air complet — c'est sa nature de ne porter que des
@@ -197,6 +218,12 @@ jobs:
         run: pytest
 
       - name: Committer visuels + manifeste si changement
+        # Le dépôt étant privé, `pull` comme `push` demandent une authentification, et
+        # `persist-credentials: false` en a privé le remote. L'url authentifiée est passée
+        # aux deux commandes sans jamais être écrite dans `.git/config` : le jeton ne
+        # survit pas à l'étape. Sa valeur brute est masquée par Actions si elle apparaît.
+        env:
+          JETON: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -217,8 +244,9 @@ jobs:
             echo "Aucun changement à publier."
           else
             git commit -m "chore(data): rafraîchissement planifié des visuels et du manifeste"
-            git pull --rebase origin master
-            git push origin master
+            depot="https://x-access-token:${JETON}@github.com/${GITHUB_REPOSITORY}.git"
+            git pull --rebase "$depot" master
+            git push "$depot" HEAD:master
           fi
 
       # --- Vitrine publique ---------------------------------------------------------
