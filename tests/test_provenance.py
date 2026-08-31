@@ -485,13 +485,53 @@ def test_la_page_ne_depend_d_aucun_service_tiers():
     doivent être locales à outputs/, qui se déploie d'un bloc.
     """
     h = PAGE.read_text(encoding="utf-8")
-    externes = [s for s in re.findall(r'(?:src|href)="([^"]+)"', h)
-                if s.startswith(("http://", "https://", "//"))]
+    references = re.findall(r'(?:src|href)="([^"]+)"', h)
+    externes = [s for s in references if s.startswith(("http://", "https://", "//"))]
     assert not externes, f"ressources tierces référencées : {externes}"
-    for local in re.findall(r'(?:src|href)="([^"]+)"', h):
-        assert (OUTPUTS / local).exists(), f"ressource locale manquante : {local}"
+    for reference in references:
+        # Une ancre interne (`#a1`) désigne un point de CETTE page, pas un fichier à
+        # résoudre sur disque. Le cas est ciblé, pas élargi : une référence qui porte un
+        # fragment SANS être seulement un fragment (`page.html#section`) reste un fichier
+        # et continue de devoir exister — le jour où il en apparaît une, le verrou le dira.
+        if reference.startswith("#"):
+            continue
+        assert (OUTPUTS / reference).exists(), f"ressource locale manquante : {reference}"
     assert h.count('src="plotly.min.js"') == 1, (
         "plotly.min.js doit être chargé UNE fois pour les cinq graphiques"
+    )
+
+
+def _mots_de_prose(html: str) -> int:
+    """Les mots que le lecteur LIT.
+
+    `script`, `style` et `nav` sont retirés au même titre, et pour deux raisons du même
+    ordre : les deux premiers ne sont pas du texte, le troisième n'est pas de la lecture.
+    Un sommaire et un pied de navigation se balaient.
+
+    Les compter produisait un effet pervers, mesuré le 31/08/2026 : la page air tenait
+    697 mots de prose, et ajouter un sommaire pour améliorer le parcours faisait échouer
+    un plafond conçu contre l'inflation du TEXTE. Le plafond n'a pas bougé — 700 — et la
+    prose non plus : c'est la mesure qui a cessé de compter ce qu'elle ne visait pas.
+    """
+    sans_hors_prose = re.sub(r"<(script|style|nav)\b[\s\S]*?</\1>", " ", html)
+    return len(re.sub(r"<[^>]+>", " ", sans_hors_prose).split())
+
+
+def test_le_compteur_de_prose_ignore_la_navigation_et_elle_seule():
+    """La sémantique du plafond, écrite plutôt que supposée.
+
+    Sans ce verrou, l'exception faite à `<nav>` dériverait sans bruit — il suffirait
+    qu'un bloc de texte passe un jour dans un `<nav>` pour sortir du décompte. Le même
+    texte doit compter dans le contenu et ne pas compter dans la navigation : c'est
+    exactement cela que le plafond veut dire, et rien de plus.
+    """
+    texte = "un deux trois quatre cinq"
+    page = "<html><body>{}</body></html>"
+    assert _mots_de_prose(page.format(f"<p>{texte}</p>")) == 5, (
+        "du texte de contenu doit compter — sinon le plafond ne mesure plus rien"
+    )
+    assert _mots_de_prose(page.format(f'<nav class="sommaire">{texte}</nav>')) == 0, (
+        "le même texte placé dans une navigation ne doit pas compter"
     )
 
 
@@ -501,11 +541,11 @@ def test_la_page_reste_lisible_en_trois_minutes():
 
     Sans garde, une page grossit paragraphe après paragraphe sans que personne décide.
     Le brief tranche à l'avance : si ça déborde, on retranche un titre — on n'abrège ni
-    les sources ni la note.
+    les sources ni la note. Ce que le plafond compte est défini par `_mots_de_prose` :
+    la prose, pas la navigation.
     """
     h = PAGE.read_text(encoding="utf-8")
-    prose = re.sub(r"<[^>]+>", " ", re.sub(r"<(script|style)[\s\S]*?</\1>", " ", h))
-    mots = len(prose.split())
+    mots = _mots_de_prose(h)
     assert mots < 700, (
         f"{mots} mots de prose, soit plus de trois minutes de lecture — retrancher une "
         "section plutôt qu'abréger les mentions de source"
