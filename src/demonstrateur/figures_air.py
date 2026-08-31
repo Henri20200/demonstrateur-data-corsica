@@ -508,7 +508,7 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
         # des barres si brèves que la zone est libre, mais un texte large y redescendrait
         # quand même sur elles. Trois lignes courtes plutôt que deux longues.
         text=(f"<b>{journees} journées d'été sur {mesurees}</b><br>où au moins une station "
-              "dépasse<br>l'objectif. <b>Aucune</b> n'a alerté."),
+              "dépasse<br>l'objectif. <b>Aucune</b><br>n'atteint le seuil d'information."),
         xref="paper", yref="paper", x=0.99, y=0.04, xanchor="right", yanchor="bottom",
         showarrow=False, align="right",
         font=dict(family=SANS, size=18, color=PALETTE["ink"]),
@@ -808,7 +808,7 @@ def fig_a5_creneau_a_eviter() -> go.Figure:
         line=dict(color=AIR_OZONE, width=3),
         hovertemplate="%{x} h — %{y:.0f} µg/m³<extra></extra>",
     ))
-    for h, v, txt, dy in ((h_creux, creux, f"le plus respirable<br><b>{creux:.0f} µg/m³</b>", 58),
+    for h, v, txt, dy in ((h_creux, creux, f"creux d'ozone<br><b>{creux:.0f} µg/m³</b>", 58),
                           (h_pic, pic, f"le plus chargé<br><b>{pic:.0f} µg/m³</b>", -58)):
         fig.add_annotation(
             x=h, y=v, text=txt, showarrow=True, arrowhead=0,

@@ -1266,15 +1266,22 @@ def test_le_titre_d_a1_ne_confond_pas_information_et_alerte(con):
         SEUIL_INFORMATION, fig_a1_depassements_sans_alerte,
     )
 
-    titre = fig_a1_depassements_sans_alerte().layout.title.text
+    fig = fig_a1_depassements_sans_alerte()
     assert SEUIL_INFORMATION == 180, (
-        "le seuil qualifié par le titre d'A1 a changé — rejuger ce verrou plutôt que "
-        "le supprimer"
+        "le seuil qualifié par A1 a changé — rejuger ce verrou plutôt que le supprimer"
     )
-    assert "alerte" not in titre.lower(), (
-        f"le titre d'A1 dit « {titre} » : « alerte » désigne le seuil de 240 µg/m³, "
-        f"quand la figure mesure les {SEUIL_INFORMATION} µg/m³ du seuil d'information"
-    )
+    # Le titre ET les annotations : posé sur le seul titre, ce verrou laissait passer
+    # « Aucune n'a alerté », qui vivait deux lignes plus bas dans la MÊME figure et
+    # portait la même erreur. C'est le cas réel qui a élargi la garde, pas une
+    # anticipation.
+    portes = [("titre", fig.layout.title.text)]
+    portes += [(f"annotation {i}", a.text) for i, a in enumerate(fig.layout.annotations)]
+    for ou, texte in portes:
+        assert "alert" not in (texte or "").lower(), (
+            f"A1, {ou} : « {texte} » — la famille « alerte » désigne le seuil de "
+            f"240 µg/m³, quand la figure mesure les {SEUIL_INFORMATION} µg/m³ du seuil "
+            "d'information"
+        )
 
 
 @besoin_serie
