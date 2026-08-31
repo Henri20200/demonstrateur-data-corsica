@@ -20,6 +20,7 @@ import duckdb
 
 from .config import DATA_PROCESSED, OUTPUTS
 from .figures_air import AN_FIN, contraste_a4, phrase_actualite
+from .navigation import CSS as CSS_NAV, NOTE_AIR, pied as pied_navigation
 from .prepare import verifier_sorties
 from .viz import PALETTE, SANS, date_collecte
 
@@ -93,6 +94,7 @@ def _html(c: dict) -> str:
   .scroll {{ overflow-x:auto; }}
   strong {{ font-weight:600; }}
   .cle {{ color:{PALETTE["accent"]}; font-weight:600; }}
+{CSS_NAV}
 </style></head><body><main>
 
 <h1>Comment ces chiffres ont été obtenus</h1>
@@ -225,6 +227,10 @@ qu'il faudrait réécrire, et le test le dirait avant la mise en ligne.</p>
 <p>Mesures : Qualitair Corse, via l'Agence européenne pour l'environnement (CC-BY 4.0) et le
 LCSQA / Ineris. Températures : Météo-France (Licence Ouverte 2.0). Ces organismes ne sont
 pas associés à cette étude et n'en ont pas validé les conclusions.</p>
+
+<footer>
+{pied_navigation(NOTE_AIR)}
+</footer>
 
 </main></body></html>
 """

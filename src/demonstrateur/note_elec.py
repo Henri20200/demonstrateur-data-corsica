@@ -34,6 +34,7 @@ from .figures import (
     plateau_surcroit_juillet,
 )
 from .prepare import verifier_sorties
+from .navigation import CSS as CSS_NAV, NOTE_ETUDE, pied as pied_navigation
 from .viz import PALETTE, SANS, date_collecte
 
 COURBE = (DATA_PROCESSED / "edf_courbe_corse.parquet").as_posix()
@@ -141,6 +142,7 @@ def _html(c: dict) -> str:
   .scroll {{ overflow-x:auto; }}
   strong {{ font-weight:600; }}
   .cle {{ color:{PALETTE["accent"]}; font-weight:600; }}
+{CSS_NAV}
 </style></head><body><main>
 
 <h1>Comment ces chiffres ont été obtenus</h1>
@@ -307,6 +309,10 @@ l'étude. Elle n'ajoute aucun résultat : elle décrit les mécanismes qui les p
 Production sarde : ENTSO-E, plateforme de transparence, données Terna (CC-BY 4.0).
 Dépendance énergétique : OREGES de Corse / AUE, Lettre 2021. Ces organismes ne sont pas
 associés à cette étude et n'en ont pas validé les conclusions.</p>
+
+<footer>
+{pied_navigation(NOTE_ETUDE)}
+</footer>
 
 </main></body></html>
 """
