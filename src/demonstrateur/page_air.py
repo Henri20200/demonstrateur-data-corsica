@@ -19,9 +19,11 @@ déjà : une légende répétée en prose est du temps de lecture pris à autre 
 
 from __future__ import annotations
 
+import re
 import sys
 
 from .config import OUTPUTS
+from .navigation import AIR, pied as pied_navigation
 from .prepare import verifier_sorties
 from .viz import PALETTE, SANS, date_collecte, preparer_figure
 from . import figures_air as fa
@@ -29,6 +31,11 @@ from . import figures_air as fa
 TITRE = "L'air corse les jours où rien n'est signalé"
 # Intitulé de l'encart d'actualité : il porte le statut, la phrase porte le chiffre.
 HORS = "Hors fenêtre d'analyse."
+
+# Identifiants des cinq sections, dans l'ordre du récit. Ils vivent ici et non dans
+# `_blocs` : le sommaire les vise, les figures les portent, et les deux ne peuvent pas
+# diverger tant qu'il n'y a qu'une liste.
+SECTIONS = ("a1", "a2", "a3", "a4", "a5")
 
 
 def _blocs() -> list[tuple[str, str, str]]:
@@ -39,13 +46,14 @@ def _blocs() -> list[tuple[str, str, str]]:
     """
     d_air = date_collecte("aee_o3_venaco_continu")
     d_meteo = date_collecte("meteo_horaire_corse")
+    a1, a2, a3, a4, a5 = SECTIONS
 
     return [
         (
             "<p>Quand l'air se dégrade franchement, on le sait : Qualitair Corse alerte, les "
             "médias relaient. Ce dispositif fonctionne. Mais il ne se déclenche qu'au-delà "
             "d'un seuil rarement atteint sur l'île. Voici ce qui se passe en dessous.</p>",
-            "a1",
+            a1,
             preparer_figure(
                 fa.fig_a1_depassements_sans_alerte(), fa.SRC_AIR, d_air,
                 sous_titre=fa.st_a1(), note=fa.note_a1(),
@@ -55,7 +63,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             "<p>L'ozone n'est émis par rien : il se fabrique sur place, sous le soleil. On "
             "s'attend donc à en trouver davantage les jours de forte chaleur — c'est le cas, "
             "mais pas indéfiniment.</p>",
-            "a2",
+            a2,
             preparer_figure(
                 fa.fig_a2_ozone_et_chaleur(), fa.SRC_AIR_METEO, d_meteo,
                 sous_titre=fa.ST_A2, note=fa.NOTE_A2,
@@ -65,7 +73,7 @@ def _blocs() -> list[tuple[str, str, str]]:
         (
             "<p>Reste à savoir quand. Le réflexe est de penser aux heures de circulation — "
             "c'est l'inverse.</p>",
-            "a3",
+            a3,
             preparer_figure(
                 fa.fig_a3_ozone_contre_azote(), fa.SRC_AIR, d_air,
                 sous_titre=fa.st_a3(),
@@ -78,7 +86,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             "<p>Et où ? Là encore, l'intuition trompe : il se forme pendant que l'air se "
             "déplace et peut s'accumuler loin du trafic routier ; à proximité des "
             "émissions, le monoxyde d'azote peut en consommer une partie.</p>",
-            "a4",
+            a4,
             preparer_figure(
                 fa.fig_a4_campagne_contre_ville(), fa.SRC_AIR, d_air,
                 sous_titre=fa.st_a4(),
@@ -86,7 +94,7 @@ def _blocs() -> list[tuple[str, str, str]]:
         ),
         (
             "<p>De tout cela découle une seule chose utile, et la voici.</p>",
-            "a5",
+            a5,
             preparer_figure(
                 fa.fig_a5_creneau_a_eviter(), fa.SRC_AIR, d_air,
                 sous_titre=fa.ST_A5, note=fa.NOTE_A5,
@@ -195,6 +203,26 @@ CLES = {
 }
 
 
+def _sommaire(blocs) -> str:
+    """Les cinq figures, reprises par LEUR titre — pas par un libellé écrit à côté.
+
+    C'est la règle déjà tenue par les iframes de l'étude : le titre se lit chez la
+    figure. Deux rédactions du même intitulé finiraient par diverger, et le sommaire
+    annoncerait une figure que le lecteur ne reconnaîtrait plus en arrivant dessus.
+    """
+    items = "".join(
+        f'<li><a href="#{div_id}">{_titre_figure(fig)}</a></li>'
+        for _, div_id, fig in blocs
+    )
+    return f'<nav class="sommaire" aria-label="Sommaire"><ul>{items}</ul></nav>'
+
+
+def _titre_figure(fig) -> str:
+    """Titre de la figure, réduit à du texte : Plotly y accepte du balisage et des
+    retours à la ligne, une entrée de sommaire non."""
+    return " ".join(re.sub(r"<[^>]+>", " ", fig.layout.title.text or "").split())
+
+
 def _html(blocs, collecte: str) -> str:
     # Encart d'actualité : la couche vivante, à côté du cœur analytique figé. Il tombe de
     # lui-même si aucun millésime ne dépasse la fenêtre d'étude — la page n'a alors rien à
@@ -251,6 +279,10 @@ def _html(blocs, collecte: str) -> str:
             max-width:44em; font-size:15.5px; color:{PALETTE["ink_soft"]}; }}
   footer a {{ color:{PALETTE["accent"]}; }}
   .plotly-graph-div {{ width:100% !important; }}
+  .sommaire {{ margin:1.6rem 0 0; max-width:44em; }}
+  .sommaire ul {{ list-style:none; margin:0; padding:0; }}
+  .sommaire li {{ margin:.3rem 0; }}
+  .sommaire a {{ color:{PALETTE["accent"]}; text-decoration:none; }}
 </style></head><body><main>
 
 <h1>{TITRE}</h1>
@@ -259,6 +291,8 @@ noircit rien, et il ne déclenche presque jamais d'alerte en Corse — ce qui ne
 qu'il est absent. Six étés de mesures, sur les six stations de l'île.</p>
 <p class="chapeau">Données collectées le {collecte}.</p>
 {encart}
+
+{_sommaire(blocs)}
 
 {"".join(corps)}
 
@@ -270,6 +304,7 @@ LCSQA / Ineris. Températures : Météo-France (Licence Ouverte 2.0). Ces organi
 associés à cette étude et n'en ont pas validé les conclusions.</p>
 <p><a href="a0_note_methodologique.html">Comment ces chiffres ont été obtenus</a> — sources,
 calculs, limites et approximations assumées.</p>
+{pied_navigation(AIR)}
 </footer>
 
 </main></body></html>

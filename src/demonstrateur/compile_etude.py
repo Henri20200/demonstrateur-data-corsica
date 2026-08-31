@@ -18,8 +18,11 @@ les règles de lisibilité des figures (encre pleine, plancher 16 px, contraste 
 
 from __future__ import annotations
 
+import json
 import re
+import unicodedata
 
+from . import navigation
 from .config import ETUDE_HTML, ETUDE_SOURCE, OUTPUTS
 from .viz import LARGEUR_VISUEL, PALETTE, SANS
 
@@ -41,30 +44,92 @@ def _inline(txte: str) -> str:
     return txte
 
 
-# --- Visuels : hauteur lue dans le HTML du visuel, jamais devinée ni codée en dur ---
+# --- Visuels : hauteur ET titre lus dans le HTML du visuel, jamais devinés ni recopiés ---
 
 
-def _hauteur_visuel(nom: str) -> int:
-    """Hauteur de l'iframe = hauteur de mise en page du visuel, lue dans son propre
-    HTML (la clé `"height"` du layout Plotly). Le visuel reste la source de vérité ;
-    la page ne redéclare pas une hauteur qui divergerait à la prochaine refonte."""
+def _layout_visuel(nom: str) -> dict:
+    """Layout Plotly du visuel, décodé depuis son propre HTML.
+
+    Le visuel reste la source de vérité : la page ne redéclare ni sa hauteur ni son titre,
+    qui divergeraient à la prochaine refonte. Une seule lecture pour les deux.
+
+    Décodage JSON, jamais une recherche de motif dans le texte : le runner Linux échappe
+    les accents en `\\uXXXX` (constat du 29/08/2026), et « la hausse est surtout
+    marqu\\u00e9e » finirait tel quel dans un attribut `title` lu à voix haute. On décode
+    les trois premiers arguments de `Plotly.newPlot(div, données, layout, …)` ;
+    `raw_decode` équilibre les accolades, ce qu'une expression régulière ne sait pas faire.
+    """
     chemin = OUTPUTS / f"{nom}.html"
     if not chemin.exists():
         raise FileNotFoundError(
             f"Visuel manquant pour la compilation : {chemin}. "
             "Lancer `python -m demonstrateur.figures` d'abord."
         )
-    hauteurs = [int(h) for h in re.findall(r'"height":\s*(\d+)', chemin.read_text(encoding="utf-8"))]
-    return max(hauteurs) if hauteurs else 560
+    html = chemin.read_text(encoding="utf-8")
+    debut = html.find("Plotly.newPlot(")
+    if debut < 0:
+        raise ValueError(f"{chemin} ne contient pas d'appel `Plotly.newPlot`.")
+    i = debut + len("Plotly.newPlot(")
+    decodeur = json.JSONDecoder()
+    arguments = []
+    while len(arguments) < 3:
+        while i < len(html) and (html[i].isspace() or html[i] == ","):
+            i += 1
+        valeur, i = decodeur.raw_decode(html, i)
+        arguments.append(valeur)
+    return arguments[2]
+
+
+def _titre_visuel(layout: dict, nom: str) -> str:
+    """Titre de la figure, réduit à du texte : Plotly accepte du balisage dans un titre
+    (T1 met « soleil » en gras) et des retours à la ligne, un attribut `title` non."""
+    texte = " ".join(re.sub(r"<[^>]+>", " ", (layout.get("title") or {}).get("text") or "").split())
+    if not texte:
+        raise ValueError(
+            f"Le visuel {nom} n'a pas de titre : son iframe ne pourrait s'annoncer que par "
+            "son nom de fichier, qu'un lecteur d'écran lirait tel quel."
+        )
+    return texte
 
 
 def _iframe(nom: str) -> str:
+    layout = _layout_visuel(nom)
     # +16 px : petite réserve pour la barre d'outils Plotly qui apparaît au survol.
-    hauteur = _hauteur_visuel(nom) + 16
+    hauteur = int(layout.get("height") or 560) + 16
+    # Le titre s'échappe comme du texte, plus les guillemets : il vit dans un attribut.
+    titre = _echapper(_titre_visuel(layout, nom)).replace('"', "&quot;")
     return (
         f'<figure class="visuel"><iframe src="{nom}.html" height="{hauteur}" '
-        f'loading="lazy" scrolling="no" title="Visualisation : {nom}"></iframe></figure>'
+        f'loading="lazy" scrolling="no" title="{titre}"></iframe></figure>'
     )
+
+
+# --- Ancres et sommaire --------------------------------------------------------------
+
+
+def _ancre(texte: str, prises: set[str]) -> str:
+    """Ancre dérivée du TITRE, jamais de son rang.
+
+    Un `#section-3` se décalerait à la première section insérée, et un lien partagé
+    pointerait alors ailleurs sans que rien ne le signale. Un titre réécrit change son
+    ancre — c'est visible, et c'est le bon compromis.
+    """
+    nu = unicodedata.normalize("NFKD", texte).encode("ascii", "ignore").decode()
+    base = re.sub(r"[^a-z0-9]+", "-", nu.lower()).strip("-") or "section"
+    ancre, suivant = base, 2
+    while ancre in prises:
+        ancre, suivant = f"{base}-{suivant}", suivant + 1
+    prises.add(ancre)
+    return ancre
+
+
+def _sommaire(sections: list[tuple[str, str]]) -> str:
+    """Les six sections, et elles seules : un sommaire de vingt-sept entrées ne se lit
+    plus. Les sous-sections restent ancrables — le lien profond ne coûte pas une ligne
+    de sommaire."""
+    items = "".join(f'<li><a href="#{ancre}">{_inline(texte)}</a></li>'
+                    for ancre, texte in sections)
+    return f'<nav class="sommaire" aria-label="Sommaire"><ul>{items}</ul></nav>'
 
 
 # --- Blocs de niveau paragraphe ------------------------------------------------------
@@ -140,6 +205,11 @@ def compiler(md: str) -> str:
     md = re.sub(r"<!--.*?-->", "", md, flags=re.S)
     lignes = md.split("\n")
     sortie: list[str] = []
+    # Le sommaire se pose APRÈS coup, à la place retenue sous le titre : il ne peut pas
+    # s'écrire avant d'avoir vu toutes les sections.
+    prises: set[str] = set()
+    sections: list[tuple[str, str]] = []
+    place_du_sommaire = 0
     i, n = 0, len(lignes)
     while i < n:
         ligne = lignes[i]
@@ -163,6 +233,12 @@ def compiler(md: str) -> str:
                 if sous:
                     entete += f'<p class="sous-titre">{_inline(sous)}</p>'
                 sortie.append(f'<header class="titre">{entete}</header>')
+                place_du_sommaire = len(sortie)
+            elif niveau in (2, 3):
+                ancre = _ancre(texte, prises)
+                if niveau == 2:
+                    sections.append((ancre, texte))
+                sortie.append(f'<h{niveau} id="{ancre}">{_inline(texte)}</h{niveau}>')
             else:
                 sortie.append(f"<h{niveau}>{_inline(texte)}</h{niveau}>")
             i += 1
@@ -210,6 +286,8 @@ def compiler(md: str) -> str:
         classe = ' class="lede"' if re.fullmatch(r"\*[^*].*[^*]\*", texte) else ""
         sortie.append(f"<p{classe}>{_inline(texte)}</p>")
 
+    if sections:
+        sortie.insert(place_du_sommaire, _sommaire(sections))
     return "\n".join(sortie)
 
 
@@ -267,6 +345,12 @@ th{background:var(--surface);font-weight:650}
 footer{margin-top:3.5rem;padding-top:1.4rem;border-top:1px solid var(--rule);
   font-size:.95rem;color:var(--ink-soft)}
 footer a{color:var(--accent)}
+.sommaire{margin:0 0 3rem}
+.sommaire ul{list-style:none;margin:0;padding:0}
+.sommaire li{margin:.35rem 0}
+.sommaire a{color:var(--accent);text-decoration:none}
+.sommaire a:hover{text-decoration:underline}
+.entre-pages{margin-top:.9rem}
 """
 
 # Pied de page : posé par le compilateur, pas écrit dans le markdown — le compilateur ne
@@ -278,6 +362,7 @@ _PIED = (
     '<p><a href="t0_note_methodologique.html">Note méthodologique</a> — sources, '
     "licences, calculs et limites sur une page, avec les chiffres relus à chaque "
     "rafraîchissement des données.</p>\n"
+    f"{navigation.pied(navigation.ETUDE)}\n"
     "</footer>"
 )
 
