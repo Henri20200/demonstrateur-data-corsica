@@ -487,7 +487,8 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     if alertes:
         raise ValueError(
             f"A1 : {alertes} journée(s) atteignent {SEUIL_INFORMATION} µg/m³ — le titre "
-            "affirme qu'aucune n'alerte. À réécrire avant de publier."
+            "affirme que le seuil d'information n'est jamais atteint. À réécrire avant "
+            "de publier."
         )
 
     # Mêmes libellés qu'en A4, et par la MÊME fonction : le milieu vient de l'implantation
@@ -514,7 +515,7 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
         bgcolor=PALETTE["page"], borderpad=12,
     )
     fig.update_layout(
-        title=dict(text="Six étés de dépassements, et pas une seule alerte"),
+        title=dict(text="Six étés de dépassements, jamais le seuil d'information"),
         # Libellé aligné sur celui d'A4 (24/08/2026), qui le suit dans la page et le disait
         # juste : c'est L'OZONE qui dépasse, pas la station — laquelle ne dépasse rien, elle
         # mesure. Le seuil est nommé et pas seulement chiffré : le sous-titre en annonce

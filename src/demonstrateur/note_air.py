@@ -206,9 +206,9 @@ côté air comme côté température.</p>
     puissent se lire l'un à côté de l'autre. Celle qui en sort le dit sous son titre : c'est
     le cas du décompte en nombre de journées, pour la raison ci-dessus.</li>
 <li><strong>La période d'analyse s'arrête à {AN_FIN}.</strong> Les étés retenus sont
-    complets et stabilisés ; l'été le plus récent ne l'est pas — ses mesures sont encore en
-    constitution et en révision chez leurs producteurs. Le porter dans les mêmes figures
-    lui donnerait un statut que les autres n'ont pas. Il est donc tenu à part, daté, en
+    complets, de juin à août ; l'été le plus récent ne l'est pas encore, et ses mesures sont
+    provisoires. Le porter dans les mêmes figures reviendrait à comparer un été partiel à
+    des étés entiers. Il est donc tenu à part, daté, en
     tête de l'étude : « {c["actu"]} » Étendre la fenêtre d'analyse serait une décision à
     prendre et à revalider, jamais un effet du calendrier.</li>
 </ul>
