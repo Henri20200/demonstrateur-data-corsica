@@ -205,7 +205,8 @@ Autour de midi, la part des énergies renouvelables atteint son maximum.
 
 Entre 12 et 13 heures, le solaire, l'éolien, les bioénergies et la petite hydraulique
 fournissent environ 35 % de l'électricité. En ajoutant les grands barrages, la part
-renouvelable atteint 48 %.
+renouvelable atteint 48 %. Cette configuration n'est pas limitée à un pic isolé :
+le renouvelable total dépasse le thermique de 9 heures à 15 heures.
 
 C'est également à ce moment que la Corse utilise le moins d'électricité importée par
 les câbles sous-marins : leur part descend autour de 15 %, contre plus d'un tiers

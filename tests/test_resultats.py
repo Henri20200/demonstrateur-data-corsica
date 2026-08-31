@@ -1247,6 +1247,44 @@ def test_les_depassements_se_produisent_sans_alerte(con):
 
 
 @besoin_serie
+def test_le_titre_d_a1_ne_confond_pas_information_et_alerte(con):
+    """VERROU DE TEXTE, étroit, posé le 31/08/2026 par la défense de l'étude air.
+
+    Le titre d'A1 a publié « et pas une seule alerte » pendant que le calcul qu'il
+    qualifie mesurait 180 µg/m³ — le seuil d'INFORMATION et de recommandation. L'alerte,
+    dans R221-1, commence à 240. L'affirmation publiée était donc fausse alors que le
+    verrou de calcul juste au-dessus, lui, était exact et passait : c'est la deuxième fois
+    sur ce sujet qu'une erreur survit là où seule la valeur était tenue (le superlatif
+    d'A4, corrigé le 29/08/2026, était la première).
+
+    La garde est délibérément ÉTROITE : elle interdit le mot « alerte » dans le titre
+    d'A1 tant que ce titre qualifie le seuil à 180, et n'impose aucune formulation. Un
+    jour où A1 mesurerait vraiment les 240 µg/m³, ce test devra être rejugé — pas
+    contourné.
+    """
+    from demonstrateur.figures_air import (
+        SEUIL_INFORMATION, fig_a1_depassements_sans_alerte,
+    )
+
+    fig = fig_a1_depassements_sans_alerte()
+    assert SEUIL_INFORMATION == 180, (
+        "le seuil qualifié par A1 a changé — rejuger ce verrou plutôt que le supprimer"
+    )
+    # Le titre ET les annotations : posé sur le seul titre, ce verrou laissait passer
+    # « Aucune n'a alerté », qui vivait deux lignes plus bas dans la MÊME figure et
+    # portait la même erreur. C'est le cas réel qui a élargi la garde, pas une
+    # anticipation.
+    portes = [("titre", fig.layout.title.text)]
+    portes += [(f"annotation {i}", a.text) for i, a in enumerate(fig.layout.annotations)]
+    for ou, texte in portes:
+        assert "alert" not in (texte or "").lower(), (
+            f"A1, {ou} : « {texte} » — la famille « alerte » désigne le seuil de "
+            f"240 µg/m³, quand la figure mesure les {SEUIL_INFORMATION} µg/m³ du seuil "
+            "d'information"
+        )
+
+
+@besoin_serie
 def test_le_pic_d_ozone_n_est_pas_a_l_heure_de_pointe(con):
     """TITRE N° 3 : l'ozone et le NO2 culminent à des heures opposées.
 

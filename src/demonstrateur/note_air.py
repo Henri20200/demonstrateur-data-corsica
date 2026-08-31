@@ -19,7 +19,7 @@ import sys
 import duckdb
 
 from .config import DATA_PROCESSED, OUTPUTS
-from .figures_air import contraste_a4
+from .figures_air import AN_FIN, contraste_a4, phrase_actualite
 from .prepare import verifier_sorties
 from .viz import PALETTE, SANS, date_collecte
 
@@ -64,6 +64,9 @@ def _chiffres() -> dict:
         # que la page, corrigée le 29/08/2026, publiait « la majorité ». Le superlatif
         # était faux, et c'est ici qu'il avait survécu — là où aucun verrou ne portait.
         a4=contraste_a4(),
+        # Même source que l'encart de la page, et non la même phrase recopiée : c'est
+        # exactement ce qui a manqué au contraste d'A4 en août 2026.
+        actu=phrase_actualite(),
     )
 
 
@@ -202,6 +205,12 @@ côté air comme côté température.</p>
     dites « de fond », journées valides — pour que deux chiffres pris sur deux figures
     puissent se lire l'un à côté de l'autre. Celle qui en sort le dit sous son titre : c'est
     le cas du décompte en nombre de journées, pour la raison ci-dessus.</li>
+<li><strong>La période d'analyse s'arrête à {AN_FIN}.</strong> Les étés retenus sont
+    complets, de juin à août ; l'été le plus récent ne l'est pas encore, et ses mesures sont
+    provisoires. Le porter dans les mêmes figures reviendrait à comparer un été partiel à
+    des étés entiers. Il est donc tenu à part, daté, en
+    tête de l'étude : « {c["actu"]} » Étendre la fenêtre d'analyse serait une décision à
+    prendre et à revalider, jamais un effet du calendrier.</li>
 </ul>
 
 <h2>Refaire ces chiffres</h2>

@@ -27,6 +27,8 @@ from .viz import PALETTE, SANS, date_collecte, preparer_figure
 from . import figures_air as fa
 
 TITRE = "L'air corse les jours où rien n'est signalé"
+# Intitulé de l'encart d'actualité : il porte le statut, la phrase porte le chiffre.
+HORS = "Hors fenêtre d'analyse."
 
 
 def _blocs() -> list[tuple[str, str, str]]:
@@ -107,10 +109,10 @@ MOTS = [
     # dictionnaire s'interdit les mots qu'il faudrait aller chercher ailleurs.
     ("Ozone",
      "Un gaz qui pique les bronches — mais seulement au ras du sol. Très haut dans le "
-     "ciel, le même gaz forme un filtre naturel contre les rayons ultraviolets : c'est "
-     "le « bon ozone », celui de la fameuse couche. En bas, il ne protège de rien ; "
+     "ciel, le même gaz forme un filtre contre les rayons ultraviolets : c'est "
+     "le « bon ozone », celui de la couche. En bas, il ne protège de rien ; "
      "respiré à forte dose, il enflamme les bronches et irrite les yeux. Personne ne "
-     "l'émet : il se fabrique tout seul dans l'air, quand le soleil tape sur les gaz "
+     "l'émet : il se fabrique dans l'air, quand le soleil tape sur les gaz "
      "d'échappement et les vapeurs d'essence. C'est pour ça qu'il apparaît l'été, "
      "l'après-midi, et qu'il est le seul polluant que le beau temps favorise."),
     ("Dioxyde d'azote",
@@ -120,20 +122,20 @@ MOTS = [
     ("µg/m³ (microgramme par mètre cube)",
      "L'unité qui dit combien de gaz on trouve dans l'air. Un microgramme, c'est un "
      "millionième de gramme ; un mètre cube, c'est un cube d'un mètre de côté, à peu "
-     "près l'air d'une cabine de douche. Autant dire de très petites quantités — qui "
+     "près l'air d'une cabine de douche. Autant dire de petites quantités — qui "
      "comptent quand même pour les poumons."),
     ("Objectif de qualité",
      f"Le niveau à ne pas dépasser pour protéger la santé : {fa.OBJECTIF_QUALITE} µg/m³ "
      "d'ozone, mesuré sur les huit heures les plus chargées de la journée. Ce n'est pas "
      "une interdiction, c'est une cible. On peut la dépasser sans que personne ne soit "
-     "prévenu — c'est précisément le sujet de cette page."),
+     "prévenu — c'est le sujet de cette page."),
     ("Seuil d'information",
      f"Le niveau, bien plus haut ({fa.SEUIL_INFORMATION} µg/m³ sur une heure), à partir "
      "duquel les autorités préviennent la population et conseillent d'éviter l'effort. "
      "En Corse, il n'est presque jamais atteint."),
     ("Station de fond",
      "Un appareil de mesure placé loin d'une route ou d'une usine, pour mesurer l'air "
-     "que tout le monde respire — et non celui d'un carrefour précis. Toutes les mesures "
+     "que tout le monde respire — et non celui d'un carrefour. Toutes les mesures "
      "de cette page viennent de stations de ce type."),
     ("Journée valide",
      "Une journée où l'appareil a suffisamment mesuré pour que le chiffre compte "
@@ -194,6 +196,15 @@ CLES = {
 
 
 def _html(blocs, collecte: str) -> str:
+    # Encart d'actualité : la couche vivante, à côté du cœur analytique figé. Il tombe de
+    # lui-même si aucun millésime ne dépasse la fenêtre d'étude — la page n'a alors rien à
+    # dire de plus que ses cinq figures, et ne fabrique pas une ligne vide pour autant.
+    # L'intitulé porte le hors-périmètre, la phrase porte le chiffre : répéter « hors de
+    # la fenêtre d'analyse » dans les deux coûterait des mots que le plafond du brief n'a
+    # pas, alors que l'information, elle, doit rester visible sans être cherchée.
+    actu = fa.phrase_actualite_courte()
+    encart = (f'<p class="actu"><strong>{HORS}</strong> {actu}</p>'
+              if actu else "")
     corps = []
     for i, (texte, div_id, fig) in enumerate(blocs):
         # include_plotlyjs=False sur TOUS les blocs : la balise <script> est posée une
@@ -218,6 +229,11 @@ def _html(blocs, collecte: str) -> str:
   section p {{ max-width:44em; margin:0 0 .2rem; }}
   figure {{ margin:.4rem 0 0; background:{PALETTE["surface"]};
             border:1px solid {PALETTE["rule"]}; border-radius:6px; overflow-x:auto; }}
+  /* L'encart d'actualité se distingue des deux phrases-clés : filet neutre et non
+     l'accent, corps réduit — c'est un repère daté, pas un résultat de l'étude. */
+  .actu {{ max-width:44em; margin:1.1rem 0 0; padding:.75rem 1rem; font-size:15.5px;
+           background:{PALETTE["surface"]}; border:1px solid {PALETTE["rule"]};
+           border-radius:4px; }}
   .cle {{ max-width:44em; margin:1rem 0 0; padding:.9rem 1.1rem;
           background:{PALETTE["surface"]}; border-left:4px solid {PALETTE["accent"]};
           border-radius:0 4px 4px 0; }}
@@ -242,6 +258,7 @@ def _html(blocs, collecte: str) -> str:
 noircit rien, et il ne déclenche presque jamais d'alerte en Corse — ce qui ne veut pas dire
 qu'il est absent. Six étés de mesures, sur les six stations de l'île.</p>
 <p class="chapeau">Données collectées le {collecte}.</p>
+{encart}
 
 {"".join(corps)}
 

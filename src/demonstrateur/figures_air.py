@@ -47,7 +47,13 @@ OBJECTIF_QUALITE = 120  # µg/m³, maximum journalier de la moyenne sur 8 h
 SEUIL_INFORMATION = 180  # µg/m³, moyenne horaire
 
 ETES = "extract('month' FROM date_locale) IN (6, 7, 8)"
-ANNEES = "extract('year' FROM date_locale) BETWEEN 2020 AND 2025"
+# Bornes de la fenêtre d'étude, écrites UNE fois : `ANNEES` en dérive et `actualite_air`
+# s'en sert pour savoir ce qui tombe HORS d'elle. Tant que la borne haute ne vivait que
+# dans une chaîne SQL, tout encart d'actualité aurait dû la recopier — et aurait dérivé le
+# jour où la fenêtre bougerait. Elles ne bougent PAS avec le calendrier : passer l'analyse
+# à 2020-2026 est une décision éditoriale à revalider, jamais un effet de l'année courante.
+AN_DEBUT, AN_FIN = 2020, 2025
+ANNEES = f"extract('year' FROM date_locale) BETWEEN {AN_DEBUT} AND {AN_FIN}"
 # Périmètre de A3 écrit UNE fois, parce que le nombre de stations annoncé au lecteur doit
 # sortir du filtre qui trace les courbes. Tant que ce nombre était une constante, il a
 # annoncé cinq stations là où le filtre en retient quatre.
@@ -238,6 +244,94 @@ def contraste_a4() -> dict:
                 implantations=enumeration(autres["implantation"]))
 
 
+def actualite_air() -> dict | None:
+    """Le millésime le plus récent mesuré HORS de la fenêtre d'étude, ou None.
+
+    Deux couches, et elles ne se mélangent jamais : l'étude de référence est figée sur
+    2020-2025 — ses cinq figures, ses conclusions, ses verrous — pendant que cet encart
+    dit seulement où en est l'année la plus récente. Il ne raisonne donc ni sur « 2026 »
+    ni sur l'année du calendrier, mais sur la dernière année PRÉSENTE DANS LES DONNÉES
+    au-delà de `AN_FIN` : début 2027, tant qu'aucun été 2027 n'est mesuré, il continue
+    d'afficher 2026 plutôt que de se vider parce que la date a changé. C'est ce qui
+    évite de reposer le problème de la fenêtre figée à chaque printemps.
+
+    Le décompte est en journées CALENDAIRES — celles où au moins une station de fond
+    dépasse l'objectif de qualité — là où A1 compte des journées-station. Les deux
+    nombres diffèrent d'un facteur deux : « l'été compte N journées » ne peut pas
+    désigner un cumul sur plusieurs stations sans se lire comme une erreur.
+
+    Rend l'année, le décompte, la dernière journée mesurée et le nombre de journées
+    d'été mesurées — jamais un jugement : ce millésime est incomplet et révisable, et il
+    ne sert pas de point de comparaison aux six étés de l'étude.
+    """
+    con = _con()
+    an = con.execute(f"""
+        SELECT max(extract('year' FROM date_locale)) FROM '{MDA8}'
+        WHERE valide AND {ETES} AND influence = 'Fond'
+          AND extract('year' FROM date_locale) > {AN_FIN}
+    """).fetchone()[0]
+    if an is None:
+        return None
+    jours, mesurees, arret = con.execute(f"""
+        SELECT count(DISTINCT date_locale) FILTER (WHERE mda8 > {OBJECTIF_QUALITE}),
+               count(DISTINCT date_locale),
+               max(date_locale)
+        FROM '{MDA8}'
+        WHERE valide AND {ETES} AND influence = 'Fond'
+          AND extract('year' FROM date_locale) = {int(an)}
+    """).fetchone()
+    return dict(annee=int(an), jours=int(jours), mesurees=int(mesurees), arret=arret)
+
+
+# Noms de mois écrits ici et non tirés de `strftime("%B")` : celui-ci suit la locale du
+# système, qui n'est pas la même sur ce poste et sur le runner — la page publierait
+# « August » un jour sur deux sans que rien n'échoue.
+MOIS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+        "septembre", "octobre", "novembre", "décembre")
+
+
+def phrase_actualite_courte() -> str:
+    """La même actualité, pour la PAGE, qui vit sous le plafond de lecture du brief.
+
+    La page est à 682 mots sur les 700 que le brief autorise : l'encart complet ne tient
+    pas, et le plafond ne se relève pas pour laisser passer un ajout — ce serait
+    neutraliser un critère de « fini ». Ce qui est sacrifié, ce sont les mots de liaison,
+    jamais le périmètre : « dans au moins une station de fond » reste, parce que le même
+    jeu produit 71 journées-station contre 33 journées calendaires. Sans lui, le chiffre
+    est ambigu — et c'est précisément ce sur quoi l'étude se défend.
+
+    Le hors-périmètre, lui, est porté par l'intitulé du bloc et non répété ici.
+    """
+    a = actualite_air()
+    if a is None:
+        return ""
+    return (f"Au {a['arret'].day} {MOIS[a['arret'].month - 1]}, {a['jours']} journées "
+            f"{a['annee']} dépassent {OBJECTIF_QUALITE} µg/m³ dans au moins une station "
+            f"de fond — données provisoires.")
+
+
+def phrase_actualite() -> str:
+    """La phrase de l'encart, écrite UNE fois pour la page ET pour la note.
+
+    La leçon de `contraste_a4` appliquée d'avance : deux formulations d'un même chiffre
+    finissent par diverger, et c'est la note — la caution du sérieux — qui porte alors la
+    version périmée. Le risque est ici plus grand encore, le chiffre changeant à chaque
+    passage du cron, par révision rétroactive du flux comme par arrivée de journées.
+
+    L'ordre des propositions est délibéré : le statut provisoire et le hors-périmètre
+    sont dits DANS la même phrase que le chiffre, pas dans une note de bas de page qu'on
+    peut ne pas lire.
+    """
+    a = actualite_air()
+    if a is None:
+        return ""
+    return (f"Au {a['arret']:%d/%m/%Y}, l'été {a['annee']} compte {a['jours']} journées "
+            f"où au moins une station de fond a dépassé l'objectif de qualité, sur "
+            f"{a['mesurees']} journées mesurées. Données provisoires, encore révisables "
+            f"par leurs producteurs : cet été n'entre pas dans la fenêtre d'analyse "
+            f"{AN_DEBUT}-{AN_FIN}.")
+
+
 # Sous-titres et notes DÉFINIS UNE FOIS et consommés à la fois par `main()` (fichiers
 # individuels) et par `page_air` (page assemblée). Ils étaient recopiés dans les deux
 # modules : toute correction n'était appliquée que d'un côté, et les deux versions d'une
@@ -393,7 +487,8 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
     if alertes:
         raise ValueError(
             f"A1 : {alertes} journée(s) atteignent {SEUIL_INFORMATION} µg/m³ — le titre "
-            "affirme qu'aucune n'alerte. À réécrire avant de publier."
+            "affirme que le seuil d'information n'est jamais atteint. À réécrire avant "
+            "de publier."
         )
 
     # Mêmes libellés qu'en A4, et par la MÊME fonction : le milieu vient de l'implantation
@@ -413,14 +508,14 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
         # des barres si brèves que la zone est libre, mais un texte large y redescendrait
         # quand même sur elles. Trois lignes courtes plutôt que deux longues.
         text=(f"<b>{journees} journées d'été sur {mesurees}</b><br>où au moins une station "
-              "dépasse<br>l'objectif. <b>Aucune</b> n'a alerté."),
+              "dépasse<br>l'objectif. <b>Aucune</b><br>n'atteint le seuil d'information."),
         xref="paper", yref="paper", x=0.99, y=0.04, xanchor="right", yanchor="bottom",
         showarrow=False, align="right",
         font=dict(family=SANS, size=18, color=PALETTE["ink"]),
         bgcolor=PALETTE["page"], borderpad=12,
     )
     fig.update_layout(
-        title=dict(text="Six étés de dépassements, et pas une seule alerte"),
+        title=dict(text="Six étés de dépassements, jamais le seuil d'information"),
         # Libellé aligné sur celui d'A4 (24/08/2026), qui le suit dans la page et le disait
         # juste : c'est L'OZONE qui dépasse, pas la station — laquelle ne dépasse rien, elle
         # mesure. Le seuil est nommé et pas seulement chiffré : le sous-titre en annonce
@@ -713,7 +808,7 @@ def fig_a5_creneau_a_eviter() -> go.Figure:
         line=dict(color=AIR_OZONE, width=3),
         hovertemplate="%{x} h — %{y:.0f} µg/m³<extra></extra>",
     ))
-    for h, v, txt, dy in ((h_creux, creux, f"le plus respirable<br><b>{creux:.0f} µg/m³</b>", 58),
+    for h, v, txt, dy in ((h_creux, creux, f"creux d'ozone<br><b>{creux:.0f} µg/m³</b>", 58),
                           (h_pic, pic, f"le plus chargé<br><b>{pic:.0f} µg/m³</b>", -58)):
         fig.add_annotation(
             x=h, y=v, text=txt, showarrow=True, arrowhead=0,
