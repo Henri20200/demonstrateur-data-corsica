@@ -515,6 +515,85 @@ def test_la_page_reste_lisible_en_trois_minutes():
     )
 
 
+besoin_encart = pytest.mark.skipif(
+    not (PAGE.exists() and NOTE.exists()
+         and (DATA_PROCESSED / "air_o3_mda8.parquet").exists()),
+    reason="page, note ou MDA8 absent — lancer prepare puis figures_air, page_air, note_air",
+)
+
+
+@besoin_encart
+def test_l_encart_d_actualite_dit_la_meme_chose_sur_la_page_et_dans_la_note():
+    """L'étude a deux couches, et elles ne doivent pas se contredire.
+
+    Le cœur analytique est figé sur 2020-2025 ; l'encart d'actualité, lui, bouge à chaque
+    passage du cron — révision rétroactive du flux LCSQA, journées qui arrivent. C'est
+    exactement la configuration qui a fait diverger le contraste d'A4 en août 2026 : deux
+    formulations d'un même chiffre, et c'est la note qui a porté la version périmée.
+
+    Ce test ne verrouille donc NI l'année NI la valeur — les figer ferait échouer le
+    pipeline chaque fois que le producteur révise, ce qu'il fait normalement. Il tient
+    quatre choses qui, elles, ne doivent jamais bouger : la page et la note publient la
+    même phrase parce qu'elles la tiennent de la même source ; cette phrase porte son
+    millésime, sa date d'arrêt et son caractère provisoire ; le millésime affiché tombe
+    HORS de la fenêtre d'étude — le jour où l'analyse serait étendue jusqu'à lui, l'encart
+    devrait changer de millésime, pas doubler une figure ; et le périmètre écrit sur les
+    figures parle toujours de la même borne haute que le code.
+    """
+    from demonstrateur.figures_air import (
+        AN_DEBUT, AN_FIN, MOIS, PERIMETRE, actualite_air, phrase_actualite,
+        phrase_actualite_courte,
+    )
+
+    a = actualite_air()
+    if a is None:
+        pytest.skip("aucun millésime hors de la fenêtre d'étude — l'encart ne s'affiche pas")
+    # Deux rédactions, UNE source. La page vit sous le plafond de lecture du brief et ne
+    # peut pas porter la phrase entière ; ce qui ne doit pas diverger, ce sont les
+    # NOMBRES, et ils viennent tous les deux du même `actualite_air`.
+    courte, longue = phrase_actualite_courte(), phrase_actualite()
+    for cible, nom, phrase, fonction in (
+        (PAGE, "la page", courte, "phrase_actualite_courte"),
+        (NOTE, "la note", longue, "phrase_actualite"),
+    ):
+        texte = re.sub(r"\s+", " ",
+                       re.sub(r"<[^>]+>", " ", cible.read_text(encoding="utf-8")))
+        assert phrase in texte, (
+            f"{nom} ne publie pas la phrase d'actualité telle que `{fonction}` la produit "
+            "— elle a été réécrite à la main, et les deux versions vont diverger"
+        )
+    for phrase, nom in ((courte, "courte"), (longue, "longue")):
+        assert "provisoire" in phrase, (
+            f"version {nom} : le statut provisoire doit être dit DANS la phrase, pas "
+            "ailleurs sur la page"
+        )
+        assert str(a["annee"]) in phrase and str(a["jours"]) in phrase, (
+            f"version {nom} : millésime et décompte doivent être portés par la phrase"
+        )
+    # Le périmètre de mesure, lui, ne se sacrifie dans AUCUNE des deux : le même jeu
+    # produit 33 journées calendaires et 71 journées-station, et « N journées » sans
+    # périmètre laisse le lecteur devant deux nombres possibles.
+    for phrase, nom in ((courte, "courte"), (longue, "longue")):
+        assert "station" in phrase and "fond" in phrase, (
+            f"version {nom} : le périmètre de mesure doit rester dans la phrase chiffrée"
+        )
+    assert f"{a['arret'].day} {MOIS[a['arret'].month - 1]}" in courte, (
+        "la version courte doit porter sa date d'arrêt en clair"
+    )
+    assert f"{a['arret']:%d/%m/%Y}" in longue, (
+        "la version longue doit porter sa date d'arrêt : sans elle, un chiffre qui bouge "
+        "n'est pas vérifiable"
+    )
+    assert a["annee"] > AN_FIN, (
+        f"l'encart affiche {a['annee']}, qui tombe dans la fenêtre d'étude "
+        f"{AN_DEBUT}-{AN_FIN} — il doublerait alors les figures au lieu de les compléter"
+    )
+    assert str(AN_FIN) in PERIMETRE, (
+        f"le périmètre écrit sur les figures ne mentionne plus {AN_FIN} — la fenêtre a "
+        "bougé sans que le texte suive, et l'encart peut désormais la recouvrir"
+    )
+
+
 @besoin_note_elec
 def test_la_periode_sarde_annoncee_est_le_perimetre_analytique():
     """La note doit annoncer la fenêtre que l'étude EXPLOITE, pas un extremum d'horodatage.
