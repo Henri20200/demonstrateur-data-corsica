@@ -406,22 +406,85 @@ def st_a3() -> str:
         "est ramenée à son propre maximum : on compare des heures, pas des concentrations.")
 
 
-def note_a1() -> str:
-    """Note d'A1 : la seule objection que le sous-titre laisse ouverte.
+def _comptes_a1() -> tuple[int, int]:
+    """Les deux nombres qu'A1 publie : journées en dépassement, journées mesurées.
 
-    Le périmètre est annoncé plus haut depuis que la figure suit la règle du module. Ce
-    qu'il reste à dire tient en une ligne : l'écart de périmètre ne coûte rien au chiffre
-    mis en avant. Sans elle, un lecteur attentif peut croire qu'il manque des journées au
-    total de l'encart — et il aurait raison de se poser la question.
+    Un seul calcul pour DEUX porteurs de texte — le titre, qui affirme que le seuil
+    d'information n'est jamais atteint, et la note de pied, qui porte les chiffres depuis
+    que l'encadré a quitté la zone de tracé (02/09/2026). Le contrôle du seuil vit donc
+    ici plutôt que dans la figure : une garde posée sur un seul porteur laisse passer la
+    même erreur écrite ailleurs, et A1 en a fait la démonstration le 31/08, où un titre
+    corrigé cohabitait avec un encadré qui ne l'était pas.
+
+    Le total compte des JOURNÉES DISTINCTES, jamais la somme des barres : une journée
+    chargée déclenche plusieurs stations à la fois, et additionner les colonnes donnerait
+    169 « journées » là où le calendrier n'en compte que 106 — un lecteur comprendrait
+    qu'il y a eu 169 jours de dépassement sur la période. Les barres, elles, comptent
+    bien des journées PAR STATION : chacune est juste dans son périmètre. Ce total est
+    celui des quatre stations tracées, et il vaut celui des cinq : Confina 2 n'apporte ni
+    une journée mesurée ni un dépassement que les autres n'aient déjà.
     """
+    con = _con()
+    # Le seuil d'information est une moyenne HORAIRE : le maximum journalier sur 8 h ne
+    # peut pas en décider, d'où la série. `air_o3_mda8` dérivant d'`air_serie`, toute
+    # journée-station comptée ici a ses heures en face — la jointure ne filtre rien.
+    alertes, = con.execute(f"""
+        WITH j AS (SELECT date_locale, station FROM '{MDA8}' WHERE {OU_A1}),
+             h AS (SELECT date_locale, station, max(valeur) AS horaire_max
+                   FROM '{SERIE}' WHERE polluant = 'O3' GROUP BY 1, 2)
+        SELECT count(*) FILTER (WHERE h.horaire_max >= {SEUIL_INFORMATION})
+        FROM j JOIN h USING (date_locale, station)
+    """).fetchone()
+    if alertes:
+        raise ValueError(
+            f"A1 : {alertes} journée(s) atteignent {SEUIL_INFORMATION} µg/m³ — le titre "
+            "ET la note affirment que le seuil d'information n'est jamais atteint. "
+            "À réécrire avant de publier."
+        )
+    return con.execute(f"""
+        SELECT count(DISTINCT CASE WHEN mda8 > {OBJECTIF_QUALITE} THEN date_locale END),
+               count(DISTINCT date_locale)
+        FROM '{MDA8}' WHERE {OU_A1}
+    """).fetchone()
+
+
+def note_a1() -> str:
+    """Note d'A1 : ce que les barres ne peuvent pas dire, et l'objection du périmètre.
+
+    Elle porte depuis le 02/09/2026 les trois faits qui vivaient dans un encadré posé sur
+    la zone de tracé — le total en journées distinctes, l'absence de dépassement du seuil
+    d'information, et l'avertissement qu'on n'additionne pas les barres. Cet encadré
+    était OPAQUE et recouvrait le bas de la barre de Venaco (cf.
+    `fig_a1_depassements_sans_alerte`). Le pied garde ces faits VISIBLES — ils soutiennent
+    directement le titre, ils n'ont pas à attendre qu'on ouvre la note méthodologique —
+    tout en les mettant hors d'atteinte de la donnée.
+
+    Les 180 µg/m³ y sont CHIFFRÉS et non nommés : le sous-titre définit les deux seuils
+    trois lignes plus haut, et les renommer ici coûtait une ligne de pied — donc une de
+    hauteur de figure — pour une définition déjà lue. Ce qui ne se négocie pas, c'est
+    qu'on ne les appelle jamais « alerte » : ce mot désigne les 240 µg/m³, un test le
+    tient sur tous les porteurs de texte de la figure.
+
+    S'y ajoute la seule objection que le sous-titre laisse ouverte : l'écart de périmètre
+    ne coûte rien au total. Sans elle, un lecteur attentif peut croire qu'il manque des
+    journées — et il aurait raison de se poser la question. La station y est désormais
+    NOMMÉE : « Ses », qui se désignait tout seul quand la phrase suivait l'encadré, n'a
+    plus d'antécédent lisible à deux phrases de distance.
+    """
+    journees, mesurees = _comptes_a1()
     con = _con()
     depassements, = con.execute(f"""
         SELECT count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE}) FROM '{MDA8}'
         WHERE valide AND {ETES} AND {ANNEES} AND station = '{RECENTE}'
     """).fetchone()
-    # « ci-dessus » faisait 65 signes contre 64 disponibles, donc deux lignes de pied
-    # pour un mot : l'encart est juste au-dessus, il se désigne tout seul.
-    return f"Ses {depassements} dépassements tombent tous des jours déjà comptés."
+    # Aucun <br> : `replier_pied` remplit les lignes. Couper par phrase coûterait deux
+    # lignes de pied de plus, donc deux de hauteur de figure, pour un confort de lecture
+    # que le pied — quatre phrases courtes — n'exige pas.
+    return (f"Sur {mesurees} journées d'été observées, {journees} dépassent "
+            f"{OBJECTIF_QUALITE} µg/m³ dans au moins une station ; aucune n'atteint "
+            f"{SEUIL_INFORMATION} µg/m³. Les barres ne s'additionnent pas, une même "
+            f"journée pouvant concerner plusieurs stations. Les {depassements} "
+            f"dépassements d'{RECENTE.title()} tombent tous des jours déjà comptés.")
 
 
 def st_a4() -> str:
@@ -450,46 +513,51 @@ NOTE_A5 = ("Le creux du petit matin est aussi le maximum de dioxyde d'azote : l'
 
 
 # --- A1 : « on dépasse les jours où personne n'alerte » -----------------------
+# Marge basse d'A1, mesurée sur le pied qu'elle publie (`marge_basse_minimale`) : huit
+# lignes depuis que la note a repris les phrases de l'encadré, contre quatre avant. La
+# valeur est écrite ici plutôt que calculée, comme partout dans le module ; `verifier_pied`
+# la refuse bruyamment si le pied grandit encore, ce qui vaut mieux qu'une figure qui
+# s'étire toute seule à chaque mot ajouté.
+#
+# Ce que la mesure a appris, si l'on cherche à alléger encore : la note ne pèse que cinq
+# de ces huit lignes, soit 104 px. Le reste — 85 px sous l'axe, deux lignes de source,
+# une de date, la garde — vaut 165 px et ne dépend pas de ce qu'on écrit. Raccourcir la
+# note d'une phrase gagne donc 21 px sur 680, pas le tiers qu'on imagine.
+MARGE_BASSE_A1 = 269
+# Hauteur hors marge basse : 590 - 200 avant le déplacement. La conserver telle quelle est
+# ce qui garantit que la zone de tracé n'a pas bougé d'un pixel.
+HAUTEUR_HORS_PIED_A1 = 390
+
+
 def fig_a1_depassements_sans_alerte() -> go.Figure:
-    """Nombre de journées franchissant l'objectif de qualité, et combien ont alerté.
+    """Nombre de journées franchissant l'objectif de qualité, station par station.
 
     Forme : barres horizontales — la donnée compare des quantités entre entités nommées,
     et les noms de stations sont longs. Une seule série : pas de légende, le titre la
-    nomme. Le second chiffre du titre (« zéro alerte ») ne se dessine pas en barres — il
-    vaudrait zéro pixel — il est donc porté par une annotation, ce qui est sa juste place.
+    nomme.
+
+    Le second chiffre du titre (« jamais le seuil d'information ») ne se dessine pas en
+    barres : il vaudrait zéro pixel. Il a vécu jusqu'au 02/09/2026 dans un encadré posé
+    sur la zone de tracé, à fond OPAQUE. Le 24/08 la figure est passée de cinq stations à
+    quatre (cf. `OU_A1`) ; les bandes se sont élargies de 44 à 55 px, tout est descendu
+    d'un cran, et l'encadré a recouvert 50 x 13 px du bas de la barre de Venaco — mesuré
+    à 992 px, la largeur servie, et pire à mesure que la page se resserre. Aucun
+    replacement ne le sauvait : la zone libre sous cette barre fait 115 px pour un
+    encadré de 119, et le pousser à droite sort du tracé.
+
+    Le fait est donc au pied (`note_a1`), hors de la zone de tracé, où la donnée ne peut
+    plus le rencontrer. La leçon n'est pas le placement mais ce qui le tenait : « la zone
+    est libre » était une hypothèse écrite en commentaire, vraie le jour où elle a été
+    écrite, et rien ne la rejouait quand le périmètre changeait.
     """
+    _comptes_a1()  # verrou du titre : rien n'atteint le seuil d'information
     con = _con()
     df = con.execute(f"""
-        WITH j AS (
-          SELECT date_locale, station, implantation, mda8 FROM '{MDA8}' WHERE {OU_A1}),
-        h AS (SELECT date_locale, station, max(valeur) AS horaire_max
-              FROM '{SERIE}' WHERE polluant = 'O3' GROUP BY 1, 2)
-        SELECT j.station, j.implantation,
-               count(*) FILTER (WHERE j.mda8 > {OBJECTIF_QUALITE})                    AS depassements,
-               count(*) FILTER (WHERE h.horaire_max >= {SEUIL_INFORMATION})           AS alertes
-        FROM j JOIN h USING (date_locale, station)
+        SELECT station, implantation,
+               count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE}) AS depassements
+        FROM '{MDA8}' WHERE {OU_A1}
         GROUP BY 1, 2 ORDER BY 3
     """).df()
-    # Le total affiché compte des JOURNÉES DISTINCTES, jamais la somme des barres : une
-    # journée chargée déclenche plusieurs stations à la fois, et additionner les colonnes
-    # donnerait 169 « journées » là où le calendrier n'en compte que 106 — un lecteur
-    # comprendrait qu'il y a eu 169 jours de dépassement sur la période. Les barres, elles,
-    # comptent bien des journées PAR STATION : chacune est juste dans son périmètre.
-    # Ce total est celui des quatre stations tracées, et il vaut celui des cinq : Confina 2
-    # n'apporte ni une journée mesurée ni un dépassement que les autres n'aient déjà. La
-    # note le dit au lecteur, un test le tient.
-    journees, mesurees = con.execute(f"""
-        SELECT count(DISTINCT CASE WHEN mda8 > {OBJECTIF_QUALITE} THEN date_locale END),
-               count(DISTINCT date_locale)
-        FROM '{MDA8}' WHERE {OU_A1}
-    """).fetchone()
-    alertes = int(df["alertes"].sum())
-    if alertes:
-        raise ValueError(
-            f"A1 : {alertes} journée(s) atteignent {SEUIL_INFORMATION} µg/m³ — le titre "
-            "affirme que le seuil d'information n'est jamais atteint. À réécrire avant "
-            "de publier."
-        )
 
     # Mêmes libellés qu'en A4, et par la MÊME fonction : le milieu vient de l'implantation
     # publiée par le producteur, jamais du nom de la station.
@@ -503,17 +571,6 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
         hovertemplate="%{y}<br>%{x} journées au-dessus de "
                       f"{OBJECTIF_QUALITE} µg/m³<extra></extra>",
     ))
-    fig.add_annotation(
-        # Encadré ancré au COIN BAS DROIT et tenu court : les deux stations d'Ajaccio ont
-        # des barres si brèves que la zone est libre, mais un texte large y redescendrait
-        # quand même sur elles. Trois lignes courtes plutôt que deux longues.
-        text=(f"<b>{journees} journées d'été sur {mesurees}</b><br>où au moins une station "
-              "dépasse<br>l'objectif. <b>Aucune</b><br>n'atteint le seuil d'information."),
-        xref="paper", yref="paper", x=0.99, y=0.04, xanchor="right", yanchor="bottom",
-        showarrow=False, align="right",
-        font=dict(family=SANS, size=18, color=PALETTE["ink"]),
-        bgcolor=PALETTE["page"], borderpad=12,
-    )
     fig.update_layout(
         title=dict(text="Six étés de dépassements, jamais le seuil d'information"),
         # Libellé aligné sur celui d'A4 (24/08/2026), qui le suit dans la page et le disait
@@ -523,18 +580,18 @@ def fig_a1_depassements_sans_alerte() -> go.Figure:
         # laissait au lecteur le soin d'apparier. « (six étés cumulés) » disparaît : la
         # période est déjà dite trois fois sur cette figure — titre, et les deux dernières
         # lignes du sous-titre. Reste à empêcher d'additionner les barres, ce que faisaient
-        # les capitales de « CETTE » ; « station par station » le dit sans crier, et
-        # l'encart tient l'autre bout avec ses journées distinctes.
+        # les capitales de « CETTE » ; « station par station » le dit sans crier, et le
+        # pied tient l'autre bout avec ses journées distinctes.
         xaxis=dict(title=dict(text=f"Journées où l'ozone dépasse l'objectif de qualité "
                                    f"({OBJECTIF_QUALITE} µg/m³), station par station",
                               font=AXE)),
         yaxis=dict(title=""),
-        # Le périmètre est passé du pied au sous-titre (24/08/2026) : une ligne de titre
-        # en plus, deux lignes de pied en moins. `t` couvrait déjà trois lignes de
-        # sous-titre, `b` redescend de 40 px — et `height` d'autant, pour que la zone de
-        # tracé retrouve la hauteur qu'elle avait, ni plus ni moins.
-        margin=dict(t=170, b=200, l=250, r=90),
-        height=590,
+        # `b` et `height` montent ENSEMBLE de la même quantité (02/09/2026) : le pied a
+        # gagné les phrases de l'encadré, et `verifier_pied` réclame la marge qui les
+        # loge. Les augmenter de concert laisse la zone de tracé exactement où elle
+        # était — l'y rogner serait reprendre d'une main la place qu'on rend de l'autre.
+        margin=dict(t=170, b=MARGE_BASSE_A1, l=250, r=90),
+        height=HAUTEUR_HORS_PIED_A1 + MARGE_BASSE_A1,
     )
     return fig
 

@@ -1263,18 +1263,21 @@ def test_le_titre_d_a1_ne_confond_pas_information_et_alerte(con):
     contourné.
     """
     from demonstrateur.figures_air import (
-        SEUIL_INFORMATION, fig_a1_depassements_sans_alerte,
+        SEUIL_INFORMATION, fig_a1_depassements_sans_alerte, note_a1, st_a1,
     )
 
     fig = fig_a1_depassements_sans_alerte()
     assert SEUIL_INFORMATION == 180, (
         "le seuil qualifié par A1 a changé — rejuger ce verrou plutôt que le supprimer"
     )
-    # Le titre ET les annotations : posé sur le seul titre, ce verrou laissait passer
-    # « Aucune n'a alerté », qui vivait deux lignes plus bas dans la MÊME figure et
+    # TOUS les porteurs de texte de la figure : posé sur le seul titre, ce verrou laissait
+    # passer « Aucune n'a alerté », qui vivait deux lignes plus bas dans la MÊME figure et
     # portait la même erreur. C'est le cas réel qui a élargi la garde, pas une
-    # anticipation.
-    portes = [("titre", fig.layout.title.text)]
+    # anticipation — et la même exigence a fait suivre la note le 02/09/2026, quand la
+    # phrase sur le seuil est descendue de l'encadré au pied. Une garde qui reste sur
+    # l'objet que le texte vient de quitter ne garde plus rien.
+    portes = [("titre", fig.layout.title.text), ("sous-titre", st_a1()),
+              ("note de pied", note_a1())]
     portes += [(f"annotation {i}", a.text) for i, a in enumerate(fig.layout.annotations)]
     for ou, texte in portes:
         assert "alert" not in (texte or "").lower(), (
@@ -1636,12 +1639,33 @@ def test_le_total_affiche_compte_des_journees_et_non_des_couples(con):
         "différer (plusieurs stations dépassent le même jour). Si elles se rejoignent, "
         "vérifier le périmètre avant de publier le total comme un nombre de journées"
     )
-    from demonstrateur.figures_air import fig_a1_depassements_sans_alerte
+    # Le total vivait dans un encadré de la figure jusqu'au 02/09/2026 ; il est au pied
+    # depuis que cet encadré, opaque, recouvrait le bas de la barre de Venaco. Le verrou
+    # lit donc le porteur ACTUEL — et la figure ne doit plus rien porter en propre, sans
+    # quoi le chiffre se retrouverait publié à deux endroits qui peuvent diverger.
+    from demonstrateur.figures_air import fig_a1_depassements_sans_alerte, note_a1
 
-    textes = [a.text for a in fig_a1_depassements_sans_alerte().layout.annotations]
-    assert any(f"{journees} journées" in t for t in textes), (
+    # Le verrou porte sur la REVENDICATION, pas sur l'ordre des mots : il exigeait
+    # littéralement « 106 journées », ce que l'encadré écrivait d'un bloc et ce que la
+    # note de pied dit autrement (« sur 552 journées observées, 106 dépassent »). Tenir
+    # la formule aurait obligé à écrire autour du test ; tenir les deux nombres — celui
+    # qui doit paraître, celui qui ne doit jamais paraître — garde exactement ce qui
+    # était en jeu, et se moque de la rédaction.
+    note = note_a1()
+    assert str(journees) in note and str(couples) not in note, (
         f"A1 doit afficher les {journees} journées distinctes, jamais les {couples} "
-        "couples journée-station"
+        f"couples journée-station : « {note} »"
+    )
+    mesurees, = con.execute(
+        f"SELECT count(DISTINCT date_locale) FROM '{MDA8.as_posix()}' WHERE {OU_A1}"
+    ).fetchone()
+    assert str(mesurees) in note, (
+        f"la note d'A1 annonce un dénominateur qui n'est pas celui de la donnée "
+        f"({mesurees} journées mesurées) : « {note} »"
+    )
+    assert not fig_a1_depassements_sans_alerte().layout.annotations, (
+        "A1 a retrouvé une annotation posée sur sa zone de tracé — c'est par là que "
+        "l'encadré opaque est venu recouvrir la barre de Venaco le 24/08/2026"
     )
 
 
