@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "cf897d2fe8e1ab9d569d4ebdd5adc5aaf4704c0a10a9d4dcf7ec4669bf94266b",
+    "sha256": "8da684ce9517c217803ab2baed33f61a45db5630e8f3988368a8cfab29b889ab",
     "date_collecte": "2026-09-02",
-    "taille_octets": 391398
+    "taille_octets": 391307
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -195,9 +195,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "0fd61963c5f7d72b71561cb246819761b6c04e2e929a24f03b9862b90a74a1c0",
+    "sha256": "f1f3e82817ae4679089e213c1f25a9f2a1ad6993b7b6cfdddf00139ff14d54ca",
     "date_collecte": "2026-09-02",
-    "taille_octets": 252950
+    "taille_octets": 252994
   },
   "aee_o3_ajaccio_confina2_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_7.parquet",
@@ -217,9 +217,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "4a52f320ade654e0443eaffbf72f037851fdac51be4de9a41683f24a79824d1c",
+    "sha256": "d442e62e8667373fd01e94d2515543d8248181fdff7d96b7bffe7081d0914f79",
     "date_collecte": "2026-09-02",
-    "taille_octets": 254357
+    "taille_octets": 254396
   },
   "aee_o3_bastia_giraud_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_7.parquet",
@@ -239,9 +239,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "b9a05ad902b316d333c43c80c7a11baab6d0c06da59bc907f3c8250b4bff627c",
+    "sha256": "ae11c7be4b55ddf3aaff0317d91b72db3435bb9a1837e5636bb27ba58a26afc6",
     "date_collecte": "2026-09-02",
-    "taille_octets": 247251
+    "taille_octets": 247294
   },
   "aee_o3_bastia_montesoro_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_7.parquet",
@@ -261,9 +261,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "eb289713b1d65b7e90dd66bc76d805ac13010e6ad016bc451d7b38ddc1464c28",
+    "sha256": "fc63eef0f57b3818e6f441f8ab085d3c56fd39524b326a08764153757474707e",
     "date_collecte": "2026-09-02",
-    "taille_octets": 250899
+    "taille_octets": 250939
   },
   "aee_o3_bastia_marana_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_7.parquet",
@@ -283,9 +283,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "661907b724a00a7ec9045e6f27c84b0fa734af4d6da068632a96ad9223c5d67a",
+    "sha256": "be2abeb0673db52938f1a31b61065551b04f08040d014cae1a063490fbe12efa",
     "date_collecte": "2026-09-02",
-    "taille_octets": 255638
+    "taille_octets": 255694
   },
   "aee_o3_venaco_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41024_7.parquet",
@@ -305,9 +305,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "51fb19e951303da0c439660ebe99d250089185a8993c993119170fa49c0adc58",
+    "sha256": "1cc7cab57c5cf92239c1b7053968355266418bd8aa603b4ea9a60cdc4081a490",
     "date_collecte": "2026-09-02",
-    "taille_octets": 245504
+    "taille_octets": 245547
   },
   "aee_no2_ajaccio_canetto_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41001_8.parquet",
@@ -327,9 +327,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "ee0f6a59d97d52f39c3fa057cfb570d99fa616e776fb05375aec908083abe136",
+    "sha256": "bcbd1fedd90fdc85d4767d31fe745ca55ff95db951a1c4736c52120d067e2736",
     "date_collecte": "2026-09-02",
-    "taille_octets": 249027
+    "taille_octets": 249065
   },
   "aee_no2_ajaccio_confina2_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_8.parquet",
@@ -349,9 +349,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "86079a84be67220552eeb6c8aa527f1e0ebd4b93a244efe41001e10fe1f79484",
+    "sha256": "e65dfeda63bc6a1426cb3ad711e5e2bc30c538a1d3bcf092222f785afcb9941b",
     "date_collecte": "2026-09-02",
-    "taille_octets": 245651
+    "taille_octets": 245710
   },
   "aee_no2_bastia_giraud_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_8.parquet",
@@ -371,9 +371,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "5e447f866fad4ec8e58a0bf5056a3834b76e993b3483d4c8a98604537ace4e44",
+    "sha256": "67b3b467b1a0b4894f25dda9dd2a6acd56ad48d6c4f23b5241d8fc6a7924f601",
     "date_collecte": "2026-09-02",
-    "taille_octets": 234506
+    "taille_octets": 234544
   },
   "aee_no2_bastia_montesoro_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_8.parquet",
@@ -393,9 +393,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "f3e2ba2f12e0124f378f1e4ca3966e090ad6092305e15284276b60951d2fca93",
+    "sha256": "d551458346fc21ec6cf982f320e1d65db540f2650c13d237602988f1d3dc2dd5",
     "date_collecte": "2026-09-02",
-    "taille_octets": 232100
+    "taille_octets": 232136
   },
   "aee_no2_bastia_marana_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_8.parquet",
@@ -415,9 +415,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "eccfd96e1180133aa175528df4ce52396ed66366d027164b6e4a322b9aa83132",
+    "sha256": "e6a3b3f6faabcf4f689ca9c88cb94a79479e549d3b68b277446b7bd80f95a11e",
     "date_collecte": "2026-09-02",
-    "taille_octets": 231120
+    "taille_octets": 231157
   },
   "meteo_horaire_corse_2020_2024": {
     "url": "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_previous-2020-2024.csv.gz",
