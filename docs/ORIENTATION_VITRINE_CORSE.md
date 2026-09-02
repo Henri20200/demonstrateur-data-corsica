@@ -47,7 +47,7 @@ rare ; le publié s'accumule sans dette.
 
 ---
 
-## 3. Les six contraintes
+## 3. Les sept contraintes
 
 ### C1 — Profondeur avant largeur
 
@@ -67,12 +67,22 @@ crédibilité, elle la dilue.
 
 ### C2 — Études avant dashboards
 
-Une étude historique, une fois publiée et figée, **coûte presque zéro**. Un indicateur
-« aujourd'hui » **coûte à perpétuité**. Ce ne sont pas les mêmes objets économiquement, et
-ils ne se décident pas de la même façon.
+Une étude figée supprime le coût lié au renouvellement continu des données, mais pas le
+coût de fiabilisation après publication : relecture, défense des résultats, corrections
+méthodologiques et éditoriales peuvent rester substantielles.
 
-Conséquence : le vivant est plafonné à **une dizaine d'indicateurs** au départ, pas
-« quelques dizaines ». Chaque ajout au-delà en retire un.
+Un dispositif vivant ajoute à ce coût une charge d'exploitation durable : surveillance des
+fournisseurs, authentifications, formats, environnement d'exécution et publication.
+
+La vitrine privilégie donc les études et limite les dispositifs vivants aux cas où leur
+fraîcheur apporte une valeur démontrable. Leur complexité ne se mesure pas au nombre
+d'indicateurs, mais à la surface opérationnelle nécessaire pour les maintenir.
+
+Le vivant est limité à la **surface opérationnelle minimale** nécessaire à sa valeur. Toute
+nouvelle famille opérationnelle — nouveau producteur, mécanisme d'authentification, format
+ou protocole distinct — doit justifier une valeur marginale identifiable. À défaut, elle
+n'entre pas dans le dispositif ou remplace une dépendance existante. **Aucun plafond
+numérique n'est fixé** tant que plusieurs projets ne permettent pas de l'étalonner.
 
 ### C3 — La comparaison est un instrument, pas un décor
 
@@ -202,6 +212,62 @@ Le gel ÉTABLI / INCONNU du §7 s'applique au moment de publier.
 
 Une question restée ouverte devient l'étude suivante, pas un retard sur celle-ci.
 
+### C7 — Règle d'entrée
+
+C6 dit quand une étude est finie. Rien ne disait quand elle doit être commencée.
+
+Une nouvelle étude n'est engagée qu'après examen de **trois dimensions indépendantes** :
+
+**Valeur analytique.** Le sujet doit permettre de produire un résultat non trivial,
+vérifiable et suffisamment utile pour justifier une étude approfondie. La disponibilité
+d'une technologie ou d'un jeu de données ne suffit pas.
+
+**Surface éditoriale.** Il faut estimer la part des conclusions et commentaires qui devront
+être réexaminés lorsque les données évolueront. Une étude dont la validité dépend d'une
+relecture humaine extensive à chaque actualisation supporte un coût récurrent élevé.
+
+**Surface opérationnelle.** Il faut recenser les familles réellement nécessaires au
+livrable : producteurs, mécanismes d'authentification, formats ou protocoles distincts,
+ainsi que les dépendances d'exécution et de publication. Le nombre brut de fichiers ou
+d'indicateurs n'est pas un bon proxy du coût.
+
+Avant GO, le cadrage doit identifier :
+
+1. les **familles de données** nécessaires ;
+2. les **composants d'exécution** nécessaires ;
+3. les **sorties réellement alimentées** par chaque famille ;
+4. les **dépendances supprimables** sans perte significative de valeur ;
+5. le **niveau de révision humaine** requis lors d'une actualisation ;
+6. la **valeur professionnelle attendue** en contrepartie de cette complexité.
+
+**Règle pratique de cadrage.** On part du minimum viable de familles. Une famille
+supplémentaire doit apporter un résultat visible ou une capacité analytique qui ne peut pas
+être obtenue raisonnablement avec les familles déjà retenues.
+
+**NO-GO ou simplification** si une part importante de la complexité opérationnelle
+n'alimente aucun résultat important, si la maintenance éditoriale paraît disproportionnée,
+ou si une solution plus simple produit l'essentiel de la valeur démonstrative.
+
+#### Retour d'expérience qui a motivé C7
+
+Mesuré sur ce dépôt le 01/09/2026, sur les 26 jours écoulés depuis la mise en ligne de la
+vitrine (06/08/2026) :
+
+| mesure | valeur |
+|---|---|
+| producteurs distincts, pour 53 entrées de `sources.yaml` | 9 |
+| sorties Parquet dans la lignée `_build.json` | 8 |
+| familles opérationnelles n'alimentant **aucune** sortie publiée | 2 sur 9 |
+| commits humains de plomberie et de verrous | 12 sur 28 |
+| commits humains de méthode, périmètre ou rédaction, sur un noyau **gelé** | 8 sur 28 |
+
+Deux enseignements, et rien de plus : le nombre de sources ne prédit pas le coût (42 des 53
+entrées tiennent dans deux familles), et une étude figée n'est pas une étude sans coût —
+les 8 commits ci-dessus ne viennent d'aucune donnée nouvelle.
+
+Ces chiffres justifient la règle. Ils ne disent pas encore qu'un futur projet avec
+« 6 producteurs » est bon et « 10 » mauvais.
+
 ---
 
 ## 4. La première verticale : l'énergie
@@ -273,7 +339,8 @@ expérimentations.
 
 ## 6. Les indicateurs vivants et leur état
 
-Quelques indicateurs seulement, plafonnés (C2), et qui **prolongent l'étude** plutôt que de
+Quelques indicateurs seulement, produits par une surface opérationnelle minimale (C2),
+et qui **prolongent l'étude** plutôt que de
 couvrir un domaine.
 
 Une donnée dont l'alimentation casse ne doit **jamais** rester affichée silencieusement
@@ -390,11 +457,16 @@ parce que l'étude reçoit de bons retours.
 
 ## 11. Ce qui n'est pas tranché dans ce document
 
-- **Quels indicateurs vivants** composent la dizaine de C2. Ils doivent sortir de l'étude
-  énergie, pas la précéder.
+- **Quels indicateurs vivants** justifient les familles opérationnelles nécessaires au
+  regard de C2 et C7 ? Ils doivent sortir de l'étude énergie, pas la précéder.
 - **La comparaison sarde** reste bloquée sur le `VERIF_ISTAT_*` de C3 — travail à faire,
   pas décision à prendre.
-- **La deuxième verticale** n'est pas choisie. Le tourisme est candidat, pas retenu.
+- **La deuxième verticale** n'est pas choisie. Le tourisme reste candidat. Son choix
+  dépend désormais de l'évaluation C7 : valeur analytique, surface éditoriale et
+  surface opérationnelle.
+- **Quelle fraîcheur est réellement valorisée** — la date du dernier chiffre, ou la
+  reproductibilité, la provenance et la méthode ? C7 se règle différemment selon la
+  réponse. Question empirique, à ne pas trancher par intuition.
 - **La cartographie des micro-régions**, nécessaire à toute étude touristique fine, n'a pas
   de source : `DS_TOUR_FREQ` s'arrête au département, vérifié et négatif.
 - **Le sort du fichier `Nouvelle orientation du projet — Vitrine Corse.md`** : il n'a jamais
