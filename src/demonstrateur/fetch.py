@@ -54,12 +54,17 @@ import json
 import os
 import re
 import sys
-import xml.etree.ElementTree as ET
 from datetime import date, timedelta
 from pathlib import Path
 
+# defusedxml et non xml.etree : les octets parsés ici viennent du réseau, et la stdlib
+# expanse les entités internes — un « billion laughs » de quelques ko sature la mémoire
+# du runner (S-04 de l'audit du 30/08, reproduit). L'API est identique ; le refus est une
+# EntitiesForbidden, immédiate et lisible. L'XXE externe, lui, était déjà refusé par expat.
+import defusedxml.ElementTree as ET
 import httpx
 import yaml
+from defusedxml.common import EntitiesForbidden
 
 from . import archive
 from .config import DATA_RAW, MANIFEST_FILE, SOURCES_FILE
@@ -71,6 +76,15 @@ _VAR_ENV_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
 # pas se confondre, et un `%` d'url encodée (%2F) n'est jamais interprété au passage.
 _JETON_DATE_RE = re.compile(r"\{(AAAA|MM|JJ)\}")
 _MAX_REDIRECTIONS = 10
+# Plafond d'octets ÉCRITS par téléchargement (S-07). Mesuré, pas choisi au hasard : la
+# plus grosse source réelle pèse 86 Mo (seqe_emissions_verifiees), la plus grosse XML
+# 5,9 Mo — 512 Mio laissent six fois la marge de la plus grosse, donc des années de
+# croissance annuelle, tout en bornant un flux hostile. Le compte porte sur ce qui sort
+# de `iter_bytes()`, donc APRÈS décompression du `Content-Encoding` : une bombe gzip de
+# transport est arrêtée là aussi. Ce qu'il ne borne pas : un `.csv.gz` qui EST la donnée
+# et n'explose qu'à la lecture DuckDB, dans prepare — son volume compressé est plafonné
+# ici, son expansion ne l'est pas.
+_MAX_OCTETS = 512 * 1024 * 1024
 # Journée visée par `date_url`, en jours de recul. « avant-hier » n'est pas un excès de
 # prudence : il ALIGNE deux producteurs qui ne publient pas au même rythme. Le fichier
 # météo est réécrit au petit matin et sa dernière journée, tronquée, est coupée par
@@ -243,8 +257,15 @@ def _download(url: str, dest: Path, entetes: dict[str, str] | None = None) -> st
                     )
                 r.raise_for_status()
                 content_type = r.headers.get("content-type", "")
+                ecrits = 0
                 with open(dest, "wb") as f:
                     for chunk in r.iter_bytes():
+                        ecrits += len(chunk)
+                        if ecrits > _MAX_OCTETS:
+                            raise ValueError(
+                                f"dépasse le plafond de {_MAX_OCTETS // (1024 * 1024)} Mio "
+                                "— téléchargement interrompu"
+                            )
                         f.write(chunk)
                 return content_type
     raise ValueError(f"plus de {_MAX_REDIRECTIONS} redirections — boucle probable")
@@ -428,6 +449,12 @@ def _valider(dest: Path, meta: dict, content_type: str) -> None:
         # comme donnée. On exige donc la racine attendue (ex. GL_MarketDocument).
         try:
             racine = _racine_xml(dest)
+        except EntitiesForbidden as exc:
+            # Refusé AVANT développement : c'est tout l'intérêt: le message coûte
+            # quelques octets, là où la stdlib aurait dépensé la mémoire du runner.
+            raise ValueError(
+                f"XML porteur d'entités internes, refusé sans les développer : {exc}"
+            ) from exc
         except ET.ParseError as exc:
             raise ValueError(f"XML invalide : {exc}") from exc
         attendue = meta.get("racine_attendue")

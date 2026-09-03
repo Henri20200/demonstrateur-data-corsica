@@ -404,6 +404,7 @@ name = "demonstrateur-data-corsica"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "defusedxml" },
     { name = "duckdb" },
     { name = "httpx" },
     { name = "pandas" },
@@ -424,6 +425,7 @@ insee = [
 
 [package.metadata]
 requires-dist = [
+    { name = "defusedxml", specifier = ">=0.7" },
     { name = "duckdb", specifier = ">=1.0" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "ipykernel", marker = "extra == 'dev'" },

@@ -10,7 +10,10 @@ license-files = ["LICENSE"]
 dependencies = [
     "pandas>=2.2",
     "duckdb>=1.0",
-    # lxml non requis : parsing ENTSO-E via xml.etree (stdlib).
+    # lxml non requis : parsing ENTSO-E via defusedxml, qui enveloppe xml.etree (stdlib)
+    # sans changer son API. Nécessaire, pas confortable : les XML parsés viennent du
+    # réseau et la stdlib expanse les entités internes (S-04 de l'audit du 30/08).
+    "defusedxml>=0.7",
     # Épinglé : la version de Plotly détermine le contenu des HTML et du plotly.min.js
     # commités dans outputs/ — le CI planifié doit produire les mêmes octets qu'en local.
     "plotly==6.9.0",
