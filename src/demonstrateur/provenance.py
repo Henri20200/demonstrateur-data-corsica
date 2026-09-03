@@ -18,8 +18,12 @@ l'utilise pour REFUSER de construire depuis un brut non certifié.
 from __future__ import annotations
 
 import hashlib
-import xml.etree.ElementTree as ET
 from pathlib import Path
+
+# defusedxml : cette empreinte est calculée sur un fichier tout juste téléchargé, donc
+# sur des octets non fiables (S-04). `tostring` y est le `tostring` de la stdlib, et
+# l'empreinte canonique reste bit pour bit la même — vérifié sur les 20 sources ENTSO-E.
+import defusedxml.ElementTree as ET
 
 _BLOC = 1 << 20  # lecture par blocs de 1 Mo (empreinte brute en streaming)
 

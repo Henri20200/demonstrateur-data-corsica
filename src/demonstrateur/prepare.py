@@ -27,10 +27,11 @@ import json
 import shutil
 import subprocess
 import sys
-import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+# defusedxml : prepare parse des XML téléchargés, cf. fetch (S-04).
+import defusedxml.ElementTree as ET
 import duckdb
 import pandas as pd
 
