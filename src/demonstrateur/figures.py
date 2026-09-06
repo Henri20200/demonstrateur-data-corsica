@@ -1280,7 +1280,7 @@ def main() -> int:
             f"En six ans : +{g_pointe:.0f} MW sur l'heure la plus chargée, "
             f"+{g_top20:.0f} sur les vingt plus chargées, +{med_fr} sur la médiane."
         ),
-        note="Moyennes horaires : une pointe instantanée est plus élevée. Les deux hivers "
+        note="Moyennes horaires : un maximum instantané peut les dépasser. Les deux hivers "
              "de bord du jeu (2018/19, 2024/25) sont tronqués par ses dates de début et "
              "de fin, donc exclus.<br>La petite hydraulique manque au total de 2024 ; de "
              "2019 à 2023 elle pesait moins de 1,6 MW aux vingt heures d'été les plus "

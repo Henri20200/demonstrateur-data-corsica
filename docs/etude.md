@@ -303,7 +303,7 @@ prolonge aussi en soirée, lorsque la production solaire diminue fortement.
 > Pour mesurer leur rôle respectif, il faudrait croiser les données électriques avec
 > des données météorologiques et de fréquentation. Ce n'est pas fait ici.
 
-#### En été, les heures les plus chargées gagnent 64 MW en six ans
+#### La pointe estivale horaire augmente de 64 MW entre 2019 et 2024
 
 {{visuel:t10_pointes_estivales}}
 
@@ -329,10 +329,9 @@ période étudiée ? Une seule fois sur les cinq comparaisons possibles. En 2024
 de l'été dépasse celle de l'hiver qui la précède, de 14 MW. Les quatre autres années,
 l'hiver conserve entre 35 et 88 MW d'avance.
 
-C'est une observation, pas une bascule. Sur cinq hivers complets, les pointes hivernales
-varient d'une vingtaine de mégawatts d'une année sur l'autre sans qu'aucune tendance ne
-se dégage. Un dépassement isolé ne se distingue pas de cette fluctuation. Ce que ces
-données établissent, c'est la hausse du côté de l'été — pas un renversement des saisons.
+Les cinq maxima hivernaux sont dispersés, sans tendance établie. Le seul dépassement
+observé en 2024 ne suffit pas à établir une inversion durable. Ce que ces données
+établissent, c'est la hausse du côté de l'été.
 
 > **Pour aller plus loin — comment les saisons sont découpées.** L'été est ici juin à
 > septembre, l'hiver décembre à février. Le découpage de l'été ne change rien : juillet-août
@@ -343,60 +342,61 @@ données établissent, c'est la hausse du côté de l'été — pas un renversem
 > pour finir le 31 décembre 2024. Ses deux hivers de bord sont donc incomplets : celui de
 > 2018-2019 n'a pas son mois de décembre, celui de 2024-2025 se réduit à décembre — 744
 > heures au lieu d'environ 2 160. Cette couverture insuffisante suffit à les écarter :
-> un maximum ne se compare pas à un maximum calculé sur un tiers de la saison. C'est
-> pourquoi le graphique du bas compare cinq années et non sept.
+> un maximum ne se compare pas à un maximum calculé sur un tiers de la saison. Le
+> panneau inférieur présente cinq comparaisons : l'été 2019 est exclu faute d'hiver
+> précédent complet, et l'hiver 2024-2025 ne précède aucun été étudié.
 >
 > Un constat complémentaire montre ce que l'on éviterait ainsi. Réduit à son seul mois de
 > décembre, l'hiver 2024-2025 plafonne à 434,5 MW quand l'été 2024 atteint 435,3 : retenu,
 > il aurait donné une quasi-égalité. Or aucun des cinq hivers complets ne culmine en
 > décembre — ils culminent tous en janvier ou en février.
 >
-> Enfin, les valeurs présentées sont des moyennes horaires. Une pointe mesurée à l'instant
-> est plus élevée qu'une moyenne calculée sur l'heure qui la contient.
+> Enfin, les valeurs présentées sont des moyennes horaires. Un maximum instantané peut
+> dépasser le maximum des moyennes horaires ; ces deux indicateurs ne sont pas
+> directement interchangeables.
 >
 > Un mot sur le périmètre, parce qu'il change d'une année à l'autre. La petite
 > hydraulique est absente des données 2024 : la colonne est vide toute l'année, et le
 > total de 2024 ne la contient donc pas, alors qu'il la contient de 2019 à 2023. Sur une
-> moyenne annuelle, l'écart serait rédhibitoire — cette filière pèse 4,9 à 8,0 MW selon
+> moyenne annuelle, l'écart serait non négligeable — cette filière pèse 4,9 à 8,0 MW selon
 > les années. Aux heures examinées ici, les années dont nous disposons la montrent bien
 > plus faible : de 2019 à 2023, aux vingt heures d'été les plus chargées, sa contribution
 > n'a jamais dépassé 1,6 MW en valeur absolue, et elle est même négative en 2020.
-> L'étiage d'août tombe au moment de la pointe.
 >
 > C'est un constat sur ces cinq années, et rien de plus. Ce que la petite hydraulique
 > aurait apporté aux heures de pointe de 2024 n'est pas mesuré, et rien ici ne le
 > reconstitue : les valeurs historiques, dont certaines sont négatives, ne bornent pas
 > celles qui manquent. La comparaison entre années est présentée avec cette réserve.
+> Cette différence de périmètre concerne également les comparaisons de médiane et de
+> quantiles.
 
 > **Pour aller plus loin — ce que ces chiffres ne disent pas.** Ils décrivent une
 > évolution ; ils n'en donnent pas la cause. Chaleur, fréquentation touristique,
-> équipement des logements et effets de calendrier interviennent ensemble, et ces données
+> équipement des logements et effets de calendrier peuvent intervenir simultanément, et
+> ces données
 > seules ne permettent pas de faire la part de chacun.
 >
 > Ils ne renseignent que le haut de la distribution. Le maximum, la moyenne des vingt
-> heures les plus chargées et le nombre d'heures au-dessus de 380 MW mesurent tous la même
-> extrémité ; la médiane est donnée pour montrer qu'elle ne suit pas, et les quantiles
-> intermédiaires ne sont pas détaillés ici.
+> heures les plus chargées et le nombre d'heures au-dessus de 380 MW mesurent tous la
+> même extrémité ; la médiane apporte un point de comparaison au centre de la
+> distribution.
 >
 > Il faut aussi distinguer deux choses que l'on confond facilement. La traçabilité des
 > fichiers est acquise : chaque fichier est daté, empreinté et vérifié à chaque
 > rafraîchissement. Le statut des valeurs qu'il contient est une autre question — EDF
 > classe 2019-2020 comme validées et 2021-2024 comme estimées. La hausse la plus forte se
-> produit entre 2021 et 2023, donc à l'intérieur de la période estimée, ce qui écarte
-> l'idée qu'elle viendrait du changement d'étiquette de 2021. Cela ne prouve pas pour
-> autant que la méthode d'estimation soit restée identique sur toute la période.
+> produit entre 2021 et 2023, donc à l'intérieur de la période estimée : le changement
+> d'étiquette de 2021 ne suffit donc pas à expliquer toute la hausse. Cela ne prouve pas
+> pour autant que la méthode d'estimation soit restée identique sur toute la période.
 >
 > Enfin, la série s'arrête fin 2024. Les étés 2025 et 2026 ne sont pas couverts, et rien
 > ici ne permet de dire si le mouvement s'est poursuivi.
 >
 > Dans un entretien publié le samedi 5 septembre 2026, le président-directeur général
 > d'EDF déclare que la pointe de consommation corse a atteint 489 MW le 13 août 2026.
-> Nous le rapportons comme une déclaration datée, et à ce titre seulement. Ce chiffre ne
-> prolonge pas la série : il ne provient pas du jeu de données utilisé ici, il porte sur
-> une pointe instantanée quand le graphique montre des moyennes horaires, et les années
-> 2025 et 2026 n'y figurent pas. Il ne la valide pas davantage — des propos d'EDF sur des
-> mesures d'EDF ne constituent pas un contrôle indépendant. La conclusion sur 2019-2024
-> ne s'appuie pas dessus et ne changerait pas sans lui.
+> Nous le rapportons comme une déclaration datée. Ce chiffre ne se raccorde pas à la
+> série présentée ici, et il ne la valide pas : des propos d'EDF sur des mesures d'EDF
+> ne constituent pas un contrôle indépendant.
 
 ### La production solaire parfois limitée
 
