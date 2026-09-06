@@ -2277,3 +2277,328 @@ def test_t9_hydro_secheresse(con):
         f"{int(df.loc[df['therm'].idxmin(), 'annee'])} — la section 4 écrit « 35 % en 2023, la "
         "plus arrosée »"
     )
+
+
+# --- T10 : les fortes puissances estivales ------------------------------------
+# Six verrous pour un seul chapitre, parce que la phrase publiée tient à six conditions
+# distinctes dont aucune ne se déduit des autres : le gain entre les bornes, la platitude
+# de la MÉDIANE (c'est elle qui interdit d'écrire « toute la distribution monte »), le
+# gradient croissant avec le quantile, la non-monotonie de tout ce qui n'est pas le
+# maximum, la couverture des saisons — deux hivers du jeu sont tronqués par ses bornes, et
+# les inclure fabrique une bascule qui n'existe pas — et l'unicité du dépassement de 2024.
+
+ETE = "mois_local BETWEEN 6 AND 9"
+"""Définition de l'été, écrite UNE fois : figure, prose et verrous la partagent."""
+
+HIVER_COMPLET_H = 2100
+"""Plancher d'heures d'un hiver complet (déc+jan+fév ≈ 2 160 ; un mois seul ≈ 744)."""
+
+
+def _ete_par_annee(con, expr: str) -> dict[int, float]:
+    """`expr` agrégée sur les seules heures d'été, année par année."""
+    return {
+        int(a): float(v)
+        for a, v in con.execute(
+            f"SELECT annee_locale, {expr} FROM '{COURBE.as_posix()}' "
+            f"WHERE {ETE} GROUP BY 1 ORDER BY 1"
+        ).fetchall()
+    }
+
+
+@besoin_courbe
+def test_t10_la_pointe_estivale_monte_de_64_mw(con):
+    """T10 : la pointe estivale passe de 371 à 435 MW entre 2019 et 2024 (+17 %).
+
+    Le MAXIMUM est le seul indicateur strictement croissant des six années : c'est la
+    seule monotonie que le chapitre a le droit d'écrire, et ce verrou la tient.
+    """
+    pointes = _ete_par_annee(con, "max(production_totale_mw)")
+    assert sorted(pointes) == [2019, 2020, 2021, 2022, 2023, 2024], (
+        f"années d'été disponibles : {sorted(pointes)} — le chapitre écrit 2019-2024"
+    )
+    suite = [pointes[a] for a in sorted(pointes)]
+    assert all(x < y for x, y in zip(suite, suite[1:])), (
+        f"pointes estivales {[round(v, 1) for v in suite]} — le chapitre écrit que le "
+        "maximum croît d'une année à l'autre sans exception"
+    )
+    gain = pointes[2024] - pointes[2019]
+    assert gain == pytest.approx(63.9, abs=0.5), (
+        f"gain de pointe estivale = {gain:.1f} MW — le chapitre écrit « +64 MW »"
+    )
+    hausse = 100 * (pointes[2024] / pointes[2019] - 1)
+    assert hausse == pytest.approx(17.2, abs=0.3), (
+        f"hausse de pointe estivale = {hausse:.1f} % — le chapitre écrit « +17 % »"
+    )
+
+
+@besoin_courbe
+def test_t10_la_mediane_estivale_ne_bouge_pas(con):
+    """T10 : +1,5 MW sur la médiane des heures d'été, contre +63,9 sur le maximum.
+
+    C'est LE verrou du chapitre. Il interdit la phrase « toute la distribution se
+    décale », écartée le 06/09/2026 : le maximum, la moyenne des vingt heures hautes et
+    les dépassements de 380 MW documentent tous le même haut de distribution, et aucun ne
+    renseigne le milieu. Si la médiane décollait, le chapitre ne décrirait plus le bon
+    phénomène et devrait être réécrit, pas seulement réarrondi.
+    """
+    medianes = _ete_par_annee(con, "median(production_totale_mw)")
+    ecart = medianes[2024] - medianes[2019]
+    assert abs(ecart) < 5, (
+        f"médiane estivale : {medianes[2019]:.1f} -> {medianes[2024]:.1f} MW "
+        f"({ecart:+.1f}) — le chapitre écrit que l'heure d'été ORDINAIRE n'a pas bougé ; "
+        "au-delà de 5 MW cette phrase tombe"
+    )
+    pointes = _ete_par_annee(con, "max(production_totale_mw)")
+    gain_pointe = pointes[2024] - pointes[2019]
+    assert gain_pointe > 10 * abs(ecart), (
+        f"le maximum gagne {gain_pointe:.1f} MW et la médiane {ecart:+.1f} — le chapitre "
+        "oppose les deux, il lui faut un ordre de grandeur d'écart"
+    )
+
+
+@besoin_courbe
+def test_t10_la_hausse_croit_avec_le_quantile(con):
+    """T10 : plus le quantile est haut, plus il monte — médiane < q75 < q90 < q99 < max.
+
+    Le gradient EST le résultat du chapitre. Sans lui il ne resterait qu'un maximum qui
+    monte, ce qui se lirait comme un point extrême isolé.
+    """
+    gains = {}
+    for nom, expr in (
+        ("médiane", "median(production_totale_mw)"),
+        ("q75", "quantile_cont(production_totale_mw, 0.75)"),
+        ("q90", "quantile_cont(production_totale_mw, 0.90)"),
+        ("q99", "quantile_cont(production_totale_mw, 0.99)"),
+        ("max", "max(production_totale_mw)"),
+    ):
+        v = _ete_par_annee(con, expr)
+        gains[nom] = v[2024] - v[2019]
+    ordre = ["médiane", "q75", "q90", "q99", "max"]
+    suite = [gains[k] for k in ordre]
+    assert all(x < y for x, y in zip(suite, suite[1:])), (
+        "gains 2019->2024 par quantile : "
+        + ", ".join(f"{k} {gains[k]:+.1f}" for k in ordre)
+        + " — le chapitre écrit que la hausse croît avec le quantile"
+    )
+    # Le chapitre ne se contente pas de l'ordre : il ÉCRIT les trois valeurs
+    # intermédiaires en toutes lettres (« dix mégawatts de plus au troisième quartile,
+    # vingt-cinq au neuvième décile, quarante-six au dernier centile »).
+    for nom, attendu in (("q75", 10), ("q90", 25), ("q99", 46)):
+        assert round(gains[nom]) == attendu, (
+            f"gain {nom} = {gains[nom]:+.1f} MW — le chapitre en écrit {attendu}"
+        )
+
+
+@besoin_courbe
+def test_t10_seul_le_maximum_est_monotone(con):
+    """T10 : la moyenne des 20 h hautes recule en 2020 et 2024, les heures ≥ 380 MW en 2024.
+
+    Verrou en NÉGATIF : il tient la nuance, pas le résultat. Le chapitre écrit que la
+    hausse est robuste entre les bornes mais que l'intensification n'est pas continue. Si
+    ces creux disparaissaient d'une révision de la donnée, la phrase deviendrait fausse
+    par excès de prudence — et devrait être réécrite elle aussi.
+    """
+    top20 = {
+        int(a): float(v)
+        for a, v in con.execute(
+            f"""SELECT annee_locale, avg(production_totale_mw) FILTER (WHERE rk <= 20)
+                FROM (SELECT annee_locale, production_totale_mw,
+                        row_number() OVER (PARTITION BY annee_locale
+                                           ORDER BY production_totale_mw DESC) rk
+                      FROM '{COURBE.as_posix()}' WHERE {ETE})
+                GROUP BY 1 ORDER BY 1"""
+        ).fetchall()
+    }
+    assert top20[2020] < top20[2019] and top20[2024] < top20[2023], (
+        f"moyenne des 20 h hautes : {[round(top20[a], 1) for a in sorted(top20)]} — le "
+        "chapitre écrit qu'elle recule en 2020 et en 2024"
+    )
+    gain = top20[2024] - top20[2019]
+    assert gain == pytest.approx(52.1, abs=0.5), (
+        f"gain de la moyenne des 20 h hautes = {gain:.1f} MW — le chapitre écrit « +52 MW »"
+    )
+    sup380 = _ete_par_annee(con, "count(*) FILTER (WHERE production_totale_mw >= 380)")
+    assert sup380[2019] == 0 and sup380[2020] == 0, (
+        f"heures d'été ≥ 380 MW en 2019/2020 : {sup380[2019]:.0f}/{sup380[2020]:.0f} — le "
+        "chapitre écrit « aucune »"
+    )
+    # Les trois comptes sont écrits tels quels dans le chapitre — donc tenus tels quels.
+    for annee, attendu in ((2021, 9), (2022, 111), (2023, 141), (2024, 102)):
+        assert sup380[annee] == attendu, (
+            f"heures d'été ≥ 380 MW en {annee} : {sup380[annee]:.0f} — le chapitre en "
+            f"écrit {attendu}"
+        )
+    assert sup380[2024] < sup380[2023], (
+        f"heures ≥ 380 MW : 2023 {sup380[2023]:.0f}, 2024 {sup380[2024]:.0f} — le chapitre "
+        "écrit que 2024 recule sur cet indicateur"
+    )
+
+
+@besoin_courbe
+def test_t10_deux_hivers_sont_tronques_et_restent_exclus(con):
+    """T10 : le jeu ne contient QUE cinq hivers complets — 2018/19 et 2024/25 sont coupés.
+
+    **La règle d'exclusion est la couverture, et elle seule** : 744 heures contre environ
+    2 160, un maximum de tiers de saison ne se compare pas à un maximum de saison entière.
+    Sans ce verrou, un millésime supplémentaire ou une borne déplacée ferait entrer un
+    hiver partiel dans la comparaison — l'hiver 2024/25 amputé affichait 434,5 MW contre
+    435,3 à l'été 2024, et aurait donné une quasi-égalité à commenter.
+
+    Le mois des pointes hivernales est vérifié ensuite, comme constat COMPLÉMENTAIRE : il
+    montre ce que la règle évite, il ne la fonde pas. La première rédaction en faisait la
+    justification et écrivait « en janvier cinq fois sur cinq » ; le verrou a refusé,
+    l'hiver 2022/23 culminant le 9 février.
+    """
+    hivers = {
+        int(a): (int(n), float(p))
+        for a, n, p in con.execute(
+            f"""SELECT CASE WHEN mois_local = 12 THEN annee_locale ELSE annee_locale - 1 END,
+                       count(*), max(production_totale_mw)
+                FROM '{COURBE.as_posix()}' WHERE mois_local IN (12, 1, 2)
+                GROUP BY 1 ORDER BY 1"""
+        ).fetchall()
+    }
+    complets = sorted(a for a, (n, _) in hivers.items() if n >= HIVER_COMPLET_H)
+    assert complets == [2019, 2020, 2021, 2022, 2023], (
+        f"hivers complets : {complets} — la figure n'en compare que cinq et exclut les "
+        f"tronqués {sorted(set(hivers) - set(complets))}"
+    )
+    mois_de_pointe = {
+        int(m)
+        for (m,) in con.execute(
+            f"""SELECT DISTINCT mois_local FROM (
+                  SELECT mois_local,
+                    row_number() OVER (
+                      PARTITION BY CASE WHEN mois_local = 12 THEN annee_locale
+                                        ELSE annee_locale - 1 END
+                      ORDER BY production_totale_mw DESC) rk,
+                    CASE WHEN mois_local = 12 THEN annee_locale
+                         ELSE annee_locale - 1 END AS h
+                  FROM '{COURBE.as_posix()}' WHERE mois_local IN (12, 1, 2))
+                WHERE rk = 1 AND h IN (2019, 2020, 2021, 2022, 2023)"""
+        ).fetchall()
+    }
+    assert 12 not in mois_de_pointe and mois_de_pointe <= {1, 2}, (
+        f"mois des pointes hivernales : {sorted(mois_de_pointe)} — le chapitre présente "
+        "comme constat complémentaire qu'aucun hiver complet ne culmine en décembre "
+        "(l'exclusion, elle, tient à la couverture)"
+    )
+
+
+@besoin_courbe
+def test_t10_un_seul_ecart_positif_avec_l_hiver_precedent(con):
+    """T10, panneau du bas : l'été ne dépasse l'hiver qui le précède qu'en 2024 (+13,7 MW).
+
+    Observation SECONDAIRE du chapitre, verrouillée comme telle : un dépassement isolé,
+    pas une bascule. Le verrou tient aussi son unicité — si un second apparaissait, le
+    chapitre aurait le droit d'en dire davantage, donc devrait être relu.
+    """
+    ecarts = {
+        int(a): float(e)
+        for a, e in con.execute(
+            f"""WITH h AS (
+                  SELECT CASE WHEN mois_local = 12 THEN annee_locale
+                              ELSE annee_locale - 1 END AS an,
+                         count(*) n, max(production_totale_mw) p
+                  FROM '{COURBE.as_posix()}' WHERE mois_local IN (12, 1, 2) GROUP BY 1),
+                e AS (
+                  SELECT annee_locale AS an, max(production_totale_mw) p
+                  FROM '{COURBE.as_posix()}' WHERE {ETE} GROUP BY 1)
+                SELECT e.an, e.p - h.p FROM e JOIN h ON h.an = e.an - 1
+                WHERE h.n >= {HIVER_COMPLET_H} ORDER BY 1"""
+        ).fetchall()
+    }
+    assert sorted(ecarts) == [2020, 2021, 2022, 2023, 2024], (
+        f"années comparables : {sorted(ecarts)} — la figure en trace cinq"
+    )
+    positifs = [a for a, v in ecarts.items() if v > 0]
+    assert positifs == [2024], (
+        f"étés dépassant l'hiver précédent : {positifs} — le chapitre écrit « une seule "
+        "fois, en 2024 »"
+    )
+    assert ecarts[2024] == pytest.approx(13.7, abs=0.5), (
+        f"écart 2024 = {ecarts[2024]:+.1f} MW — le chapitre écrit « +14 MW »"
+    )
+    # « Les quatre autres années, l'hiver conserve entre 35 et 88 MW d'avance. »
+    # Bornes encadrées plutôt qu'arrondies : `round()` sur une valeur à 88,50 tranche au
+    # pair (88) et laisserait passer une donnée qui aurait glissé jusqu'à 88,9.
+    avances = sorted(-v for a, v in ecarts.items() if a != 2024)
+    assert 34.5 <= avances[0] < 35.5 and 87.5 <= avances[-1] < 88.5, (
+        f"avances de l'hiver : {[round(v, 1) for v in avances]} MW — le chapitre écrit "
+        "« entre 35 et 88 MW »"
+    )
+
+
+@besoin_courbe
+def test_t10_la_petite_hydraulique_absente_de_2024_ne_biaise_pas_la_comparaison(con):
+    """T10 : 2024 n'a pas de petite hydraulique, et cela ne change pas la comparaison.
+
+    Le jeu EDF laisse `micro_hydraulique_mw` vide sur toute l'année 2024, et le total de
+    2024 ne la contient pas (le résidu « somme des filières − total » reste nul en la
+    comptant pour zéro). Le périmètre du total change donc d'une année à l'autre — ce qui
+    interdirait une comparaison de MOYENNES annuelles, cette filière pesant 4,9 à 8,0 MW.
+
+    Le chapitre compare des heures de POINTE estivale, et ce verrou tient le constat
+    HISTORIQUE qui rend la comparaison lisible : de 2019 à 2023, à ces heures-là, l'étiage
+    d'août réduit la petite hydraulique à presque rien. Ce n'est pas une borne sur 2024 —
+    ce que la filière aurait produit aux heures de pointe de cette année-là n'est pas
+    mesuré, et des valeurs historiques dont certaines sont négatives ne l'encadrent pas.
+    Le chapitre présente la comparaison avec cette réserve écrite ; si la filière venait à
+    peser à ces heures, il faudrait la retirer ou reconstruire un total de périmètre
+    constant.
+    """
+    nuls = {
+        int(a): (int(n), int(v))
+        for a, n, v in con.execute(
+            f"""SELECT annee_locale, count(*),
+                       count(*) FILTER (WHERE micro_hydraulique_mw IS NULL)
+                FROM '{COURBE.as_posix()}' GROUP BY 1 ORDER BY 1"""
+        ).fetchall()
+    }
+    assert nuls[2024][1] == nuls[2024][0], (
+        f"petite hydraulique 2024 : {nuls[2024][1]} vides sur {nuls[2024][0]} heures — "
+        "l'encadré du chapitre écrit que la colonne est vide toute l'année"
+    )
+    assert all(v == 0 for a, (_, v) in nuls.items() if a != 2024), (
+        f"années à trous : {[a for a, (_, v) in nuls.items() if v and a != 2024]} — "
+        "l'encadré n'annonce d'absence que pour 2024"
+    )
+    # Le total de 2024 EXCLUT la filière : compté pour zéro, le bilan des filières boucle.
+    residu = float(
+        con.execute(
+            f"""SELECT max(abs(thermique_mw + hydraulique_mw
+                    + coalesce(micro_hydraulique_mw, 0) + photovoltaique_mw + eolien_mw
+                    + bioenergies_mw + importations_mw - production_totale_mw))
+                FROM '{COURBE.as_posix()}' WHERE annee_locale = 2024"""
+        ).fetchone()[0]
+    )
+    assert residu < 0.1, (
+        f"résidu 2024 = {residu:.3f} MW — s'il valait la petite hydraulique, c'est que le "
+        "total la contiendrait malgré la colonne vide, et l'encadré dirait le contraire"
+    )
+    poids_annuel = [
+        float(v)
+        for (v,) in con.execute(
+            f"""SELECT avg(micro_hydraulique_mw) FROM '{COURBE.as_posix()}'
+                WHERE micro_hydraulique_mw IS NOT NULL GROUP BY annee_locale"""
+        ).fetchall()
+    ]
+    assert round(min(poids_annuel), 1) == 4.9 and round(max(poids_annuel), 1) == 8.0, (
+        f"poids annuel de la petite hydraulique : {[round(v, 1) for v in poids_annuel]} — "
+        "l'encadré écrit « 4,9 à 8,0 MW »"
+    )
+    aux_pointes = float(
+        con.execute(
+            f"""SELECT max(abs(micro_hydraulique_mw)) FROM (
+                  SELECT micro_hydraulique_mw, row_number() OVER (
+                    PARTITION BY annee_locale ORDER BY production_totale_mw DESC) rk
+                  FROM '{COURBE.as_posix()}' WHERE {ETE}
+                    AND micro_hydraulique_mw IS NOT NULL)
+                WHERE rk <= 20"""
+        ).fetchone()[0]
+    )
+    assert aux_pointes < 1.6, (
+        f"petite hydraulique aux 20 h d'été les plus chargées : jusqu'à {aux_pointes:.2f} "
+        "MW — l'encadré écrit « jamais dépassé 1,6 MW en valeur absolue », et c'est ce qui "
+        "autorise à comparer 2024 aux autres années"
+    )
