@@ -124,12 +124,13 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   La seconde : la **première** entrée au dépôt d'une figure NEUVE citée par l'étude.
   `compile_etude._layout_visuel` lit la hauteur d'iframe dans le HTML du visuel et **lève**
   s'il manque ; or le job `valider` ne collecte rien et ne génère aucune figure. Une figure
-  neuve absente du dépôt casse donc la CI de la PR, puis celle de `master`. Le motif de la
-  règle ne s'y applique pas : un fichier jamais commité ne produit aucun diff fantôme
-  d'accents. Le cron le réécrira une fois, puis il se stabilisera — un diff contre une CI
-  rouge. Cela ne vaut que pour la première entrée : toute régénération ultérieure retombe
-  sous la règle. Précédents : `t6b_seuil_35.html` (28/08/2026, `aef1148`, qui a établi
-  l'usage sans le consigner ici) et `t10_pointes_estivales.html` (06/09/2026).
+  neuve absente du dépôt casse donc la CI de la PR, puis celle de `master`. Une éventuelle
+  réécriture initiale par le cron est acceptée pour permettre la compilation et les
+  contrôles de la PR. Cette exception concerne uniquement le premier ajout ; les
+  régénérations ultérieures restent réservées au cron. Elle devra être réexaminée si la
+  compilation et la CI n'exigent plus la présence préalable du HTML du visuel. Précédents :
+  `t6b_seuil_35.html` (28/08/2026, `aef1148`, qui a établi l'usage sans le consigner ici)
+  et `t10_pointes_estivales.html` (06/09/2026).
 - **Le cron est aussi le publieur.** Depuis le 06/08/2026, il synchronise `outputs/` vers le
   bucket Scaleway `air-et-energie-en-corse` (région `fr-par`) après les verrous de résultats :
   rien ne part en ligne si un verrou casse, mais une collecte partiellement en échec se
