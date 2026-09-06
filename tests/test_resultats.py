@@ -2332,7 +2332,7 @@ def test_t10_la_pointe_estivale_monte_de_64_mw(con):
 
 
 @besoin_courbe
-def test_t10_la_mediane_estivale_ne_bouge_pas(con):
+def test_t10_la_mediane_estivale_varie_peu(con):
     """T10 : +1,5 MW sur la médiane des heures d'été, contre +63,9 sur le maximum.
 
     C'est LE verrou du chapitre. Il interdit la phrase « toute la distribution se
@@ -2345,8 +2345,8 @@ def test_t10_la_mediane_estivale_ne_bouge_pas(con):
     ecart = medianes[2024] - medianes[2019]
     assert abs(ecart) < 5, (
         f"médiane estivale : {medianes[2019]:.1f} -> {medianes[2024]:.1f} MW "
-        f"({ecart:+.1f}) — le chapitre écrit que l'heure d'été ORDINAIRE n'a pas bougé ; "
-        "au-delà de 5 MW cette phrase tombe"
+        f"({ecart:+.1f}) — le chapitre écrit « la médiane des puissances horaires "
+        "estivales varie peu : +1,5 MW » ; au-delà de 5 MW cette phrase tombe"
     )
     pointes = _ete_par_annee(con, "max(production_totale_mw)")
     gain_pointe = pointes[2024] - pointes[2019]

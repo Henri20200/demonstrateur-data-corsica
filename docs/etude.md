@@ -310,10 +310,10 @@ prolonge aussi en soirée, lorsque la production solaire diminue fortement.
 L'heure la plus chargée de l'été passe de 371 MW en 2019 à 435 MW en 2024. La moyenne
 des vingt heures les plus chargées suit le même chemin, de 366 à 418 MW.
 
-La médiane, elle, ne bouge pas : 250 MW en 2019, 251 MW en 2024. Une heure d'été
-ordinaire appelle aujourd'hui la même puissance qu'il y a six ans. Ce sont les heures
-extrêmes qui montent, et d'autant plus qu'elles sont extrêmes : dix mégawatts de plus au
-troisième quartile, vingt-cinq au neuvième décile, quarante-six au dernier centile,
+Entre 2019 et 2024, la médiane des puissances horaires estivales varie peu : +1,5 MW. Ce
+sont les heures extrêmes qui montent, et d'autant plus qu'elles sont extrêmes : dix
+mégawatts de plus au troisième
+quartile, vingt-cinq au neuvième décile, quarante-six au dernier centile,
 soixante-quatre au maximum.
 
 Le nombre d'heures très chargées suit. En 2019 comme en 2020, aucune heure d'été

@@ -1005,8 +1005,8 @@ def fig_t10_pointes_estivales() -> tuple[go.Figure, float, float, float]:
     gagne 1,5 MW quand le maximum en gagne 63,9, et la hausse croît avec le quantile
     (q75 +10, q90 +25, q99 +46). Le premier panneau montre donc deux points du haut — le
     maximum, et la moyenne des vingt heures les plus chargées, qui dit que ce n'est pas
-    un point isolé qui monte. La médiane n'est pas tracée : elle ne bouge pas, et une
-    ligne plate collée à l'axe se lirait comme une troisième série d'intérêt égal.
+    un point isolé qui monte. La médiane n'est pas tracée : elle varie peu, et une ligne
+    quasi plate se lirait comme une troisième série d'intérêt égal.
 
     Le second panneau répond à la question que le premier soulève — cet été chargé
     dépasse-t-il l'hiver ? Une seule fois en cinq comparaisons, en 2024, et de 13,7 MW.
@@ -1286,7 +1286,7 @@ def main() -> int:
              "2019 à 2023 elle pesait moins de 1,6 MW aux vingt heures d'été les plus "
              "chargées, mais sa valeur 2024 n'est pas mesurée.<br>Ces mesures portent sur "
              "le haut de la "
-             "distribution ; elles ne disent rien de sa médiane, qui ne bouge pas. "
+             "distribution ; elles ne disent rien de sa médiane, qui varie peu. "
              + NOTE_ESTIME,
         pied_decalage_px=-110)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
