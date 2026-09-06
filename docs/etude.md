@@ -312,9 +312,8 @@ des vingt heures les plus chargées suit le même chemin, de 366 à 418 MW.
 
 Entre 2019 et 2024, la médiane des puissances horaires estivales varie peu : +1,5 MW. Ce
 sont les heures extrêmes qui montent, et d'autant plus qu'elles sont extrêmes : dix
-mégawatts de plus au troisième
-quartile, vingt-cinq au neuvième décile, quarante-six au dernier centile,
-soixante-quatre au maximum.
+mégawatts de plus au troisième quartile, vingt-cinq au neuvième décile, quarante-six au
+dernier centile, soixante-quatre au maximum.
 
 Le nombre d'heures très chargées suit. En 2019 comme en 2020, aucune heure d'été
 n'atteint 380 MW. Il y en a 9 en 2021, 111 en 2022, 141 en 2023, 102 en 2024.
