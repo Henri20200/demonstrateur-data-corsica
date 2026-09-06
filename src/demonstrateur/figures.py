@@ -140,7 +140,11 @@ def fig_t2_demande_mensuelle() -> go.Figure:
     )
     fig.update_layout(
         title=dict(text="En juillet, la demande d'électricité augmente de 22 %"),
-        yaxis=dict(title="Demande moyenne (MW)"), bargap=0.38, height=560,
+        yaxis=dict(title="Demande moyenne (MW)"), bargap=0.38, height=600,
+        # b=210 : la note de pied a gagné la réserve « ces moyennes ne classent pas les
+        # pointes » et passe à cinq lignes. La garde de `viz` en réclame 207 ; la hauteur
+        # monte d'autant, sinon la marge se prendrait sur la zone de tracé.
+        margin=dict(t=144, b=210, l=116, r=56),
     )
     return fig
 
@@ -965,6 +969,215 @@ def fig_t9_hydro_secheresse() -> go.Figure:
     return fig
 
 
+
+# --- T10 : les fortes puissances estivales ------------------------------------
+# Été = juin-septembre. Le découpage est SANS EFFET sur le résultat : juillet-août,
+# juin-septembre et mai-octobre donnent les six mêmes maxima (toutes les pointes
+# estivales tombent en juillet ou en août) et déplacent la moyenne des vingt heures
+# hautes de moins de 1,5 MW. Vérifié le 06/09/2026 avant de figer le mois — sans quoi
+# la borne du chapitre serait un choix de rédaction déguisé en mesure.
+ETE_T10 = "mois_local BETWEEN 6 AND 9"
+HIVER_T10 = "mois_local IN (12, 1, 2)"
+
+# Un hiver enjambe deux années civiles : il est daté par son mois de DÉCEMBRE
+# (hiver 2023/24 = déc. 2023 + janv. et févr. 2024). Sans cette convention, janvier
+# 2019 et décembre 2019 — deux hivers différents — tomberaient dans le même sac.
+HIVER_COMPLET_H = 2100
+"""Plancher d'heures d'un hiver complet : déc+janv+févr ≈ 2 160 h, un mois seul ≈ 744.
+
+Le jeu commence le 01/01/2019 et finit le 31/12/2024 : ses deux hivers de bord sont donc
+tronqués (2018/19 sans décembre, 2024/25 réduit à décembre). **La règle d'exclusion est
+la couverture, et elle seule** — un maximum calculé sur un tiers de saison ne se compare
+pas à un maximum de saison entière, quel que soit par ailleurs le mois où il tombe.
+
+Deux constats COMPLÉMENTAIRES montrent ce que cette règle évite, sans la fonder : l'hiver
+2024/25 amputé plafonne à 434,5 MW quand l'été 2024 atteint 435,3, soit une quasi-égalité
+qu'il aurait fallu commenter ; et aucun des cinq hivers complets ne culmine en décembre.
+"""
+
+
+def fig_t10_pointes_estivales() -> tuple[go.Figure, float, float, float]:
+    """Deux panneaux : ce que gagnent les heures d'été les plus chargées, et ce qu'il
+    reste de l'écart avec l'hiver.
+
+    Le chapitre décrit une déformation du HAUT de la distribution, pas une hausse
+    générale. C'est mesuré, pas supposé : entre 2019 et 2024 la médiane des heures d'été
+    gagne 1,5 MW quand le maximum en gagne 63,9, et la hausse croît avec le quantile
+    (q75 +10, q90 +25, q99 +46). Le premier panneau montre donc deux points du haut — le
+    maximum, et la moyenne des vingt heures les plus chargées, qui dit que ce n'est pas
+    un point isolé qui monte. La médiane n'est pas tracée : elle varie peu, et une ligne
+    quasi plate se lirait comme une troisième série d'intérêt égal.
+
+    Le second panneau répond à la question que le premier soulève — cet été chargé
+    dépasse-t-il l'hiver ? Une seule fois en cinq comparaisons, en 2024, et de 13,7 MW.
+    C'est une observation SECONDAIRE, pas une bascule : les pointes hivernales varient
+    d'une vingtaine de MW d'une année à l'autre sans direction établie, et un
+    dépassement isolé ne se distingue pas de cette fluctuation. La figure le montre
+    plutôt que de l'affirmer — cinq barres dont une seule passe la ligne.
+
+    Deux panneaux et non deux axes sur un même cadre : les deux mesures n'ont ni la même
+    unité de lecture (un niveau, un écart signé) ni la même origine, et les superposer
+    fabriquerait des croisements qui ne veulent rien dire.
+
+    Couleurs : la paire terracotta/bleu est celle que le validateur du dépôt fait passer
+    sur les six contrôles (ΔE 17,9 deutan, 23,0 en vision normale, chroma et contraste
+    au-dessus des planchers). Les couples essayés d'abord échouent — `imports` et `hydro`
+    tombent sous le plancher de chroma (« lit comme du gris »), et `imports` descend même
+    à ΔE 14,6 en vision normale. Le bas de figure n'a qu'une série : ses barres sont donc
+    en encre neutre, et seule celle qui passe la ligne prend la terracotta — le signe est
+    déjà porté par la position et par une étiquette signée sur chaque barre, la couleur
+    ne fait qu'y insister.
+
+    Renvoie la figure et les trois gains 2019→2024 (pointe, vingt heures hautes, médiane)
+    — écrits dans le sous-titre, donc calculés ici plutôt que recopiés à la main.
+    """
+    con = _con()
+    ete = con.execute(
+        f"""SELECT annee_locale::INTEGER AS annee,
+              max(production_totale_mw) AS pointe,
+              avg(production_totale_mw) FILTER (WHERE rk <= 20) AS top20,
+              median(production_totale_mw) AS mediane
+            FROM (SELECT annee_locale, production_totale_mw,
+                    row_number() OVER (PARTITION BY annee_locale
+                                       ORDER BY production_totale_mw DESC) AS rk
+                  FROM '{COURBE}' WHERE {ETE_T10})
+            GROUP BY 1 ORDER BY 1"""
+    ).df()
+    ecarts = con.execute(
+        f"""WITH h AS (
+              SELECT CASE WHEN mois_local = 12 THEN annee_locale
+                          ELSE annee_locale - 1 END AS an,
+                     count(*) AS n, max(production_totale_mw) AS p
+              FROM '{COURBE}' WHERE {HIVER_T10} GROUP BY 1),
+            e AS (
+              SELECT annee_locale AS an, max(production_totale_mw) AS p
+              FROM '{COURBE}' WHERE {ETE_T10} GROUP BY 1)
+            SELECT e.an::INTEGER AS annee, e.p - h.p AS ecart
+            FROM e JOIN h ON h.an = e.an - 1
+            WHERE h.n >= {HIVER_COMPLET_H} ORDER BY 1"""
+    ).df()
+
+    # Invariants qui fondent le titre et le sous-titre. Vérifiés AVANT de dessiner : une
+    # révision de la donnée EDF qui les casserait doit arrêter le run, pas repeindre une
+    # figure dont la phrase ne tient plus. Les mêmes faits sont tenus côté suite de tests
+    # (test_resultats.py, verrous `t10_*`) — ici c'est la publication qui refuse.
+    suite = ete["pointe"].tolist()
+    if not all(x < y for x, y in zip(suite, suite[1:])):
+        raise ValueError(
+            f"T10 : pointes estivales {[round(v, 1) for v in suite]} — le titre affirme "
+            "une hausse d'une année à l'autre sans exception."
+        )
+    gain_pointe = float(ete["pointe"].iloc[-1] - ete["pointe"].iloc[0])
+    gain_top20 = float(ete["top20"].iloc[-1] - ete["top20"].iloc[0])
+    gain_mediane = float(ete["mediane"].iloc[-1] - ete["mediane"].iloc[0])
+    if abs(gain_mediane) > 5 or gain_pointe < 10 * abs(gain_mediane):
+        raise ValueError(
+            f"T10 : médiane d'été {gain_mediane:+.1f} MW contre {gain_pointe:+.1f} au "
+            "maximum — la figure oppose le haut de la distribution à son milieu, il lui "
+            "faut un ordre de grandeur d'écart."
+        )
+    if list(ecarts.loc[ecarts["ecart"] > 0, "annee"]) != [2024]:
+        raise ValueError(
+            f"T10 : étés dépassant l'hiver précédent = "
+            f"{list(ecarts.loc[ecarts['ecart'] > 0, 'annee'])} — la figure et le chapitre "
+            "écrivent « une seule fois, en 2024 »."
+        )
+
+    annees = ete["annee"].tolist()
+    bornes = [annees[0] - 0.5, annees[-1] + 0.5]
+
+    def etiquettes(serie, couleur, position):
+        """Étiquette les deux BORNES seulement : ce sont elles que la prose cite, et
+        douze nombres sur six années feraient collisionner les deux séries dès 2023,
+        où elles ne sont plus séparées que de 15 MW.
+
+        `position` sépare les deux séries en 2019, où 5,7 MW seulement les distinguent :
+        au rendu, « 371 » et « 366 » posés tous deux au-dessus de leur point se
+        chevauchaient. La série basse écrit donc sous son point.
+        """
+        return dict(
+            mode="lines+markers+text",
+            text=[f"{v:.0f}" if i in (0, len(serie) - 1) else "" for i, v in enumerate(serie)],
+            textposition=position,
+            textfont=dict(family=SANS, size=15, color=couleur),
+        )
+
+    fig = go.Figure()
+    # --- Panneau du haut : le niveau des heures les plus chargées de l'été ---
+    fig.add_trace(go.Scatter(
+        x=annees, y=ete["pointe"], name="Heure la plus chargée de l'été",
+        xaxis="x2", yaxis="y2",
+        line=dict(color=PALETTE["accent"], width=2.8), marker=dict(size=9),
+        hovertemplate="Été %{x} — heure la plus chargée : %{y:.0f} MW<extra></extra>",
+        **etiquettes(ete["pointe"].tolist(), PALETTE["accent"], "top center"),
+    ))
+    fig.add_trace(go.Scatter(
+        x=annees, y=ete["top20"], name="Moyenne des 20 heures les plus chargées",
+        xaxis="x2", yaxis="y2",
+        line=dict(color=PALETTE["azote"], width=2.8), marker=dict(size=9),
+        hovertemplate="Été %{x} — moyenne des 20 h les plus chargées : "
+                      "%{y:.0f} MW<extra></extra>",
+        **etiquettes(ete["top20"].tolist(), PALETTE["azote"], "bottom center"),
+    ))
+    # --- Panneau du bas : l'écart avec l'hiver qui précède ---
+    couleurs = [PALETTE["accent"] if v > 0 else PALETTE["ink_soft"] for v in ecarts["ecart"]]
+    fig.add_trace(go.Bar(
+        x=ecarts["annee"], y=ecarts["ecart"], showlegend=False,
+        xaxis="x", yaxis="y",
+        marker=dict(color=couleurs, line=dict(width=2, color=PALETTE["surface"])),
+        text=[f"{v:+.0f}" for v in ecarts["ecart"]], textposition="outside",
+        textfont=dict(family=SANS, size=15, color=PALETTE["ink"]),
+        hovertemplate="Été %{x} moins l'hiver qui le précède : %{y:+.0f} MW<extra></extra>",
+    ))
+    # La ligne zéro est le SUJET du panneau du bas : elle est tracée en encre pleine,
+    # pas laissée à la grille (`zeroline` du template est à False, et pour de bonnes
+    # raisons ailleurs — ici c'est le repère de lecture).
+    fig.add_shape(type="line", xref="x domain", x0=0, x1=1, yref="y", y0=0, y1=0,
+                  line=dict(color=PALETTE["ink"], width=1.5))
+    # L'année 2019 n'a pas de barre : son hiver de référence (2018/19) est tronqué par la
+    # borne du jeu. L'absence s'écrit, sinon elle se lit comme un zéro.
+    # Ancrée à GAUCHE et repliée court : centrée sur 2019, elle débordait sur le titre
+    # d'axe, et une ligne large touchait la barre de 2020. Trois lignes brèves tiennent
+    # dans la demi-colonne libre.
+    fig.add_annotation(
+        xref="x", x=annees[0] - 0.4, xanchor="left", yref="y domain", y=0.34,
+        text="hiver 2018/19<br>tronqué par la<br>borne du jeu",
+        showarrow=False, align="left",
+        font=dict(family=SANS, size=15, color=PALETTE["ink_soft"]),
+    )
+    # Pas d'en-tête sur le panneau du haut : la légende nomme déjà ses deux séries, et
+    # l'annotation qu'il portait retombait dans la troisième ligne du sous-titre.
+    fig.add_annotation(
+        xref="paper", x=0, yref="paper", y=0.28, yanchor="bottom", yshift=10,
+        text="<b>Écart entre la pointe de l'été et celle de l'hiver qui le précède</b>",
+        showarrow=False, xanchor="left",
+        font=dict(family=SANS, size=18, color=PALETTE["ink"]),
+    )
+    fig.update_layout(
+        title=dict(text="En été, ce sont les heures les plus chargées qui montent"),
+        # Axe 1 = celui du BAS, donc le seul qui porte ticks et titre : les gardes de
+        # `viz` mesurent `layout.xaxis` pour savoir ce qui occupe le dessous du tracé.
+        # Le lui donner en position 2 leur ferait mesurer un axe muet.
+        xaxis=dict(title="Année", dtick=1, range=bornes, anchor="y"),
+        xaxis2=dict(dtick=1, range=bornes, anchor="y2", showticklabels=False, matches="x"),
+        yaxis=dict(title="MW", domain=[0.0, 0.28], zeroline=False),
+        yaxis2=dict(title="MW", domain=[0.42, 1.0], range=[330, 470]),
+        # y=1.02 et non 1.09 : la garde de `viz` simule le repli de la légende, pas sa
+        # distance au sous-titre. À 1,09 elle passait la garde et recouvrait pourtant la
+        # deuxième ligne du sous-titre au rendu — mesuré sur l'image, pas déduit.
+        legend=dict(orientation="h", y=1.02, yanchor="bottom", x=0),
+        bargap=0.45,
+        # b=370 : le pied fait onze lignes une fois replié (source, quatre réserves de
+        # méthode dont le périmètre 2024, mention du statut EDF). La garde de `viz` en
+        # réclame 357 ; la hauteur monte d'autant, sinon la marge se prendrait sur la
+        # zone de tracé.
+        margin=dict(t=230, b=370, l=116, r=56),
+        height=1080,
+    )
+    return fig, gain_pointe, gain_top20, gain_mediane
+
+
+
 def script_fraicheur(instant_iso: str, sous_titre: str) -> str:
     """JavaScript local : réécrit le sous-titre de T1 avec l'âge du relevé À L'OUVERTURE.
 
@@ -1041,12 +1254,41 @@ def main() -> int:
                 script_apres=script_fraicheur(instant_iso, sous_titre_t1))
     export_html(fig_t2_demande_mensuelle(), "t2_demande_mensuelle", SRC_HIST, d_hist,
                 sous_titre="Demande moyenne mois par mois — Corse, 2019-2024",
-                note=NOTE_ESTIME)
+                # Ce visuel est celui d'où sort « l'hiver reste la période la plus
+                # chargée ». La phrase est vraie de ces MOYENNES et d'elles seules : le
+                # classement des pointes obéit à une autre logique, et rien sur cette
+                # figure ne permet de le lire. La réserve est portée ici, au plus près du
+                # chiffre qu'elle borne, plutôt que laissée au seul texte de l'étude.
+                note="Moyennes mensuelles : elles ne classent pas les pointes, qui se "
+                     "comportent différemment.<br>" + NOTE_ESTIME)
     export_html(fig_t2b_surcroit_horaire(), "t2b_surcroit_horaire", SRC_HIST, d_hist,
                 sous_titre="Écart de demande moyenne juillet − juin, heure par heure — Corse, "
                            "2019-2024.<br>Ce graphique montre quand la demande augmente, pas ce "
                            "qui explique cette hausse.",
                 note=NOTE_ESTIME)
+    fig10, g_pointe, g_top20, g_med = fig_t10_pointes_estivales()
+    # Décimale française sur CE SEUL nombre : `.replace(".", ",")` posé en fin de
+    # concaténation mordrait sur toute la phrase, jusqu'au point final de « 2019-2024. ».
+    med_fr = f"{g_med:.1f}".replace(".", ",")
+    export_html(
+        fig10, "t10_pointes_estivales", SRC_HIST, d_hist,
+        # Sous-titre en DEUX lignes : à trois, la troisième passait sous la légende au
+        # rendu — la garde de `viz` mesure la largeur des lignes, pas leur distance à
+        # une légende posée au-dessus du tracé.
+        sous_titre=(
+            "Été = juin à septembre ; hiver = décembre à février — Corse, 2019-2024.<br>"
+            f"En six ans : +{g_pointe:.0f} MW sur l'heure la plus chargée, "
+            f"+{g_top20:.0f} sur les vingt plus chargées, +{med_fr} sur la médiane."
+        ),
+        note="Moyennes horaires : un maximum instantané peut les dépasser. Les deux hivers "
+             "de bord du jeu (2018/19, 2024/25) sont tronqués par ses dates de début et "
+             "de fin, donc exclus.<br>La petite hydraulique manque au total de 2024 ; de "
+             "2019 à 2023 elle pesait moins de 1,6 MW aux vingt heures d'été les plus "
+             "chargées, mais sa valeur 2024 n'est pas mesurée.<br>Ces mesures portent sur "
+             "le haut de la "
+             "distribution ; elles ne disent rien de sa médiane, qui varie peu. "
+             + NOTE_ESTIME,
+        pied_decalage_px=-110)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
                 sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
                            "2019-2024.<br>Interconnexions = liaisons SACOI + SARCO.",

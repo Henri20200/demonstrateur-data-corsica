@@ -44,8 +44,9 @@
   C'est aussi le moment où la Corse dépend le moins des câbles qui la relient à
   l'extérieur.
 - En juillet, la demande augmente de 22 % par rapport à juin, surtout de l'après-midi
-  au début de soirée. Mais la consommation la plus forte de l'année reste celle de
-  l'hiver.
+  au début de soirée. Mais en moyenne mensuelle, sur 2019-2024, la consommation la plus
+  forte de l'année reste celle de l'hiver. Cela vaut pour ces moyennes, pas pour les
+  pointes : celles-ci se comportent différemment.
 - Au printemps, la Corse doit parfois limiter sa production solaire parce que le
   réseau ne peut pas tout absorber. Il existe donc déjà, à certains moments, un
   surplus d'énergie renouvelable.
@@ -263,10 +264,13 @@ en un mois. C'est la plus forte augmentation entre deux mois consécutifs de l'a
 
 La consommation reste élevée en août, puis diminue en septembre et en octobre.
 
-Mais les niveaux les plus élevés sont observés en hiver. La demande moyenne atteint
-environ 307 MW en hiver, notamment en raison des besoins de chauffage. La Corse
-connaît donc une hausse importante de sa consommation en été, mais l'hiver reste la
-période où la demande est la plus forte.
+Mais les niveaux moyens les plus élevés sont observés en hiver. La demande moyenne
+atteint environ 307 MW en hiver, notamment en raison des besoins de chauffage. La Corse
+connaît donc une hausse importante de sa consommation en été, mais l'hiver reste, en
+moyenne mensuelle sur 2019-2024, la période où la demande est la plus forte.
+
+Cette comparaison porte sur des moyennes, et sur elles seules. Elle ne dit rien du
+classement des pointes annuelles, qui obéit à une autre logique.
 
 > **Pour aller plus loin — moyenne et pointe de consommation.** Les valeurs présentées
 > ici sont des moyennes mensuelles, calculées à partir des données 2019-2024. Elles ne
@@ -298,6 +302,101 @@ prolonge aussi en soirée, lorsque la production solaire diminue fortement.
 >
 > Pour mesurer leur rôle respectif, il faudrait croiser les données électriques avec
 > des données météorologiques et de fréquentation. Ce n'est pas fait ici.
+
+#### La pointe estivale horaire augmente de 64 MW entre 2019 et 2024
+
+{{visuel:t10_pointes_estivales}}
+
+L'heure la plus chargée de l'été passe de 371 MW en 2019 à 435 MW en 2024. La moyenne
+des vingt heures les plus chargées suit le même chemin, de 366 à 418 MW.
+
+Entre 2019 et 2024, la médiane des puissances horaires estivales varie peu : +1,5 MW. Ce
+sont les heures extrêmes qui montent, et d'autant plus qu'elles sont extrêmes : dix
+mégawatts de plus au troisième quartile, vingt-cinq au neuvième décile, quarante-six au
+dernier centile, soixante-quatre au maximum.
+
+Le nombre d'heures très chargées suit. En 2019 comme en 2020, aucune heure d'été
+n'atteint 380 MW. Il y en a 9 en 2021, 111 en 2022, 141 en 2023, 102 en 2024.
+
+Ce dernier chiffre dit aussi la limite du constat. Entre les deux bornes la hausse est
+nette, mais d'une année à l'autre elle n'est pas continue : la moyenne des vingt heures
+hautes recule légèrement en 2020 et en 2024, et les heures au-dessus de 380 MW sont moins
+nombreuses en 2024 qu'en 2023. Le maximum est le seul de ces indicateurs à progresser
+sans interruption.
+
+Ces étés plus chargés rejoignent-ils l'hiver, qui porte les pointes les plus hautes de la
+période étudiée ? Une seule fois sur les cinq comparaisons possibles. En 2024, la pointe
+de l'été dépasse celle de l'hiver qui la précède, de 14 MW. Les quatre autres années,
+l'hiver conserve entre 35 et 88 MW d'avance.
+
+Les cinq maxima hivernaux sont dispersés, sans tendance établie. Le seul dépassement
+observé en 2024 ne suffit pas à établir une inversion durable. Ce que ces données
+établissent, c'est la hausse du côté de l'été.
+
+> **Pour aller plus loin — comment les saisons sont découpées.** L'été est ici juin à
+> septembre, l'hiver décembre à février. Le découpage de l'été ne change rien : juillet-août
+> seuls, juin-septembre ou mai-octobre donnent les six mêmes maxima, parce que toutes les
+> pointes estivales tombent en juillet ou en août.
+>
+> Un hiver enjambe deux années civiles, et le jeu de données commence le 1er janvier 2019
+> pour finir le 31 décembre 2024. Ses deux hivers de bord sont donc incomplets : celui de
+> 2018-2019 n'a pas son mois de décembre, celui de 2024-2025 se réduit à décembre — 744
+> heures au lieu d'environ 2 160. Cette couverture insuffisante suffit à les écarter :
+> un maximum ne se compare pas à un maximum calculé sur un tiers de la saison. Le
+> panneau inférieur présente cinq comparaisons : l'été 2019 est exclu faute d'hiver
+> précédent complet, et l'hiver 2024-2025 ne précède aucun été étudié.
+>
+> Un constat complémentaire montre ce que l'on éviterait ainsi. Réduit à son seul mois de
+> décembre, l'hiver 2024-2025 plafonne à 434,5 MW quand l'été 2024 atteint 435,3 : retenu,
+> il aurait donné une quasi-égalité. Or aucun des cinq hivers complets ne culmine en
+> décembre — ils culminent tous en janvier ou en février.
+>
+> Enfin, les valeurs présentées sont des moyennes horaires. Un maximum instantané peut
+> dépasser le maximum des moyennes horaires ; ces deux indicateurs ne sont pas
+> directement interchangeables.
+>
+> Un mot sur le périmètre, parce qu'il change d'une année à l'autre. La petite
+> hydraulique est absente des données 2024 : la colonne est vide toute l'année, et le
+> total de 2024 ne la contient donc pas, alors qu'il la contient de 2019 à 2023. Sur une
+> moyenne annuelle, l'écart serait non négligeable — cette filière pèse 4,9 à 8,0 MW selon
+> les années. Aux heures examinées ici, les années dont nous disposons la montrent bien
+> plus faible : de 2019 à 2023, aux vingt heures d'été les plus chargées, sa contribution
+> n'a jamais dépassé 1,6 MW en valeur absolue, et elle est même négative en 2020.
+>
+> C'est un constat sur ces cinq années, et rien de plus. Ce que la petite hydraulique
+> aurait apporté aux heures de pointe de 2024 n'est pas mesuré, et rien ici ne le
+> reconstitue : les valeurs historiques, dont certaines sont négatives, ne bornent pas
+> celles qui manquent. La comparaison entre années est présentée avec cette réserve.
+> Cette différence de périmètre concerne également les comparaisons de médiane et de
+> quantiles.
+
+> **Pour aller plus loin — ce que ces chiffres ne disent pas.** Ils décrivent une
+> évolution ; ils n'en donnent pas la cause. Chaleur, fréquentation touristique,
+> équipement des logements et effets de calendrier peuvent intervenir simultanément, et
+> ces données
+> seules ne permettent pas de faire la part de chacun.
+>
+> Ils ne renseignent que le haut de la distribution. Le maximum, la moyenne des vingt
+> heures les plus chargées et le nombre d'heures au-dessus de 380 MW mesurent tous la
+> même extrémité ; la médiane apporte un point de comparaison au centre de la
+> distribution.
+>
+> Il faut aussi distinguer deux choses que l'on confond facilement. La traçabilité des
+> fichiers est acquise : chaque fichier est daté, empreinté et vérifié à chaque
+> rafraîchissement. Le statut des valeurs qu'il contient est une autre question — EDF
+> classe 2019-2020 comme validées et 2021-2024 comme estimées. La hausse la plus forte se
+> produit entre 2021 et 2023, donc à l'intérieur de la période estimée : le changement
+> d'étiquette de 2021 ne suffit donc pas à expliquer toute la hausse. Cela ne prouve pas
+> pour autant que la méthode d'estimation soit restée identique sur toute la période.
+>
+> Enfin, la série s'arrête fin 2024. Les étés 2025 et 2026 ne sont pas couverts, et rien
+> ici ne permet de dire si le mouvement s'est poursuivi.
+>
+> Dans un entretien publié le samedi 5 septembre 2026, le président-directeur général
+> d'EDF déclare que la pointe de consommation corse a atteint 489 MW le 13 août 2026.
+> Nous le rapportons comme une déclaration datée. Ce chiffre ne se raccorde pas à la
+> série présentée ici, et il ne la valide pas : des propos d'EDF sur des mesures d'EDF
+> ne constituent pas un contrôle indépendant.
 
 ### La production solaire parfois limitée
 
@@ -403,9 +502,19 @@ aujourd'hui modifieront sa production dans les prochaines années.
 
 À Ajaccio, la centrale du Vazzio doit être remplacée par une nouvelle centrale au
 Ricanto. Prévue pour fonctionner à l'huile de colza, elle doit remplacer le fioul
-lourd. EDF prévoit une mise en service d'ici fin 2027 et annonce une forte baisse des
-émissions de CO₂. À Bastia, une conversion de la centrale de Lucciana à la biomasse
-est également envisagée. *(Source : EDF, novembre 2024.)*
+lourd. En novembre 2024, EDF annonçait une mise en service d'ici fin 2027 ; en septembre
+2026, EDF annonce une mise en service progressive en 2027-2028. À Bastia, la centrale de
+Lucciana fonctionne déjà : c'est sa conversion à la biomasse, présentée en 2024 comme
+envisagée, qui figure parmi les chantiers annoncés. *(Sources : EDF, novembre 2024 ;
+Bernard Fontana, président-directeur général d'EDF, entretien, Corse infos, samedi
+5 septembre 2026.)*
+
+Ce sont là des investissements, des calendriers et des effets annoncés. Ces annonces
+portent sur des transformations et des mises en service à venir ; elles n'attestent pas
+qu'elles aient eu lieu, et les échéances citées sont celles que leur exploitant se donne.
+Un entretien de presse est une source de propos publiés : il renseigne sur ce qu'EDF
+annonce, à une date, et ne vérifie aucune des données EDF utilisées par ailleurs dans
+cette étude.
 
 Ce changement réduirait l'utilisation de combustibles fossiles, mais pas
 nécessairement la dépendance aux approvisionnements extérieurs. Le colza destiné au
@@ -420,6 +529,11 @@ La question de la qualité de l'air est également liée aux centrales thermique
 notamment autour d'Ajaccio et de Bastia. Les données utilisées dans cette étude ne
 permettent toutefois pas de mesurer leur effet sur la pollution de l'air, ni de le
 distinguer de celui d'autres sources comme le trafic maritime.
+
+Les baisses d'émissions annoncées avec ces projets sont celles qu'EDF prévoit pour ses
+propres installations. Elles portent sur les rejets attendus de la future centrale du
+Ricanto. Une telle annonce ne constitue ni une mesure de l'air ambiant, ni un résultat
+sur l'ozone : ce sont deux choses distinctes, et seule la seconde se mesure en station.
 
 ### L'hydraulique varie fortement selon les années
 
