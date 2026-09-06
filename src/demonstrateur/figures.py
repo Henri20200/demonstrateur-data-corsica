@@ -140,7 +140,11 @@ def fig_t2_demande_mensuelle() -> go.Figure:
     )
     fig.update_layout(
         title=dict(text="En juillet, la demande d'électricité augmente de 22 %"),
-        yaxis=dict(title="Demande moyenne (MW)"), bargap=0.38, height=560,
+        yaxis=dict(title="Demande moyenne (MW)"), bargap=0.38, height=600,
+        # b=210 : la note de pied a gagné la réserve « ces moyennes ne classent pas les
+        # pointes » et passe à cinq lignes. La garde de `viz` en réclame 207 ; la hauteur
+        # monte d'autant, sinon la marge se prendrait sur la zone de tracé.
+        margin=dict(t=144, b=210, l=116, r=56),
     )
     return fig
 
@@ -965,6 +969,8 @@ def fig_t9_hydro_secheresse() -> go.Figure:
     return fig
 
 
+
+
 def script_fraicheur(instant_iso: str, sous_titre: str) -> str:
     """JavaScript local : réécrit le sous-titre de T1 avec l'âge du relevé À L'OUVERTURE.
 
@@ -1041,7 +1047,13 @@ def main() -> int:
                 script_apres=script_fraicheur(instant_iso, sous_titre_t1))
     export_html(fig_t2_demande_mensuelle(), "t2_demande_mensuelle", SRC_HIST, d_hist,
                 sous_titre="Demande moyenne mois par mois — Corse, 2019-2024",
-                note=NOTE_ESTIME)
+                # Ce visuel est celui d'où sort « l'hiver reste la période la plus
+                # chargée ». La phrase est vraie de ces MOYENNES et d'elles seules : le
+                # classement des pointes obéit à une autre logique, et rien sur cette
+                # figure ne permet de le lire. La réserve est portée ici, au plus près du
+                # chiffre qu'elle borne, plutôt que laissée au seul texte de l'étude.
+                note="Moyennes mensuelles : elles ne classent pas les pointes, qui se "
+                     "comportent différemment.<br>" + NOTE_ESTIME)
     export_html(fig_t2b_surcroit_horaire(), "t2b_surcroit_horaire", SRC_HIST, d_hist,
                 sous_titre="Écart de demande moyenne juillet − juin, heure par heure — Corse, "
                            "2019-2024.<br>Ce graphique montre quand la demande augmente, pas ce "
