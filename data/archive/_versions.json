@@ -753,8 +753,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41001_8.parquet",
       "revision_policy": "unknown",
       "sha256": "65bba03817bec52f57a3f2660fcf037f3285b04ee77365d14161b6a0f77c9c84",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:35.734856Z",
       "taille_octets": 252653
+    },
+    {
+      "fichier_archive": "20260912T204235Z_40425578.parquet",
+      "first_observed_at": "2026-09-12T20:42:35.734856Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_no2_ajaccio_canetto_continu/2026/09/20260912T204235Z_4042557896a1682881d881cf507953065e0cbf1f99a36ead2d52eb5255f76680.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41001_8.parquet",
+      "revision_policy": "unknown",
+      "sha256": "4042557896a1682881d881cf507953065e0cbf1f99a36ead2d52eb5255f76680",
+      "superseded_at": null,
+      "taille_octets": 252709
     }
   ],
   "aee_no2_ajaccio_canetto_valide": [
@@ -1525,8 +1537,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41063_8.parquet",
       "revision_policy": "unknown",
       "sha256": "48d46653255067f3d6cc7dfcfaffa100e7093e89177fb397bd3f52788aa58361",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:38.584657Z",
       "taille_octets": 249510
+    },
+    {
+      "fichier_archive": "20260912T204238Z_9388a194.parquet",
+      "first_observed_at": "2026-09-12T20:42:38.584657Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_no2_ajaccio_confina2_continu/2026/09/20260912T204238Z_9388a1940e181811b8370213beab3f04d9da44038fe71831dd1a4affc162c778.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41063_8.parquet",
+      "revision_policy": "unknown",
+      "sha256": "9388a1940e181811b8370213beab3f04d9da44038fe71831dd1a4affc162c778",
+      "superseded_at": null,
+      "taille_octets": 249586
     }
   ],
   "aee_no2_ajaccio_confina2_valide": [
@@ -2189,8 +2213,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41002_8.parquet",
       "revision_policy": "unknown",
       "sha256": "6ed30d4a7bace9987a0f47862f5de3035e7bf05608ea00d77d02ccba51c4e508",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:40.715757Z",
       "taille_octets": 238133
+    },
+    {
+      "fichier_archive": "20260912T204240Z_c92e98e7.parquet",
+      "first_observed_at": "2026-09-12T20:42:40.715757Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_no2_bastia_giraud_continu/2026/09/20260912T204240Z_c92e98e7b16321de97a5be497a213ef8693f6ce92144de5d8940f35b1198d792.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41002_8.parquet",
+      "revision_policy": "unknown",
+      "sha256": "c92e98e7b16321de97a5be497a213ef8693f6ce92144de5d8940f35b1198d792",
+      "superseded_at": null,
+      "taille_octets": 238193
     }
   ],
   "aee_no2_bastia_giraud_valide": [
@@ -2961,8 +2997,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41004_8.parquet",
       "revision_policy": "unknown",
       "sha256": "4038e51f8f73176f1f219b98a8258696cdfea3d90d3346d12713a22d061cc985",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:46.079735Z",
       "taille_octets": 234592
+    },
+    {
+      "fichier_archive": "20260912T204246Z_0dc22dca.parquet",
+      "first_observed_at": "2026-09-12T20:42:46.079735Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_no2_bastia_marana_continu/2026/09/20260912T204246Z_0dc22dca555a584a3a4a758900a4fc31523b7ad463ff239800cad3b8e884599c.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41004_8.parquet",
+      "revision_policy": "unknown",
+      "sha256": "0dc22dca555a584a3a4a758900a4fc31523b7ad463ff239800cad3b8e884599c",
+      "superseded_at": null,
+      "taille_octets": 234659
     }
   ],
   "aee_no2_bastia_marana_valide": [
@@ -3733,8 +3781,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41017_8.parquet",
       "revision_policy": "unknown",
       "sha256": "32c3deff5d4e007809e5173cf6d7710fff52c555e4244532b3d9894535fb783d",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:43.125212Z",
       "taille_octets": 235589
+    },
+    {
+      "fichier_archive": "20260912T204243Z_86b086cf.parquet",
+      "first_observed_at": "2026-09-12T20:42:43.125212Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_no2_bastia_montesoro_continu/2026/09/20260912T204243Z_86b086cfe9a50b58b75588fece0ab4ad1859a95989ff84af2243a1160bc5d39e.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41017_8.parquet",
+      "revision_policy": "unknown",
+      "sha256": "86b086cfe9a50b58b75588fece0ab4ad1859a95989ff84af2243a1160bc5d39e",
+      "superseded_at": null,
+      "taille_octets": 235653
     }
   ],
   "aee_no2_bastia_montesoro_valide": [
@@ -4505,8 +4565,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41001_7.parquet",
       "revision_policy": "unknown",
       "sha256": "4d407e96538ea0094a4748cc96d2a6f113a50156fdeaa7c5bf515c50981ccdc4",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:19.545717Z",
       "taille_octets": 257088
+    },
+    {
+      "fichier_archive": "20260912T204219Z_0e828f33.parquet",
+      "first_observed_at": "2026-09-12T20:42:19.545717Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_o3_ajaccio_canetto_continu/2026/09/20260912T204219Z_0e828f336182036369c13e01bf65f491b512c0a9a34d8eb1812eea3cf210dd53.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41001_7.parquet",
+      "revision_policy": "unknown",
+      "sha256": "0e828f336182036369c13e01bf65f491b512c0a9a34d8eb1812eea3cf210dd53",
+      "superseded_at": null,
+      "taille_octets": 257167
     }
   ],
   "aee_o3_ajaccio_canetto_valide": [
@@ -5277,8 +5349,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41063_7.parquet",
       "revision_policy": "unknown",
       "sha256": "bfb1e2b3a62d564a8410d92b3887f8cbcb893c3dfcb074d96ee8f280c575a424",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:22.668717Z",
       "taille_octets": 258577
+    },
+    {
+      "fichier_archive": "20260912T204222Z_95e347d3.parquet",
+      "first_observed_at": "2026-09-12T20:42:22.668717Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_o3_ajaccio_confina2_continu/2026/09/20260912T204222Z_95e347d37e01ed5369a00a49f0a3ecfaa30381806d2657e57b161969ce5eefbc.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41063_7.parquet",
+      "revision_policy": "unknown",
+      "sha256": "95e347d37e01ed5369a00a49f0a3ecfaa30381806d2657e57b161969ce5eefbc",
+      "superseded_at": null,
+      "taille_octets": 258657
     }
   ],
   "aee_o3_ajaccio_confina2_valide": [
@@ -5941,8 +6025,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41002_7.parquet",
       "revision_policy": "unknown",
       "sha256": "0b50022bcbd62398a5a515e2d5a7d2e6a7b9c68a2e5b0eefe992f03b57729847",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:24.813277Z",
       "taille_octets": 251497
+    },
+    {
+      "fichier_archive": "20260912T204224Z_aafdf894.parquet",
+      "first_observed_at": "2026-09-12T20:42:24.813277Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_o3_bastia_giraud_continu/2026/09/20260912T204224Z_aafdf8943891f4c7663592fb199a8661572b328986e226e41d0f01b763240e05.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41002_7.parquet",
+      "revision_policy": "unknown",
+      "sha256": "aafdf8943891f4c7663592fb199a8661572b328986e226e41d0f01b763240e05",
+      "superseded_at": null,
+      "taille_octets": 251576
     }
   ],
   "aee_o3_bastia_giraud_valide": [
@@ -6713,8 +6809,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41004_7.parquet",
       "revision_policy": "unknown",
       "sha256": "1a5933b480a9175dd8d36182e50cbf62af6fbb218c717100983f96de02eb957c",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:30.340941Z",
       "taille_octets": 260102
+    },
+    {
+      "fichier_archive": "20260912T204230Z_7deba094.parquet",
+      "first_observed_at": "2026-09-12T20:42:30.340941Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_o3_bastia_marana_continu/2026/09/20260912T204230Z_7deba0946be53557a5711958e2ee8c64f784f3a6d372ce2f1d10da51d60b9799.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41004_7.parquet",
+      "revision_policy": "unknown",
+      "sha256": "7deba0946be53557a5711958e2ee8c64f784f3a6d372ce2f1d10da51d60b9799",
+      "superseded_at": null,
+      "taille_octets": 260177
     }
   ],
   "aee_o3_bastia_marana_valide": [
@@ -7485,8 +7593,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41017_7.parquet",
       "revision_policy": "unknown",
       "sha256": "4906daf222a31a7852aef338873e2fc0e586583bf897620f56de7536a2406739",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:27.866347Z",
       "taille_octets": 254996
+    },
+    {
+      "fichier_archive": "20260912T204227Z_e7ce937d.parquet",
+      "first_observed_at": "2026-09-12T20:42:27.866347Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_o3_bastia_montesoro_continu/2026/09/20260912T204227Z_e7ce937d5ba418ccd31db162737195d6f9455cf4caaedb26f60599296c935553.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41017_7.parquet",
+      "revision_policy": "unknown",
+      "sha256": "e7ce937d5ba418ccd31db162737195d6f9455cf4caaedb26f60599296c935553",
+      "superseded_at": null,
+      "taille_octets": 255062
     }
   ],
   "aee_o3_bastia_montesoro_valide": [
@@ -8089,8 +8209,20 @@
       "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41024_7.parquet",
       "revision_policy": "unknown",
       "sha256": "6183cb8594d87fda95aa16cd0fa62b6ec1252ae1de08eb42860a90bf962dda92",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:33.495634Z",
       "taille_octets": 249414
+    },
+    {
+      "fichier_archive": "20260912T204233Z_719e3d9b.parquet",
+      "first_observed_at": "2026-09-12T20:42:33.495634Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/aee_o3_venaco_continu/2026/09/20260912T204233Z_719e3d9b23bf7124be381a1dbf972c29df7b5d0d56db94818a161f1cb0582921.parquet",
+      "resolved_url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41024_7.parquet",
+      "revision_policy": "unknown",
+      "sha256": "719e3d9b23bf7124be381a1dbf972c29df7b5d0d56db94818a161f1cb0582921",
+      "superseded_at": null,
+      "taille_octets": 249468
     }
   ],
   "aee_o3_venaco_valide": [
@@ -8907,8 +9039,20 @@
       "resolved_url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv",
       "revision_policy": "unknown",
       "sha256": "0561cb341a1679153c960ef9e73df826ed14d5711bbf82a65ba0bcacb244bdbf",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:41:59.407562Z",
       "taille_octets": 382925
+    },
+    {
+      "fichier_archive": "20260912T204159Z_7f41608d.csv",
+      "first_observed_at": "2026-09-12T20:41:59.407562Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/edf_mix_temps_reel/2026/09/20260912T204159Z_7f41608d64180a3eef62aab82849f03a3a78a2266e10e62dd24a798660539ee7.csv",
+      "resolved_url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv",
+      "revision_policy": "unknown",
+      "sha256": "7f41608d64180a3eef62aab82849f03a3a78a2266e10e62dd24a798660539ee7",
+      "superseded_at": null,
+      "taille_octets": 383149
     }
   ],
   "entsoe_charge_sardaigne_2019": [
@@ -9779,8 +9923,20 @@
       "resolved_url": "https://files.data.gouv.fr/ineris/lcsqa/concentrations-de-polluants-atmospheriques-reglementes/temps-reel/2026/FR_E2_2026-09-10.csv",
       "revision_policy": "unknown",
       "sha256": "1fc7b8601c8b0ef4ddf8f7d566d75e61a1565c66b10368bf8f381ed52efe0563",
-      "superseded_at": null,
+      "superseded_at": "2026-09-12T20:42:09.754988Z",
       "taille_octets": 12759082
+    },
+    {
+      "fichier_archive": "20260912T204209Z_541a8750.csv",
+      "first_observed_at": "2026-09-12T20:42:09.754988Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/lcsqa_temps_reel/2026/09/20260912T204209Z_541a8750895a3c0bea4c6994dbc6df207da571eae5145692b581f391a031670e.csv",
+      "resolved_url": "https://files.data.gouv.fr/ineris/lcsqa/concentrations-de-polluants-atmospheriques-reglementes/temps-reel/2026/FR_E2_2026-09-10.csv",
+      "revision_policy": "unknown",
+      "sha256": "541a8750895a3c0bea4c6994dbc6df207da571eae5145692b581f391a031670e",
+      "superseded_at": null,
+      "taille_octets": 12760234
     }
   ],
   "meteo_horaire_corse": [
