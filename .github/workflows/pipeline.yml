@@ -177,6 +177,16 @@ jobs:
       - name: Préparation (Parquet)
         run: python -m demonstrateur.prepare
 
+      # ENTRE prepare ET les figures, et bloquant. Les verrous de résultats sont en fin
+      # de chaîne : ils ne voient une donnée amputée qu'après que les figures se sont
+      # dessinées dessus. Or une figure se recompte sur ce qu'elle trouve — le
+      # 13/09/2026, une année retirée du milieu de la fenêtre a traversé prepare, toute
+      # la suite de tests, les figures et les pages sans un seul échec, A1 annonçant
+      # « deux de ces cinq étés » au lieu de six. Ici, rien n'est dessiné si la fenêtre
+      # publiée n'est pas peuplée. Sans continue-on-error, et avant tout producteur.
+      - name: Contrôle de couverture (bloquant)
+        run: python -m demonstrateur.couverture
+
       - name: Figures — électricité
         id: figures
         # Code 1 = relevé au-delà du seuil de blocage (24 h depuis le 27/08/2026) : le

@@ -360,12 +360,36 @@ def st_a1() -> str:
         FROM '{MDA8}'
         WHERE valide AND {ETES} AND {ANNEES} AND station = '{RECENTE}'
     """).fetchone()
+    _etes_couverts(tracees, fond, etes, etes_recente, debut)
+    # « qu'un » et non « que un » : l'élision est le seul endroit où le singulier change
+    # autre chose que le nombre lui-même.
+    que = "qu'" if etes_recente == 1 else "que "
     return (_sous_titre(
         f"Objectif de qualité : {OBJECTIF_QUALITE} µg/m³ sur 8 heures. "
         f"Information du public : {SEUIL_INFORMATION} µg/m³ sur une heure.")
-        + f"<br>{NOMBRES[tracees]} stations sur {NOMBRES[fond].lower()} : "
-          f"{RECENTE.title()}, ouverte en {int(debut)}, ne couvre que "
-          f"{NOMBRES[etes_recente].lower()} de ces {NOMBRES[etes].lower()} étés.")
+        + f"<br>{_stations(tracees).capitalize()} sur {_nombre(fond)} : "
+          f"{RECENTE.title()}, ouverte en {int(debut)}, ne couvre "
+          f"{que}{_nombre(etes_recente)} de ces {_nombre(etes)} étés.")
+
+
+def _etes_couverts(tracees: int, fond: int, etes: int, etes_recente: int, debut) -> None:
+    """Refuse de formuler un sous-titre sur une couverture nulle.
+
+    Un compte à zéro n'est pas une tournure à écrire au singulier : c'est une donnée qui
+    manque, et le sous-titre d'A1 en dériverait une phrase fausse mais cohérente — « une
+    station sur zéro », « ne couvre aucun de ces zéro étés ». La figure s'arrête donc, et
+    le message renvoie au contrôle qui dit CE qui manque, plutôt que de laisser deviner.
+    """
+    vides = [nom for nom, n in (("stations tracées", tracees), ("stations de fond", fond),
+                                ("étés de la fenêtre", etes),
+                                (f"étés de {RECENTE.title()}", etes_recente)) if not n]
+    if vides or debut is None:
+        raise ValueError(
+            f"A1 : compte nul pour {', '.join(vides) or 'la station récente'} — la "
+            f"fenêtre {AN_DEBUT}-{AN_FIN} n'est pas peuplée et le sous-titre en tirerait "
+            "une phrase fausse. Lancer `python -m demonstrateur.couverture` pour savoir "
+            "ce qui manque ; ne pas publier avant."
+        )
 ST_A2 = _sous_titre(
     "La température vient du poste météo le plus ressemblant, pas toujours le plus proche.")
 # Note tenue en lignes COURTES (< 90 signes) : le pied de figure est une annotation
@@ -391,6 +415,19 @@ def _stations(n: int) -> str:
     ici, où le nom est connu.
     """
     return "une station" if n == 1 else f"{NOMBRES[n].lower()} stations"
+
+
+def _nombre(n: int) -> str:
+    """Le nombre en lettres, au MASCULIN — pour « un été », « un relevé », « un jour ».
+
+    Pendant du genre traité par `_stations`. `NOMBRES` commence à deux précisément pour
+    obliger à ce choix ici : le 13/09/2026, `NOMBRES[1]` a fait tomber le cron deux fois
+    parce qu'une station ne couvrait plus qu'un seul été. La formulation était le
+    symptôme ; la cause était une donnée amputée, que `demonstrateur.couverture` tient
+    désormais. Écrire « un » proprement ne doit donc PAS suffire à publier : un compte
+    nul reste une erreur, cf. `_etes_couverts`.
+    """
+    return "un" if n == 1 else NOMBRES[n].lower()
 
 
 def st_a3() -> str:
