@@ -589,11 +589,33 @@ sources:
   # Le namespace des fichiers le dit — FR.LCSQA-INERIS.AQ : ce sont les mesures de
   # Qualitair Corse, rapportées par le LCSQA, telles que la France les transmet à
   # l'Europe. Deux jeux se raccordent bout à bout, distingués par le conteneur :
-  #   airquality-p-e1a/  jeu E1a, données VALIDÉES, 2013 -> 01/01/2025      -> figé
-  #   airquality-p/      jeu E2a, flux continu, 2025 -> ce matin            -> glissant
+  #   airquality-p-e1a/  jeu E1a, données VALIDÉES, 2013 -> 01/01/2026      -> figé
+  #   airquality-p/      jeu E2a, flux continu, 2026 -> ce matin            -> glissant
   # La colonne `Verification` porte la frontière DANS la donnée (1 = vérifié,
   # 2 = préliminaire, 3 = non vérifié) : les deux régimes du livrable n'ont pas à
   # être reconstitués, le producteur les déclare ligne à ligne.
+  #
+  # RÉVISION ANNUELLE — le jeu validé n'est pas figé, il est figé ENTRE deux révisions.
+  # L'AEE bascule l'année écoulée d'un conteneur à l'autre, et les deux mouvements sont
+  # simultanés : le 13/09/2026, le flux continu a été purgé de 2025 le matin où le jeu
+  # validé la recevait. L'été 2025 a disparu des deux côtés, et le cron a échoué deux
+  # fois. Ce qui l'a signalé tenait du hasard : une station trop récente ne couvrait
+  # plus qu'un seul été, et le sous-titre d'A1 ne savait pas écrire « un ». Mesuré le
+  # même jour : une année retirée du MILIEU de la fenêtre (2023) traverse prepare, les
+  # tests, les figures et les pages sans un seul échec.
+  #
+  # D'où `glissant: true` sur le jeu validé. Une source non glissante n'est jamais
+  # re-confrontée à son producteur : la vérification d'empreinte compare le fichier
+  # LOCAL au manifeste, jamais la source, et en CI le cache d'Actions lui rendrait
+  # indéfiniment les octets de la révision précédente. Glissant, la bascule devient un
+  # non-événement : l'empreinte change d'elle-même, l'archive indexe le nouveau
+  # millésime, il n'y a rien à renommer. Coût ~14 Mo par run ; l'empreinte est stable
+  # d'une requête à l'autre (deux téléchargements comparés le 13/09/2026), donc un seul
+  # millésime déposé par révision réelle.
+  #
+  # CONTREPARTIE : des octets neufs sont adoptés sans qu'un humain les regarde. Le filet
+  # n'est plus l'empreinte mais le contrôle de couverture, qui bloque la chaîne dès que
+  # la fenêtre publiée cesse d'être peuplée.
   #
   # FUSEAU : UTC+1 FIXE, horodatage en FIN de période — l'inverse du flux LCSQA, qui
   # étiquette le début. Établi sur pièce, pas supposé : le décalage entre les deux
@@ -612,7 +634,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "AJACCIO CANETTO — ozone, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "AJACCIO CANETTO — ozone, 2013 -> 01/01/2026, Verification = 1."
 
   aee_o3_ajaccio_canetto_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41001_7.parquet"
@@ -622,7 +645,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "AJACCIO CANETTO — ozone, 01/01/2025 -> ce matin, non vérifié."
+    notes: "AJACCIO CANETTO — ozone, 01/01/2026 -> ce matin, non vérifié."
 
   aee_o3_ajaccio_confina2_valide:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_7.parquet"
@@ -631,7 +654,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "AJACCIO CONFINA 2 — ozone, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "AJACCIO CONFINA 2 — ozone, 31/01/2024 -> 01/01/2026, Verification = 1."
 
   aee_o3_ajaccio_confina2_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41063_7.parquet"
@@ -641,7 +665,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "AJACCIO CONFINA 2 — ozone, 01/01/2025 -> ce matin, non vérifié."
+    notes: "AJACCIO CONFINA 2 — ozone, 01/01/2026 -> ce matin, non vérifié."
 
   aee_o3_bastia_giraud_valide:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_7.parquet"
@@ -650,7 +674,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "BASTIA GIRAUD — ozone, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "BASTIA GIRAUD — ozone, 2013 -> 01/01/2026, Verification = 1."
 
   aee_o3_bastia_giraud_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41002_7.parquet"
@@ -660,7 +685,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "BASTIA GIRAUD — ozone, 01/01/2025 -> ce matin, non vérifié."
+    notes: "BASTIA GIRAUD — ozone, 01/01/2026 -> ce matin, non vérifié."
 
   aee_o3_bastia_montesoro_valide:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_7.parquet"
@@ -669,7 +694,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "BASTIA MONTESORO — ozone, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "BASTIA MONTESORO — ozone, 2013 -> 01/01/2026, Verification = 1."
 
   aee_o3_bastia_montesoro_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41017_7.parquet"
@@ -679,7 +705,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "BASTIA MONTESORO — ozone, 01/01/2025 -> ce matin, non vérifié."
+    notes: "BASTIA MONTESORO — ozone, 01/01/2026 -> ce matin, non vérifié."
 
   aee_o3_bastia_marana_valide:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_7.parquet"
@@ -688,7 +714,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "BASTIA LA MARANA — ozone, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "BASTIA LA MARANA — ozone, 2013 -> 01/01/2026, Verification = 1."
 
   aee_o3_bastia_marana_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41004_7.parquet"
@@ -698,7 +725,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "BASTIA LA MARANA — ozone, 01/01/2025 -> ce matin, non vérifié."
+    notes: "BASTIA LA MARANA — ozone, 01/01/2026 -> ce matin, non vérifié."
 
   aee_o3_venaco_valide:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41024_7.parquet"
@@ -707,7 +734,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "VENACO — ozone, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "VENACO — ozone, 2013 -> 01/01/2026, Verification = 1."
 
   aee_o3_venaco_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41024_7.parquet"
@@ -717,7 +745,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "VENACO — ozone, 01/01/2025 -> ce matin, non vérifié."
+    notes: "VENACO — ozone, 01/01/2026 -> ce matin, non vérifié."
 
   # ============================================================================
   # DIOXYDE D'AZOTE — AEE, mêmes conteneurs, code polluant 8
@@ -738,7 +766,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "AJACCIO CANETTO — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "AJACCIO CANETTO — dioxyde d'azote, 2013 -> 01/01/2026, Verification = 1."
 
   aee_no2_ajaccio_canetto_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41001_8.parquet"
@@ -748,7 +777,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "AJACCIO CANETTO — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."
+    notes: "AJACCIO CANETTO — dioxyde d'azote, 01/01/2026 -> ce matin, non vérifié."
 
   aee_no2_ajaccio_confina2_valide:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41063_8.parquet"
@@ -757,7 +786,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "AJACCIO CONFINA 2 — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "AJACCIO CONFINA 2 — dioxyde d'azote, 31/01/2024 -> 01/01/2026, Verification = 1."
 
   aee_no2_ajaccio_confina2_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41063_8.parquet"
@@ -767,7 +797,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "AJACCIO CONFINA 2 — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."
+    notes: "AJACCIO CONFINA 2 — dioxyde d'azote, 01/01/2026 -> ce matin, non vérifié."
 
   aee_no2_bastia_giraud_valide:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_8.parquet"
@@ -776,7 +806,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "BASTIA GIRAUD — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "BASTIA GIRAUD — dioxyde d'azote, 2013 -> 01/01/2026, Verification = 1."
 
   aee_no2_bastia_giraud_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41002_8.parquet"
@@ -786,7 +817,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "BASTIA GIRAUD — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."
+    notes: "BASTIA GIRAUD — dioxyde d'azote, 01/01/2026 -> ce matin, non vérifié."
 
   aee_no2_bastia_montesoro_valide:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41017_8.parquet"
@@ -795,7 +826,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "BASTIA MONTESORO — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "BASTIA MONTESORO — dioxyde d'azote, 2013 -> 01/01/2026, Verification = 1."
 
   aee_no2_bastia_montesoro_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41017_8.parquet"
@@ -805,7 +837,7 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "BASTIA MONTESORO — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."
+    notes: "BASTIA MONTESORO — dioxyde d'azote, 01/01/2026 -> ce matin, non vérifié."
 
   aee_no2_bastia_marana_valide:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41004_8.parquet"
@@ -814,7 +846,8 @@ sources:
     producteur: "Agence européenne pour l'environnement — Air Quality Download Service (données FR.LCSQA-INERIS.AQ)"
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
-    notes: "BASTIA LA MARANA — dioxyde d'azote, 2013 -> 01/01/2025, Verification = 1."
+    glissant: true
+    notes: "BASTIA LA MARANA — dioxyde d'azote, 2013 -> 01/01/2026, Verification = 1."
 
   aee_no2_bastia_marana_continu:
     url: "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p/FR/SPO-FR41004_8.parquet"
@@ -824,4 +857,4 @@ sources:
     format: parquet
     colonnes_attendues: [Samplingpoint, Start, End, Value, Validity, Verification]
     glissant: true
-    notes: "BASTIA LA MARANA — dioxyde d'azote, 01/01/2025 -> ce matin, non vérifié."
+    notes: "BASTIA LA MARANA — dioxyde d'azote, 01/01/2026 -> ce matin, non vérifié."

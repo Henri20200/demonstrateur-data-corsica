@@ -37,6 +37,49 @@ def test_sources_yaml_est_valide():
             )
 
 
+class _LoaderSansDoublon(yaml.SafeLoader):
+    """Chargeur qui REFUSE une clé répétée là où `safe_load` garde la dernière.
+
+    Le silence de `safe_load` est le problème : le 13/09/2026, une édition automatisée
+    de `sources.yaml` a dupliqué 27 entrées d'un bloc — le fichier portait 80
+    identifiants pour 53 sources chargées, et tous les tests passaient. Une source
+    dupliquée n'est pas une coquille : la dernière occurrence écrase la première, donc
+    une url, une licence ou un `glissant:` corrigé peut être réverti sans un mot.
+    """
+
+
+def _refuser_les_cles_repetees(loader, node, deep=False):
+    vues = set()
+    for cle_node, _ in node.value:
+        cle = loader.construct_object(cle_node, deep=deep)
+        if cle in vues:
+            raise yaml.constructor.ConstructorError(
+                None, None, f"identifiant répété : {cle!r}", cle_node.start_mark
+            )
+        vues.add(cle)
+    return yaml.SafeLoader.construct_mapping(loader, node, deep)
+
+
+_LoaderSansDoublon.add_constructor(
+    yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _refuser_les_cles_repetees
+)
+
+
+def test_sources_yaml_n_a_aucun_identifiant_repete():
+    """Aucune clé répétée, à aucun niveau du fichier."""
+    yaml.load(SOURCES_FILE.read_text(encoding="utf-8"), Loader=_LoaderSansDoublon)
+
+
+def test_le_controle_de_doublon_attrape_bien_un_doublon():
+    """Un verrou jamais vu échouer ne protège rien — celui-ci est joué sur un cas."""
+    dupe = "sources:\n  une:\n    url: a\n  une:\n    url: b\n"
+    assert yaml.safe_load(dupe)["sources"]["une"]["url"] == "b", (
+        "safe_load est censé écraser silencieusement — c'est ce qu'on refuse"
+    )
+    with pytest.raises(yaml.constructor.ConstructorError, match="identifiant répété"):
+        yaml.load(dupe, Loader=_LoaderSansDoublon)
+
+
 def test_expanser_date_resout_hier_et_aujourdhui():
     """Les jetons {AAAA}/{MM}/{JJ} donnent la journée demandée, sur deux chiffres."""
     from datetime import date, timedelta
