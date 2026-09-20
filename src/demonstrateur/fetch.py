@@ -101,12 +101,38 @@ def _load_manifest() -> dict:
 
 
 def _save_manifest(manifest: dict) -> None:
-    # newline="\n" : le manifeste est le SEUL fichier de data/ versionné. Écrit sous
-    # Windows sans cette précaution, il diffère du même manifeste écrit par le runner
-    # Linux sur chacune de ses lignes — un diff entier sur un contenu identique.
-    MANIFEST_FILE.write_text(
+    """Écrit le manifeste dans un temporaire, puis remplace le fichier existant.
+
+    Une interruption pendant l'écriture conserve ainsi le manifeste précédent. Un JSON
+    tronqué bloque les traitements qui le lisent ; le fichier est restaurable depuis Git.
+    Le registre des millésimes avait un défaut supplémentaire : sa lecture masquait
+    l'erreur JSON et retournait un index vide. Le remplacement suit ici le principe de
+    `archive._sauver` et `prepare._ecrire_lignee`, demandé par AUD-09 le 05/08/2026.
+    Avec les sources du 20/09/2026, une collecte entièrement réussie écrit 27 fois le
+    manifeste en régime nominal, et 54 fois si tous les fichiers bruts sont absents.
+
+    Cette protection ne coordonne pas le brut et le manifeste. Une interruption après
+    remplacement du brut peut laisser le nouveau fichier associé à l'ancienne empreinte.
+    Une source glissante retrouve sa cohérence au prochain téléchargement réussi. Une
+    source figée ayant une entrée au manifeste mais aucun fichier local est également
+    téléchargée : `certifie` vaut False. Si son contenu a changé chez le producteur et
+    qu'une interruption survient avant la sauvegarde du manifeste, le contrôle suivant
+    refuse le fichier, avec un code 1 et sans retéléchargement. Il faut alors supprimer
+    le brut puis relancer, ou utiliser `fetch-data --recertifier` si le changement est
+    voulu. Écrire le manifeste en premier laisserait le risque inverse : une nouvelle
+    empreinte associée à un ancien fichier. La coordination des deux remplacements
+    nécessiterait un mécanisme de récupération supplémentaire, hors de ce correctif.
+
+    Le format du manifeste versionné est conservé : ordre d'insertion du dictionnaire,
+    pas de saut de ligne final, fins de ligne LF explicites pour produire les mêmes octets
+    sous Windows et Linux. Aucun changement de format ne doit ajouter de différences
+    sans rapport avec les données collectées.
+    """
+    tmp = MANIFEST_FILE.with_name(MANIFEST_FILE.name + ".tmp")
+    tmp.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n"
     )
+    tmp.replace(MANIFEST_FILE)
 
 
 def _expanser_env(url: str) -> tuple[str, list[str]]:
