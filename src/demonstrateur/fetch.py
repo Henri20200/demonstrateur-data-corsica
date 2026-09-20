@@ -101,36 +101,32 @@ def _load_manifest() -> dict:
 
 
 def _save_manifest(manifest: dict) -> None:
-    """Écrit le manifeste en TEMPORAIRE, puis le remplace d'un bloc.
+    """Écrit le manifeste dans un temporaire, puis remplace le fichier existant.
 
-    Le manifeste est réécrit en entier à chaque source téléchargée et une fois en fin de
-    run — 27 écritures pour un run nominal (26 sources glissantes, plus la finale), et 54
-    quand `data/raw` est vide. Écrit en direct, un processus tué pendant l'une d'elles
-    laissait un JSON tronqué, et personne ne le rattrape : `_load_manifest`,
-    `prepare._verifier_bruts` et `viz.date_collecte` font tous un `json.loads` nu. La
-    chaîne s'arrête alors partout jusqu'à ce qu'un `git checkout` restaure le fichier —
-    il est versionné, c'est ce qui rend la panne réparable. Même geste que
-    `archive._sauver` et `prepare._ecrire_lignee` ; AUD-09 le demandait le 05/08/2026.
+    Une interruption pendant l'écriture conserve ainsi le manifeste précédent. Un JSON
+    tronqué bloque les traitements qui le lisent ; le fichier est restaurable depuis Git.
+    Le registre des millésimes avait un défaut supplémentaire : sa lecture masquait
+    l'erreur JSON et retournait un index vide. Le remplacement suit ici le principe de
+    `archive._sauver` et `prepare._ecrire_lignee`, demandé par AUD-09 le 05/08/2026.
+    Avec les sources du 20/09/2026, une collecte entièrement réussie écrit 27 fois le
+    manifeste en régime nominal, et 54 fois si tous les fichiers bruts sont absents.
 
-    CE QU'ELLE NE COUVRE PAS, et il faut le dire : le couple (brut, manifeste). Entre le
-    remplacement du fichier brut et cet appel, il y a trois instructions ; une
-    interruption dans cet intervalle laisse des octets neufs sous une ancienne empreinte.
-    Une source glissante l'efface au run suivant, puisqu'elle est retéléchargée. Une
-    source figée, en revanche, y passe dès que son fichier est ABSENT — clone neuf, cache
-    évincé, source nouvellement déclarée : `certifie` vaut alors False et elle est
-    collectée. Si le producteur a révisé son contenu depuis, la vérification d'empreinte
-    du run suivant refuse le fichier et le run se termine en code 1 sans le
-    retélécharger. La sortie est manuelle, et le message la donne : supprimer le brut
-    puis relancer, ou `fetch-data --recertifier`. Inverser l'ordre ne gagnerait rien —
-    l'état deviendrait « manifeste neuf, fichier ancien », refusé exactement pareil ;
-    seul un journal de reprise lèverait ce cas, et il n'est pas écrit.
+    Cette protection ne coordonne pas le brut et le manifeste. Une interruption après
+    remplacement du brut peut laisser le nouveau fichier associé à l'ancienne empreinte.
+    Une source glissante retrouve sa cohérence au prochain téléchargement réussi. Une
+    source figée ayant une entrée au manifeste mais aucun fichier local est également
+    téléchargée : `certifie` vaut False. Si son contenu a changé chez le producteur et
+    qu'une interruption survient avant la sauvegarde du manifeste, le contrôle suivant
+    refuse le fichier, avec un code 1 et sans retéléchargement. Il faut alors supprimer
+    le brut puis relancer, ou utiliser `fetch-data --recertifier` si le changement est
+    voulu. Écrire le manifeste en premier laisserait le risque inverse : une nouvelle
+    empreinte associée à un ancien fichier. La coordination des deux remplacements
+    nécessiterait un mécanisme de récupération supplémentaire, hors de ce correctif.
 
-    Le FORMAT ne bouge pas : ordre d'insertion (celui de `sources.yaml`, pas `sort_keys`),
-    pas de saut de ligne final. Ce sont ceux du fichier versionné, et les changer
-    produirait un diff intégral sur un contenu identique — ce que le cron s'interdit.
-    `newline="\\n"` pour la même raison : le manifeste est le SEUL fichier de `data/`
-    versionné, et écrit sous Windows sans cette précaution il diffère du même manifeste
-    écrit par le runner Linux sur chacune de ses lignes.
+    Le format du manifeste versionné est conservé : ordre d'insertion du dictionnaire,
+    pas de saut de ligne final, fins de ligne LF explicites pour produire les mêmes octets
+    sous Windows et Linux. Aucun changement de format ne doit ajouter de différences
+    sans rapport avec les données collectées.
     """
     tmp = MANIFEST_FILE.with_name(MANIFEST_FILE.name + ".tmp")
     tmp.write_text(

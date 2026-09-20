@@ -1,33 +1,17 @@
-"""L'écriture du manifeste : atomique, et de format figé.
+"""Vérifie la conservation du manifeste après une interruption et son format exact.
 
-`data/raw/_manifest.json` est le seul fichier de `data/` versionné et le cœur de la
-traçabilité. Deux propriétés le tiennent, et aucune des deux ne se voit à la lecture du
-code appelant — d'où ces verrous.
+`data/raw/_manifest.json` est versionné et relie les fichiers collectés à leurs sources.
+Une écriture directe interrompue peut le tronquer et bloquer les traitements suivants.
+Le test interrompt l'écriture après avoir déposé une partie du contenu. Une erreur dans
+`json.dumps` ne suffirait pas : la sérialisation termine avant l'appel à `write_text`,
+donc cette erreur préserverait déjà le manifeste avec l'ancienne implémentation.
 
-ATOMIQUE. Le manifeste est réécrit en entier après chaque source téléchargée : 27 fois
-pour un run nominal, 54 quand `data/raw` est vide. Une écriture directe interrompue
-laissait un JSON tronqué que personne ne rattrape — `_load_manifest`,
-`prepare._verifier_bruts` et `viz.date_collecte` font tous un `json.loads` nu — donc la
-chaîne entière s'arrêtait jusqu'à un `git checkout`. C'est la moitié écriture du défaut
-que `archive._sauver` a corrigé pour le registre des millésimes le 30/08/2026, et
-qu'AUD-09 réclamait pour le manifeste depuis le 05/08.
+Les autres tests vérifient le remplacement du temporaire après succès et le format
+conservé : ordre d'insertion, fins de ligne LF, aucun saut de ligne final. Ce format
+diffère de celui du registre d'archive, dont les clés sont triées et qui termine par LF.
 
-Le test d'interruption doit couper l'écriture ELLE-MÊME, et c'est le point délicat :
-`json.dumps(...)` est un argument, donc il s'achève avant que `write_text` ne commence.
-Un test qui ne ferait échouer que la sérialisation passerait au vert sur le code
-défectueux — il attesterait une propriété que le défaut ne contredit pas. La fausse
-écriture ci-dessous dépose donc une charge TRONQUÉE sur le chemin qu'on lui passe avant
-de lever : sur l'ancien code elle mutilait le manifeste, sur le nouveau elle ne salit
-qu'un `.tmp`.
-
-FORMAT FIGÉ. Ordre d'insertion et pas de saut de ligne final : ce sont ceux du fichier
-versionné. `archive._sauver`, lui, trie ses clés et termine par un saut de ligne — un
-helper commun qui harmoniserait les deux réécrirait le manifeste de bout en bout, pour un
-contenu identique. Le cron s'interdit ce genre de diff ; le verrou de format est là pour
-que l'harmonisation ne se fasse pas par distraction.
-
-Ce que ces verrous NE couvrent PAS : le couple (brut, manifeste), dont la fenêtre reste
-ouverte — cf. la docstring de `_save_manifest`.
+La cohérence entre le brut et le manifeste relève d'un problème distinct, décrit dans
+la docstring de `_save_manifest`.
 """
 
 import json
@@ -68,12 +52,8 @@ def manifeste(tmp_path, monkeypatch) -> pathlib.Path:
 def test_une_ecriture_interrompue_laisse_le_manifeste_intact(manifeste, monkeypatch):
     """Coupée en pleine écriture, l'opération ne touche pas au manifeste en place.
 
-    Le processus est simulé au plus près de ce qui arrive : des octets partent, puis tout
-    s'arrête. Sur une écriture directe, ces octets-là atterrissent dans le manifeste et le
-    mutilent ; sur une écriture en temporaire, ils n'atteignent jamais le fichier que la
-    chaîne relira. L'assertion porte sur les OCTETS et pas sur la lecture JSON : un
-    manifeste tronqué pile sur une frontière de ligne resterait peut-être lisible tout en
-    ayant perdu des sources, et c'est le pire des cas, pas le meilleur.
+    La fausse écriture dépose une partie du contenu, puis lève une exception. La
+    comparaison des octets garantit la conservation exacte du manifeste précédent.
     """
     avant = manifeste.read_bytes()
     ecrire_reel = pathlib.Path.write_text
@@ -93,12 +73,7 @@ def test_une_ecriture_interrompue_laisse_le_manifeste_intact(manifeste, monkeypa
 
 
 def test_une_ecriture_reussie_ne_laisse_aucun_temporaire(manifeste):
-    """Le temporaire est un moyen, pas une trace : après succès, il a disparu.
-
-    `Path.replace` déplace, il ne copie pas — mais une implémentation qui écrirait le
-    temporaire puis le RECOPIERAIT laisserait un résidu dans `data/raw/`, et le prochain
-    lecteur du dossier n'a pas à trier entre un manifeste et ses brouillons.
-    """
+    """Après succès, le contenu est enregistré et le temporaire a disparu."""
     fetch._save_manifest(MANIFESTE)
     residus = list(manifeste.parent.glob("*.tmp"))
     assert not residus, f"temporaire(s) laissé(s) après une écriture réussie : {residus}"
@@ -108,21 +83,17 @@ def test_une_ecriture_reussie_ne_laisse_aucun_temporaire(manifeste):
 def test_le_format_du_manifeste_ne_bouge_pas(manifeste):
     """Ordre d'insertion, pas de saut de ligne final, fins de ligne LF.
 
-    Les trois ensemble, parce qu'il suffit d'en perdre une pour réécrire les 39 000 octets
-    du fichier versionné sans qu'une seule source ait changé. C'est le risque concret d'un
-    helper d'écriture partagé avec `archive._sauver`, qui trie ses clés et ajoute un saut
-    de ligne : les deux fichiers sont versionnés, leurs formats ne sont pas les mêmes.
+    Une fonction partagée avec `archive._sauver` doit préserver ces choix : le registre
+    d'archive trie ses clés et ajoute un saut de ligne final, contrairement au manifeste.
     """
     fetch._save_manifest(MANIFESTE)
     octets = manifeste.read_bytes()
 
     assert octets == json.dumps(MANIFESTE, indent=2, ensure_ascii=False).encode("utf-8"), (
-        "la sérialisation du manifeste a changé — tout écart réécrit le fichier versionné "
-        "en entier, pour un contenu identique"
+        "le format du manifeste a changé"
     )
     assert b"\r\n" not in octets, "fins de ligne CRLF : diff intégral face au runner Linux"
-    assert not octets.endswith(b"\n"), "saut de ligne final ajouté — diff sur tout le fichier"
+    assert not octets.endswith(b"\n"), "saut de ligne final ajouté au manifeste"
     assert list(json.loads(octets)) == list(MANIFESTE), (
-        "l'ordre des clés n'est plus celui de sources.yaml (sort_keys ?) — le manifeste "
-        "versionné serait réordonné de bout en bout"
+        "l'ordre d'insertion des clés du manifeste a changé"
     )
