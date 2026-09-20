@@ -7,7 +7,9 @@ Pacioli (via viz.export_html). Usage :
 Fraîcheur du temps réel : l'âge du relevé est recalculé CHEZ LE LECTEUR (27/08/2026),
 une page statique ne pouvant pas vieillir toute seule. Au-delà de 12 h elle signale
 une donnée ancienne, au-delà de 24 h une donnée trop ancienne, et le run termine en
-code 1. Le titre, lui, ne promet plus le présent en aucun cas.
+CODE_FRAICHEUR — les figures sont TOUTES produites, la publication est autorisée, et
+c'est le workflow qui rougit en fin de parcours. Le titre, lui, ne promet plus le
+présent en aucun cas.
 """
 
 from __future__ import annotations
@@ -61,6 +63,18 @@ ANNEE_VISEE = 2023
 
 FRAICHEUR_AVERTIR_H = 12
 FRAICHEUR_BLOQUER_H = 24
+
+# Code de sortie RÉSERVÉ au relevé périmé — et il ne vaut surtout pas 1, que Python rend
+# sur n'importe quelle exception. Les deux sens ont partagé ce même 1 jusqu'au 20/09/2026,
+# et un workflow ne pouvait alors que tout tolérer ou tout bloquer. Les deux workflows ont
+# fait les deux à la fois : le cron publiait T1 « affichage suspendu » (`continue-on-error`)
+# puis `pytest` échouait sur ce même âge avant le commit, si bien que ce mode dégradé,
+# décidé et documenté à trois endroits, ne pouvait pas atteindre la vitrine — et le gel du
+# mix électrique emportait la publication de l'air avec lui ; côté PR, le `|| true` du job
+# `verrous` avalait aussi une exception de génération, et les verrous relisaient alors les
+# HTML du commit précédent, `outputs/` étant versionné. Un code à part se lit depuis un
+# `if` de workflow : 0 et 2 publient, tout le reste arrête la chaîne.
+CODE_FRAICHEUR = 2
 
 
 def _con():
@@ -1235,8 +1249,8 @@ def main() -> int:
                          "ancienne pour représenter la situation actuelle.<br>"
                          + sous_titre_t1)
         print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_BLOQUER_H} h) — "
-              "avertissement de panne affiché, run en échec.")
-        code = 1
+              "avertissement de panne affiché, publication autorisée, run signalé.")
+        code = CODE_FRAICHEUR
     elif age_h > FRAICHEUR_AVERTIR_H:
         sous_titre_t1 = (f"⚠ Relevé de plus de {FRAICHEUR_AVERTIR_H} h — collecte à "
                          "relancer.<br>" + sous_titre_t1)
