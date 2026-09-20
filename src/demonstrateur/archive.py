@@ -243,11 +243,28 @@ def noter_controle(source_id: str) -> None:
 
 @lru_cache(maxsize=1)
 def _depot_durable() -> depot.Depot | None:
-    """Dépôt distant du run, résolu une seule fois — et annoncé une seule fois s'il manque."""
+    """Dépôt distant du run, résolu une seule fois — et annoncé une seule fois s'il manque.
+
+    DEUX CHEMINS MÈNENT À `DepotMalConfigure`, et le 30/08/2026 n'en avait fermé qu'un.
+    Celui de `_deposer` : le stockage refuse l'envoi. Celui-ci : `configurer()` refuse de
+    former le dépôt — aujourd'hui parce que `ARCHIVE_BUCKET` désigne le bucket de la
+    vitrine, que le déploiement synchronise avec `--delete` et qui effacerait donc
+    l'archive. Ce second chemin rendait `None` sans poser `_MAL_CONFIGURE` : il se
+    présentait comme une absence de configuration, c'est-à-dire comme le cas NORMAL en
+    local, et le run restait vert pendant qu'aucun octet ne partait. C'est exactement la
+    confusion que le disjoncteur de configuration existe pour empêcher — une panne
+    revient, une clé malformée non.
+    """
+    global _MAL_CONFIGURE
+
     try:
         distant = depot.configurer()
     except depot.DepotMalConfigure as exc:
+        _MAL_CONFIGURE = str(exc)
         print(f"[!] Dépôt durable NON utilisé — {exc}")
+        print("[!] Configuration en cause : aucun octet ne partira pendant ce run, et "
+              "aucune reprise n'y changera rien. Les versions restent indexées "
+              "`payload_archived: false` ; le run se termine en ÉCHEC.")
         return None
     if distant is None:
         print("[i] Dépôt durable non configuré (ARCHIVE_BUCKET) : les millésimes sont "
@@ -267,6 +284,10 @@ _DISJONCTEUR: str | None = None
 # refusée le sera pour toutes les sources du run : continuer à essayer, c'est produire
 # cinquante-trois fois le même message et trois cents secondes de pauses inutiles — c'est
 # ce qu'a fait le run 33318617637 du 30/08/2026, en restant vert.
+# DEUX SITES LE POSENT, et c'est délibéré : `_deposer`, quand le stockage refuse l'envoi,
+# et `_depot_durable`, quand `configurer()` refuse de former le dépôt. Le second est resté
+# muet jusqu'au 20/09/2026 — un refus s'y présentait comme une absence de configuration,
+# soit le cas normal en local, et le run restait vert.
 _MAL_CONFIGURE: str | None = None
 
 
