@@ -41,3 +41,9 @@ def _archive_hors_du_depot(tmp_path, monkeypatch):
     # rendrait tous les suivants muets, et un dépôt refusé ressemble à un dépôt réussi
     # vu de l'index — c'est exactement la confusion que ce chantier corrige.
     monkeypatch.setattr(archive, "_MAL_CONFIGURE", None)
+    # Et le dépôt lui-même est résolu UNE fois par run, `lru_cache` aidant : sans vidage,
+    # le premier test qui le résout pour de bon impose son résultat à tous les suivants —
+    # un dépôt absent comme un dépôt refusé. Même raison que les trois lignes au-dessus,
+    # et elle vaut d'autant plus ici que la quasi-totalité des tests remplacent
+    # `_depot_durable` en entier : ceux qui ne le font pas sont seuls à voir le cache.
+    archive._depot_durable.cache_clear()

@@ -564,6 +564,82 @@ def test_une_configuration_refusee_arrete_les_depots_du_run(archive_isolee, monk
         assert versions[0]["payload_archived"] is False
 
 
+def _sans_configuration_d_archive(monkeypatch) -> None:
+    """Efface toute variable d'où `depot.configurer()` pourrait tirer un dépôt.
+
+    Les deux tests qui suivent partent du même vide, et posent ensuite l'un rien du tout,
+    l'autre une configuration refusée : sans ce nettoyage, une clé traînant dans
+    l'environnement du poste ferait passer ou échouer les deux pour une raison qui n'est
+    pas la leur.
+    """
+    for nom in ("ARCHIVE_BUCKET", "ARCHIVE_ENDPOINT", "ARCHIVE_REGION",
+                "ARCHIVE_ACCESS_KEY", "ARCHIVE_SECRET_KEY",
+                "SCW_ACCESS_KEY", "SCW_SECRET_KEY",
+                "AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"):
+        monkeypatch.delenv(nom, raising=False)
+
+
+def test_le_bucket_de_la_vitrine_declare_pour_l_archive_rougit_le_run(tmp_path, monkeypatch,
+                                                                      capsys):
+    """Un dépôt REFUSÉ à la configuration ne doit pas se lire comme un dépôt absent.
+
+    `DepotMalConfigure` remonte de deux endroits. `_deposer` le posait déjà, et c'est le
+    chemin que le 30/08/2026 a fermé. `configurer()` le lève aussi, avant tout envoi,
+    quand `ARCHIVE_BUCKET` désigne le bucket de la vitrine — celui que le déploiement
+    synchronise avec `--delete`, donc celui qui effacerait l'archive. Ce chemin-là rendait
+    `None` en silence : indiscernable de « personne n'a configuré de dépôt », qui est le
+    cas NORMAL sur un poste. Le run restait vert pendant qu'aucun octet ne partait.
+
+    Aucun `_depot_durable` factice ici, et c'est le point : les autres tests du fichier le
+    remplacent en entier, ce qui est précisément pourquoi ce défaut n'a été vu par aucun.
+    """
+    _sans_configuration_d_archive(monkeypatch)
+    monkeypatch.setenv("ARCHIVE_BUCKET", config.BUCKET_VITRINE)
+    monkeypatch.setenv("ARCHIVE_ACCESS_KEY", "SCWXXXXXXXXXXXXXXXXX")
+    monkeypatch.setenv("ARCHIVE_SECRET_KEY", "00000000-0000-0000-0000-000000000000")
+
+    fichier = _source(tmp_path, "v1")
+    entree = archive.enregistrer_version("mix", GLISSANT, fichier, "sha_aaa")
+
+    assert archive.configuration_refusee() is not None, (
+        "un bucket d'archive pointé sur la vitrine laisse le run vert — le `--delete` du "
+        "déploiement effacerait l'archive, et rien ne le dirait"
+    )
+    assert archive.seuil_franchi() is None, (
+        "une configuration refusée n'est pas un seuil de volume : l'une se corrige, "
+        "l'autre se rediscute"
+    )
+    sortie = capsys.readouterr().out
+    assert "aucune reprise" in sortie, "le message promet une reprise qui n'aura pas lieu"
+
+    assert entree["payload_archived"] is False
+    assert _versions("mix")[0]["sha256"] == "sha_aaa", (
+        "la collecte a été emportée par une configuration fautive — les octets se "
+        "redéposent, un intervalle de connaissance ne se rattrape pas"
+    )
+
+
+def test_une_configuration_absente_laisse_le_run_vert(tmp_path, monkeypatch, capsys):
+    """Le versant opposé, sans lequel le verrou précédent serait une régression.
+
+    Personne n'a de raison de porter les clés du stockage sur son poste. L'absence de
+    configuration est le cas ordinaire : elle indexe les versions `payload_archived:
+    false` et les dépose au premier run qui en aura les moyens. La confondre avec un refus
+    ferait rougir tous les runs locaux, et un rouge permanent cesse d'être lu — c'est le
+    mécanisme même que ce chantier combat, retourné.
+    """
+    _sans_configuration_d_archive(monkeypatch)
+
+    fichier = _source(tmp_path, "v1")
+    entree = archive.enregistrer_version("mix", GLISSANT, fichier, "sha_aaa")
+
+    assert archive.configuration_refusee() is None, (
+        "une archive non configurée fait rougir le run : le cas ordinaire du poste local"
+    )
+    assert entree["payload_archived"] is False
+    assert "non configuré" in capsys.readouterr().out
+
+
 def test_l_avertissement_ne_promet_que_les_reprises_realisables(archive_isolee, monkeypatch):
     """Le second défaut du 30/08/2026 : 86 reprises annoncées, aucune possible.
 
