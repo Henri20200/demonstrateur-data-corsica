@@ -188,12 +188,22 @@ jobs:
         run: python -m demonstrateur.couverture
 
       - name: Figures — électricité
-        id: figures
-        # Code 1 = relevé au-delà du seuil de blocage (24 h depuis le 27/08/2026) : le
-        # visuel T1, avertissement en tête, doit être publié quand même — c'est lui qui
-        # dit la vérité au lecteur, et son âge se recalcule désormais chez celui-ci.
-        continue-on-error: true
-        run: python -m demonstrateur.figures
+        # DEUX CODES ACCEPTÉS, ET DEUX SEULEMENT (20/09/2026). 0 = génération normale.
+        # 2 = génération complète avec T1 « affichage suspendu » : ce visuel-là doit être
+        # publié — c'est lui qui dit la vérité au lecteur, et son âge se recalcule chez
+        # celui-ci. Tout autre code est une erreur technique et arrête le run ici.
+        # `continue-on-error: true` les tolérait tous : une exception de génération
+        # laissait la chaîne continuer sur les HTML du commit précédent (`outputs/` est
+        # versionné), qui traversaient alors les verrous et repartaient en ligne.
+        run: |
+          code=0
+          python -m demonstrateur.figures || code=$?
+          if [ "$code" -eq 2 ]; then
+            echo "::warning::T1 publié en « affichage suspendu » — relevé au-delà du seuil de blocage. La publication continue, le run sera signalé en fin de parcours."
+          elif [ "$code" -ne 0 ]; then
+            echo "::error::Échec technique de la génération des figures (code $code) — rien ne sera publié."
+            exit "$code"
+          fi
 
       # Étape à part, et SANS continue-on-error : la note lit ses chiffres dans les
       # Parquet ; si cette lecture échoue, il ne faut pas publier une note muette à côté
@@ -201,10 +211,12 @@ jobs:
       - name: Note méthodologique — électricité
         run: python -m demonstrateur.note_elec
 
-      # Pas de continue-on-error ici, à la différence de l'étape électricité : celle-ci
-      # tolère un code 1 parce qu'un T1 « affichage suspendu » DOIT être publié. Les
-      # figures de l'air, elles, refusent de se dessiner quand leur titre devient faux
-      # (une garde par figure) — c'est précisément le cas où il ne faut RIEN publier.
+      # Aucun code toléré ici, à la différence de l'étape électricité : celle-ci accepte
+      # le code 2 parce qu'un T1 « affichage suspendu » DOIT être publié. Les figures de
+      # l'air, elles, refusent de se dessiner quand leur titre devient faux (une garde par
+      # figure) — c'est précisément le cas où il ne faut RIEN publier. Les deux sujets ne
+      # se tiennent plus par le silence de l'autre : depuis le 20/09/2026, un relevé
+      # électrique périmé n'empêche plus la publication des pages de l'air.
       - name: Figures — air, note et page assemblée
         run: |
           python -m demonstrateur.figures_air
@@ -224,8 +236,20 @@ jobs:
 
       # Garde-fou avant publication : si un verrou de résultat casse (données EDF
       # révisées, changement de version de lib…), on ne committe rien et le run alerte.
+      # `not fraicheur` depuis le 20/09/2026 : ces verrous-là mesurent le CODE et les
+      # RÉSULTATS, ils restent bloquants. Celui de fraîcheur, lui, mesurait le même âge
+      # que l'étape des figures et décidait l'inverse — il interdisait de publier
+      # l'« affichage suspendu » que les figures venaient de produire.
       - name: Verrous de résultats
-        run: pytest
+        run: pytest -m "not fraicheur"
+
+      # À PART, et NON bloquant : verrou d'EXPLOITATION, il date le dernier passage du
+      # cron et non le code. Son échec ne doit pas retenir la publication — il rejoint le
+      # signalement final, qui rougit le run une fois la vitrine à jour.
+      - name: Verrou d'exploitation — fraîcheur du relevé
+        id: fraicheur
+        continue-on-error: true
+        run: pytest -m fraicheur
 
       - name: Committer visuels + manifeste si changement
         # Le dépôt étant privé, `pull` comme `push` demandent une authentification, et
@@ -301,8 +325,14 @@ jobs:
         run: |
           echo "::warning::SCW_ACCESS_KEY absent : visuels commités, vitrine NON mise à jour."
 
+      # Dernière étape, et c'est sa raison d'être : ce qui est signalé ici a déjà été
+      # publié. Une collecte partiellement en échec et un relevé périmé se voient sur la
+      # vitrine — c'est le lecteur qui doit pouvoir le constater — et se voient aussi en
+      # rouge ici, pour que le régime dégradé ne s'installe pas derrière un cron vert.
+      # Le verrou de fraîcheur remplace ici `steps.figures` : depuis le 20/09/2026 les
+      # figures ne rendent plus d'échec pour un relevé périmé, elles publient.
       - name: Signaler un échec de collecte ou de fraîcheur
-        if: steps.fetch.outcome == 'failure' || steps.figures.outcome == 'failure'
+        if: steps.fetch.outcome == 'failure' || steps.fraicheur.outcome == 'failure'
         run: |
-          echo "::error::Collecte ou fraîcheur en échec (fetch=${{ steps.fetch.outcome }}, figures=${{ steps.figures.outcome }}) — voir les étapes ci-dessus."
+          echo "::error::Collecte ou fraîcheur en échec (fetch=${{ steps.fetch.outcome }}, fraîcheur=${{ steps.fraicheur.outcome }}) — voir les étapes ci-dessus."
           exit 1

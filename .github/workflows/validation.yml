@@ -136,11 +136,20 @@ jobs:
       # La chaîne du cron, dans son ordre. Les verrous des pages lisent ce que ces
       # commandes écrivent : sans elles, ils compareraient la page publiée à des données
       # plus anciennes et seraient rouges pour une raison qui n'est pas le diff.
-      # `figures` tolère son code 1 (relevé trop vieux), qui est la normale sur un cache.
+      # `figures` tolère son code 2 (relevé trop vieux), qui est la normale sur un cache —
+      # et LUI SEUL depuis le 20/09/2026. Le `|| true` d'avant avalait aussi bien une
+      # exception de génération : `outputs/` étant versionné, les verrous relisaient alors
+      # les HTML du dernier commit du cron et ce job pouvait passer au vert sur une PR qui
+      # casse une figure. C'est le trou exact dans ce qu'il existe pour attester.
       - name: Figures et pages, comme le cron
         if: steps.donnees.outputs.cache-matched-key != ''
         run: |
-          python -m demonstrateur.figures || true
+          code=0
+          python -m demonstrateur.figures || code=$?
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
+            echo "::error::Échec technique de la génération des figures (code $code)."
+            exit "$code"
+          fi
           python -m demonstrateur.note_elec
           python -m demonstrateur.figures_air
           python -m demonstrateur.note_air
