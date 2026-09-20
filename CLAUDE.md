@@ -138,6 +138,20 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   dépose donc pas plus à la main que les visuels ne se committent à la main. Sans les secrets
   `SCW_ACCESS_KEY` / `SCW_SECRET_KEY`, l'étape se saute avec un avertissement plutôt que de
   faire échouer le run.
+- **On publie, PUIS on rougit — et `figures` rend trois verdicts, pas deux.** Depuis le
+  20/09/2026, `python -m demonstrateur.figures` sort en `0` (génération normale), en
+  `CODE_FRAICHEUR` = `2` (génération complète, T1 en « affichage suspendu » : on publie
+  quand même, c'est ce visuel qui dit la vérité au lecteur) ou en tout autre code, qui est
+  une erreur technique et arrête la chaîne avant publication. Les deux workflows
+  discriminent là-dessus. Avant, le même `1` portait les deux sens : le cron tolérait tout
+  (`continue-on-error`) puis échouait sur le verrou de fraîcheur AVANT le commit — le mode
+  dégradé ne pouvait donc pas atteindre la vitrine, et un gel du flux électrique emportait
+  la publication de l'air avec lui ; côté PR, un `|| true` avalait une exception de
+  génération et les verrous relisaient les HTML du commit précédent. D'où la conséquence
+  d'exploitation : le verrou `fraicheur` se joue **à part et sans bloquer** dans le cron
+  aussi, et c'est son issue que l'étape finale lit pour rougir le run une fois la vitrine à
+  jour. **L'ordre des étapes porte le contrat** — remonter ce signalement avant le commit
+  reconstruirait le défaut, `tests/test_codes_sortie.py` le tient.
 - **Les millésimes se déposent hors du dépôt Git.** Depuis le 20/08/2026, chaque contenu
   distinct d'une source part dans un bucket d'archive **append-only** — clés immuables
   `archive/<source_id>/<AAAA>/<MM>/<instant>_<sha256>.<ext>`, jamais de `sync`, jamais de
@@ -208,7 +222,10 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   CI de PR a deux jobs : `valider` (environnement d'`uv.lock`, sans données) et `verrous`,
   qui restaure le cache `data/raw` du pipeline en lecture seule, rejoue `prepare` → figures
   → pages, puis toute la suite **sauf les tests marqués `fraicheur`** — ceux-là mesurent la
-  date du dernier passage du cron, pas le code. `verrous` tourne dans l'environnement du
+  date du dernier passage du cron, pas le code. Depuis le 20/09/2026 le CRON les écarte lui
+  aussi de sa passe bloquante et les joue dans une étape à part : ce qui distingue les deux
+  jobs n'est donc plus cette exclusion, mais ce qu'ils en font — `verrous` les ignore, le
+  cron s'en sert pour rougir APRÈS avoir publié (cf. le contrat de publication ci-dessus). `verrous` tourne dans l'environnement du
   CRON (pip, dernières versions) et non sous `uv.lock`, sans quoi il ne prédirait rien :
   c'est un `pandas` sans `pytz` qui a suspendu la publication le 28/08, sous un `uv.lock`
   qui, lui, passait. Lire les deux ensemble : `valider` vert + `verrous` rouge =
