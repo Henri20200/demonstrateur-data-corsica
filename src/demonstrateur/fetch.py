@@ -101,12 +101,42 @@ def _load_manifest() -> dict:
 
 
 def _save_manifest(manifest: dict) -> None:
-    # newline="\n" : le manifeste est le SEUL fichier de data/ versionné. Écrit sous
-    # Windows sans cette précaution, il diffère du même manifeste écrit par le runner
-    # Linux sur chacune de ses lignes — un diff entier sur un contenu identique.
-    MANIFEST_FILE.write_text(
+    """Écrit le manifeste en TEMPORAIRE, puis le remplace d'un bloc.
+
+    Le manifeste est réécrit en entier à chaque source téléchargée et une fois en fin de
+    run — 27 écritures pour un run nominal (26 sources glissantes, plus la finale), et 54
+    quand `data/raw` est vide. Écrit en direct, un processus tué pendant l'une d'elles
+    laissait un JSON tronqué, et personne ne le rattrape : `_load_manifest`,
+    `prepare._verifier_bruts` et `viz.date_collecte` font tous un `json.loads` nu. La
+    chaîne s'arrête alors partout jusqu'à ce qu'un `git checkout` restaure le fichier —
+    il est versionné, c'est ce qui rend la panne réparable. Même geste que
+    `archive._sauver` et `prepare._ecrire_lignee` ; AUD-09 le demandait le 05/08/2026.
+
+    CE QU'ELLE NE COUVRE PAS, et il faut le dire : le couple (brut, manifeste). Entre le
+    remplacement du fichier brut et cet appel, il y a trois instructions ; une
+    interruption dans cet intervalle laisse des octets neufs sous une ancienne empreinte.
+    Une source glissante l'efface au run suivant, puisqu'elle est retéléchargée. Une
+    source figée, en revanche, y passe dès que son fichier est ABSENT — clone neuf, cache
+    évincé, source nouvellement déclarée : `certifie` vaut alors False et elle est
+    collectée. Si le producteur a révisé son contenu depuis, la vérification d'empreinte
+    du run suivant refuse le fichier et le run se termine en code 1 sans le
+    retélécharger. La sortie est manuelle, et le message la donne : supprimer le brut
+    puis relancer, ou `fetch-data --recertifier`. Inverser l'ordre ne gagnerait rien —
+    l'état deviendrait « manifeste neuf, fichier ancien », refusé exactement pareil ;
+    seul un journal de reprise lèverait ce cas, et il n'est pas écrit.
+
+    Le FORMAT ne bouge pas : ordre d'insertion (celui de `sources.yaml`, pas `sort_keys`),
+    pas de saut de ligne final. Ce sont ceux du fichier versionné, et les changer
+    produirait un diff intégral sur un contenu identique — ce que le cron s'interdit.
+    `newline="\\n"` pour la même raison : le manifeste est le SEUL fichier de `data/`
+    versionné, et écrit sous Windows sans cette précaution il diffère du même manifeste
+    écrit par le runner Linux sur chacune de ses lignes.
+    """
+    tmp = MANIFEST_FILE.with_name(MANIFEST_FILE.name + ".tmp")
+    tmp.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8", newline="\n"
     )
+    tmp.replace(MANIFEST_FILE)
 
 
 def _expanser_env(url: str) -> tuple[str, list[str]]:
