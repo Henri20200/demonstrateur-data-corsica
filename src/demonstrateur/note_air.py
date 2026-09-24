@@ -21,7 +21,7 @@ import duckdb
 from .config import DATA_PROCESSED, OUTPUTS
 from .figures_air import AN_FIN, contraste_a4, phrase_actualite
 from .navigation import CSS as CSS_NAV, NOTE_AIR, pied as pied_navigation
-from .prepare import verifier_sorties
+from .prepare import MIN_HEURES_8H, MIN_MOYENNES_MDA8, verifier_sorties
 from .viz import PALETTE, SANS, date_collecte
 
 SERIE = (DATA_PROCESSED / "air_serie.parquet").as_posix()
@@ -51,6 +51,7 @@ def _chiffres() -> dict:
         f"SELECT DISTINCT station, influence FROM '{SERIE}' WHERE influence <> 'Fond' "
         "ORDER BY 1"
     ).fetchall()
+    a4 = contraste_a4()
     return dict(
         air_h=air[0], air_st=air[1], air_d1=air[2], air_d2=air[3], air_verif=air[4],
         verif_d2=air[5], air_fond=fond,
@@ -64,7 +65,7 @@ def _chiffres() -> dict:
         # cette note a publié « c'est à la campagne qu'on en mesure le plus » pendant
         # que la page, corrigée le 29/08/2026, publiait « la majorité ». Le superlatif
         # était faux, et c'est ici qu'il avait survécu — là où aucun verrou ne portait.
-        a4=contraste_a4(),
+        a4=a4, a4_nom=a4["rurale"].title(),
         # Même source que l'encart de la page, et non la même phrase recopiée : c'est
         # exactement ce qui a manqué au contraste d'A4 en août 2026.
         actu=phrase_actualite(),
@@ -164,9 +165,11 @@ chose</strong> :</p>
 </ul>
 <p>La moyenne sur huit heures n'est publiée par aucune des sources : elle est recalculée
 ici, en suivant à la lettre le guide du producteur (LCSQA/Ineris, guide de calcul des
-statistiques de qualité de l'air). Une journée n'est retenue que si elle réunit assez de
-mesures valides pour que son maximum soit opposable — <strong>{n(c["jours"])} journées</strong>
-le sont. Le calcul est vérifié contre l'exemple chiffré publié dans ce guide.</p>
+statistiques de qualité de l'air). Chaque moyenne exige au moins {MIN_HEURES_8H} mesures
+horaires valides sur huit ; une journée est retenue si elle compte au moins
+{MIN_MOYENNES_MDA8} moyennes valides — <strong>{n(c["jours"])} journées</strong> le sont.
+Un dépassement exige un maximum strictement supérieur au seuil, pas égal à celui-ci.
+Le calcul est vérifié contre l'exemple chiffré publié dans ce guide.</p>
 <p>Les heures signalées comme douteuses par les producteurs sont écartées avant tout calcul,
 côté air comme côté température.</p>
 
@@ -177,18 +180,22 @@ côté air comme côté température.</p>
     vent, et rien dans des mesures de concentration ne permet de démêler ce qui revient à
     l'un ou à l'autre. On lit une <strong>coïncidence</strong>, pas une cause.</li>
 <li><strong>Ce que l'ozone n'est pas.</strong> C'est un polluant <em>secondaire</em> :
-    aucune source ne l'émet, il se forme dans l'air sous l'effet du soleil à partir d'autres
+    il se forme dans l'air sous l'effet du soleil à partir d'autres
     polluants (Qualitair Corse, « Polluants surveillés »). Sa concentration ne peut donc pas
-    se lire comme la trace des rejets d'une installation proche — c'est même à la campagne,
-    loin des moteurs, qu'on en dépasse l'objectif plus souvent que dans
+    se lire comme la trace des rejets d'une installation proche. À {c["a4_nom"]},
+    la station rurale retenue dans cette comparaison, l'objectif est dépassé plus souvent que dans
     {c["a4"]["devancees"]} des {len(c["a4"]["autres"])} stations
-    {c["a4"]["implantations"]}. Les polluants qu'on suit au voisinage d'une
+    {c["a4"]["implantations"]}.
+    Les polluants qu'on suit au voisinage d'une
     source — particules, dioxyde de soufre, oxydes d'azote — ne sont pas traités ici.</li>
-<li><strong>D'où vient cet ozone.</strong> Une concentration ne porte pas d'étiquette
-    d'origine. Une part se forme loin de l'île et y arrive avec le vent ; la chiffrer
-    demanderait un modèle, pas des mesures.</li>
-<li><strong>Ce qui a causé un pic.</strong> Aucune de ces mesures ne désigne une
-    installation, un navire ou une route.</li>
+<li><strong>D'où vient cet ozone.</strong> Une mesure donne une quantité, pas une
+    provenance. L'ozone se forme dans l'air à partir d'autres polluants, puis il se
+    déplace avec le vent : une partie de celui qu'on mesure en Corse s'est formée
+    ailleurs. Savoir quelle part demanderait un modèle de transport, que des mesures de
+    concentration ne remplacent pas.</li>
+<li><strong>Ce qui a causé un pic.</strong> Un dépassement dit qu'une journée a été
+    chargée en ozone. Il ne dit pas ce qui l'a chargée. Ces mesures ne permettent de
+    désigner ni une installation, ni un navire, ni une route.</li>
 </ul>
 
 <h2>Les approximations, assumées</h2>
@@ -202,7 +209,8 @@ côté air comme côté température.</p>
     janvier 2024, quand les quatre autres remontent à 2006-2011. Le décompte en nombre de
     journées l'écarte pour cette raison — deux étés ne se comparent pas à six en longueur de
     barre — et la figure l'annonce sous son titre. La comparaison en part des journées
-    mesurées, elle, la garde : c'est justement ce qu'une part permet.</li>
+    valides la garde, en affichant les effectifs et les étés disponibles. Un pourcentage
+    ne corrige pas les différences de périodes mesurées.</li>
 <li><strong>Les figures portent le même périmètre</strong> — étés 2020 à 2025, stations
     dites « de fond », journées valides — pour que deux chiffres pris sur deux figures
     puissent se lire l'un à côté de l'autre. Celle qui en sort le dit sous son titre : c'est

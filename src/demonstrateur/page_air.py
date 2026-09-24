@@ -60,7 +60,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             ),
         ),
         (
-            "<p>L'ozone n'est émis par rien : il se fabrique sur place, sous le soleil. On "
+            "<p>L'ozone se forme dans l'air sous l'effet du soleil, à partir d'autres polluants. On "
             "s'attend donc à en trouver davantage les jours de forte chaleur — c'est le cas, "
             "mais pas indéfiniment.</p>",
             a2,
@@ -80,16 +80,14 @@ def _blocs() -> list[tuple[str, str, str]]:
             ),
         ),
         (
-            # « les moteurs qui, eux, le détruisent » disait un mécanisme faux en plus
-            # d'être catégorique : un moteur ne détruit pas l'ozone, c'est le monoxyde
-            # d'azote émis près des sources de combustion qui peut le consommer.
-            "<p>Et où ? Là encore, l'intuition trompe : il se forme pendant que l'air se "
-            "déplace et peut s'accumuler loin du trafic routier ; à proximité des "
-            "émissions, le monoxyde d'azote peut en consommer une partie.</p>",
+            # La phrase de résultat est calculée depuis le périmètre d'A4. Cinq de ses
+            # valeurs changent avec la donnée, que le producteur révise après coup.
+            "<p>Comparons la part des journées d'été dépassant le seuil d'ozone dans les "
+            f"stations étudiées. {fa.phrase_resultat_a4()}</p>",
             a4,
             preparer_figure(
                 fa.fig_a4_campagne_contre_ville(), fa.SRC_AIR, d_air,
-                sous_titre=fa.st_a4(),
+                sous_titre=fa.st_a4(), note=fa.NOTE_A4,
             ),
         ),
         (
@@ -119,8 +117,8 @@ MOTS = [
      "Un gaz qui pique les bronches — mais seulement au ras du sol. Très haut dans le "
      "ciel, le même gaz forme un filtre contre les rayons ultraviolets : c'est "
      "le « bon ozone », celui de la couche. En bas, il ne protège de rien ; "
-     "respiré à forte dose, il enflamme les bronches et irrite les yeux. Personne ne "
-     "l'émet : il se fabrique dans l'air, quand le soleil tape sur les gaz "
+     "respiré à forte dose, il enflamme les bronches et irrite les yeux. Il se forme "
+     "dans l'air, quand le soleil tape sur les gaz "
      "d'échappement et les vapeurs d'essence. C'est pour ça qu'il apparaît l'été, "
      "l'après-midi, et qu'il est le seul polluant que le beau temps favorise."),
     ("Dioxyde d'azote",
@@ -177,29 +175,11 @@ CLES = {
     # calculé — et A1 échoue s'il est franchi.
     0: "Aucune de ces journées n'a atteint le seuil qui déclenche une information du "
        "public. Rien n'obligeait donc à les signaler.",
-    # A4. Le lecteur arrive avec « pollution = cheminée » et range l'ozone dedans — d'autant
-    # qu'il a lu la presse sur les installations de l'île. Le démenti n'importe aucun
-    # mécanisme : Qualitair Corse, producteur des mesures, qualifie l'ozone de polluant
-    # SECONDAIRE, que personne n'émet. Ce seul fait casse le lien, et la figure au-dessus
-    # vient de le montrer sur nos propres stations. Aucune installation n'est nommée : la
-    # nommer pour l'écarter attirerait l'attention sur elle, et le mécanisme couvre tous
-    # les cas sans qu'on ait à en désigner un.
-    # « C'est à la campagne qu'on en mesure le plus » était FAUX (corrigé le 29/08/2026) :
-    # Bastia Montesoro dépasse 15,1 % de ses journées contre 10,4 % à Venaco. Le superlatif
-    # a survécu au titre qui le portait — la figure, elle, n'a jamais montré que la
-    # majorité. C'est ce que la garde d'A4 tient, et c'est ce que la phrase dit désormais.
-    # « Illustre », et non « la preuve est dans cette figure » : A4 montre le contraste
-    # entre Venaco et les stations urbaines ou périurbaines, elle ne démontre ni que
-    # l'ozone est un polluant secondaire ni le mécanisme chimique énoncé juste avant.
-    # Le verbe tient la portée que le reste de la page vient d'ajuster.
-    # L'encadré RÉEXPLIQUAIT ici la formation de l'ozone, que la liaison d'A2 a déjà dite
-    # deux figures plus haut (« il se fabrique sur place, sous le soleil »). Une page qui
-    # tient en trois minutes ne peut pas payer deux fois la même notion : ce qui reste est
-    # ce que cette figure-ci ajoute, et le mot qui porte le démenti.
-    3: "L'ozone ne sort d'aucun tuyau : c'est un polluant secondaire, que personne n'émet. "
-       "Sa quantité ne dit donc pas ce qu'une installation rejette près de chez soi. Cette "
-       "figure l'illustre : la seule station rurale de l'île dépasse l'objectif plus "
-       "souvent que la majorité des autres.",
+    # A4 : le classement tient dans le périmètre affiché. Il ne prouve ni une cause
+    # des écarts ni un classement de la qualité de l'air tous polluants confondus.
+    3: "La station rurale retenue dans cette comparaison dépasse l'objectif plus souvent "
+       "que la majorité des stations urbaines ou périurbaines comparées. Ce classement "
+       "ne suffit pas à expliquer les écarts observés.",
 }
 
 

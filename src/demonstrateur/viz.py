@@ -290,6 +290,26 @@ def verifier_legende(fig, largeur: int = LARGEUR_VISUEL) -> list:
     return []
 
 
+def centrer_titre_ancre(fig) -> None:
+    """Centre dans la marge haute le bloc titre d'une figure qui déclare son ancrage.
+
+    Une figure peut ancrer son titre en haut du conteneur pour qu'un titre de deux lignes
+    ne redescende pas sur le tracé. L'ancrage seul colle alors le titre au bord haut,
+    alors que Plotly centre les autres titres dans leur marge. Le décalage se voyait
+    sur A4, dont le titre paraissait rogné pendant qu'un large vide séparait le
+    sous-titre de la première barre.
+
+    La position est calculée après le sous-titre, donc sur le bloc complet. Le titre
+    garde au moins 12 px au-dessus de lui.
+    """
+    if fig.layout.title.yref != "container":
+        return
+    hauteur = fig.layout.height or template().layout.height
+    haut_bloc = sum(taille * 1.45 for _, taille in lignes_de_titre(fig))
+    au_dessus = max((marge_effective(fig, "t") - haut_bloc) / 2, 12)
+    fig.update_layout(title=dict(y=1 - au_dessus / hauteur, yanchor="top"))
+
+
 def marge_haute_minimale(fig) -> int:
     """Marge haute qu'il faut à cette figure pour que le tracé ne remonte pas dans le titre.
 
@@ -436,6 +456,7 @@ def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
         # Commentaire = sous-titre NATIF (un seul bloc avec le titre) : contrairement à
         # une annotation flottante, il ne peut plus télescoper la légende.
         fig.update_layout(title=dict(subtitle=dict(text=sous_titre)))
+    centrer_titre_ancre(fig)
     # Le titre est posé : on vérifie qu'il TIENT, avant de dessiner quoi que ce soit.
     verifier_titres(fig, nom)
     # Coupure VOULUE avant la date quand la source est longue : elle tombe à un endroit

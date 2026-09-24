@@ -1801,7 +1801,7 @@ def test_a4_annonce_les_implantations_qu_elle_trace(con):
     """
     from demonstrateur.figures_air import (
         IMPLANTATIONS, adjectif, enumeration, est_rurale, fig_a4_campagne_contre_ville,
-        perimetre_a4, st_a4,
+        perimetre_a4,
     )
 
     src = MDA8.as_posix()
@@ -1833,23 +1833,10 @@ def test_a4_annonce_les_implantations_qu_elle_trace(con):
         f"A4 trace {traces} là où la donnée compte {attendu} : {etiquettes}"
     )
 
-    # 3. Ce que le sous-titre ANNONCE. On n'y cherche pas la phrase, on y cherche les
-    #    nombres — écrits en lettres, et transcrits ici indépendamment de la fonction qui
-    #    les rend — puis l'énumération des catégories de chaque groupe. C'est ce qui
-    #    manquait : le sous-titre était une constante quand l'encart comptait, lui, dans
-    #    la donnée.
-    mots = {1: "une", 2: "deux", 3: "trois", 4: "quatre", 5: "cinq", 6: "six"}
-    annonce = st_a4().lower()
-    for rural in (True, False):
-        groupe = [i for i in df["implantation"] if est_rurale(i) == rural]
-        # Le sous-titre dit les FAMILLES (« rurale »), la barre dit la catégorie entière
-        # (« rurale régionale ») : l'échelle de représentativité n'apprend rien à qui lit
-        # un décompte de milieux.
-        dits = enumeration(groupe, len(groupe) > 1, famille=True)
-        assert f"{mots[len(groupe)]} " in annonce and dits in annonce, (
-            f"le sous-titre d'A4 n'annonce plus {mots[len(groupe)]} station(s) "
-            f"« {dits} » : « {annonce} »"
-        )
+    # 3. Le sous-titre annonçait le même décompte. Sa ligne a été retirée le 24/09/2026 :
+    #    elle répétait le titre de l'axe et celui de la figure. La vérification est
+    #    retirée avec elle, pas reportée ailleurs — les étapes 2 et 4 tiennent déjà le
+    #    décompte, sur les barres et sur le titre.
 
     # 4. Ce que le TITRE affirme, qui est le plus exposé des trois : il nomme la seule
     #    station rurale, compte celles qu'elle devance, et les nomme par leurs catégories.

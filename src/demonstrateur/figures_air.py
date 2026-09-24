@@ -66,8 +66,8 @@ OU_A3 = f"influence = 'Fond' AND station <> 'VENACO' AND {ETES} AND {ANNEES}"
 # cinq stations existent toutes (2024-2025) elle dépasse quatre fois plus souvent que
 # lui. La figure classait deux stations à l'envers. Écrire « 4 sur 180 » à côté de la
 # barre n'y aurait rien changé : c'est la longueur qu'on lit, pas l'étiquette.
-# Elle reste dans A4, qui compte en PART des journées mesurées — là, une fenêtre courte
-# ne fausse plus la comparaison, c'est même la raison d'être de cette figure-là.
+# Elle reste dans A4, qui compte en PART des journées valides. Les effectifs et les
+# étés disponibles y sont affichés : un taux ne corrige pas la différence de périodes.
 RECENTE = "AJACCIO CONFINA 2"
 OU_A1 = (f"valide AND {ETES} AND {ANNEES} AND influence = 'Fond' "
          f"AND station <> '{RECENTE}'")
@@ -191,7 +191,10 @@ def perimetre_a4():
     return _con().execute(f"""
         SELECT station, implantation,
                100.0 * count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE}) / count(*) AS taux,
-               count(*) AS jours
+               count(*) AS jours,
+               count(*) FILTER (WHERE mda8 > {OBJECTIF_QUALITE}) AS depassements,
+               list(DISTINCT CAST(extract('year' FROM date_locale) AS INTEGER)
+                    ORDER BY CAST(extract('year' FROM date_locale) AS INTEGER)) AS etes
         FROM '{MDA8}'
         WHERE valide AND influence = 'Fond' AND {ETES} AND {ANNEES}
         GROUP BY 1, 2 ORDER BY 3
@@ -226,22 +229,51 @@ def contraste_a4() -> dict:
     taux_rural = float(rurales["taux"].iloc[0])
     autres = df.loc[[not est_rurale(i) for i in df["implantation"]]]
     devancees = int((autres["taux"] < taux_rural).sum())
-    # Le titre se compte, donc il ne peut plus mentir. Cette garde protège désormais ce
-    # qui l'entoure : la page introduit la figure en disant que l'ozone « s'accumule loin
-    # des moteurs », la note méthodologique le redit à sa façon, et A4 n'en est la preuve
-    # que tant que la station rurale devance la MAJORITÉ des autres. Exiger la première
-    # place serait plus strict que ce qui est publié, et ce serait déjà tombé : Bastia
-    # Montesoro dépasse plus souvent que Venaco.
+    # Le titre compte les stations devancées ; la conclusion parle de leur majorité.
+    # Cette garde tient cet accord, sans faire du classement une preuve de causalité.
     if devancees * 2 <= len(autres):
         raise ValueError(
             f"A4 : {rurale} ne devance que {devancees} station(s) non rurale(s) sur "
-            f"{len(autres)} — la figure ne soutient plus ni la phrase qui l'introduit "
-            "(« il peut s'accumuler loin du trafic routier »), ni l'encadré qui la conclut "
-            "(« plus souvent que la majorité »), ni la note méthodologique. À rejuger "
-            "avant de publier."
+            f"{len(autres)} — la conclusion « plus souvent que la majorité » n'est plus "
+            "soutenue par les mesures. À rejuger avant de publier."
         )
     return dict(df=df, rurale=rurale, autres=autres, devancees=devancees,
                 implantations=enumeration(autres["implantation"]))
+
+
+def phrase_resultat_a4() -> str:
+    """La phrase de résultat de la page, calculée depuis le périmètre d'A4.
+
+    Cinq valeurs y changent avec la donnée : la station de tête, son implantation, son
+    taux, le taux de la station rurale et le nombre de stations qu'elle devance. Le
+    producteur révise ses mesures après coup ; un chiffre écrit à la main devient donc
+    faux sans que rien ne le signale.
+
+    La phrase suppose un classement : une station non rurale en tête, la rurale en
+    deuxième. Si ce classement change, la phrase est à réécrire et non à recalculer. Le
+    rang est vérifié ici. Les autres contrôles sont ceux de `contraste_a4`.
+    """
+    c = contraste_a4()
+    df = c["df"].sort_values("taux", ascending=False)
+    rang = next(i for i, station in enumerate(df["station"], 1) if station == c["rurale"])
+    if rang != 2:
+        raise ValueError(
+            f"A4 : {c['rurale']} est au rang {rang}. La phrase de résultat de la page la "
+            "place en deuxième, derrière une station non rurale. À réécrire avant de publier."
+        )
+
+    def pct(v) -> str:
+        # Entier, comme l'étiquette de la barre : deux précisions du même nombre à
+        # quelques centimètres l'une de l'autre se liraient comme deux mesures.
+        return f"{float(v):.0f}"
+
+    tete, rurale = df.iloc[0], df.iloc[1]
+    return (f"Sur les périodes disponibles, {tete['station'].title()}, station "
+            f"{adjectif(tete['implantation'])}, présente la plus forte part de journées "
+            f"d'été valides en dépassement ({pct(tete['taux'])} %). "
+            f"{rurale['station'].title()}, seule station rurale étudiée, arrive deuxième "
+            f"({pct(rurale['taux'])} %), devant les {NOMBRES[len(df) - 2].lower()} autres "
+            "stations.")
 
 
 def actualite_air() -> dict | None:
@@ -525,23 +557,31 @@ def note_a1() -> str:
 
 
 def st_a4() -> str:
-    """Sous-titre d'A4 — une fonction, parce qu'il annonce un DÉCOMPTE d'implantations.
+    """Sous-titre d'A4 : le périmètre commun, puis les stations à couverture incomplète.
 
-    Ce qu'il dit se compte dans la structure que la figure trace, jamais à côté d'elle.
-    Le verrou porte sur cet accord, pas sur la phrase : si une station change légitimement
-    de catégorie, le texte doit suivre la donnée sans qu'on réécrive un test éditorial.
+    Le décompte des implantations a quitté cette ligne le 24/09/2026. Il répétait le titre
+    de l'axe et le titre de la figure, qui compte déjà les stations devancées et nomme
+    leurs catégories. Chaque barre porte la sienne. Le verrou qui tenait ce décompte dans
+    le sous-titre a été retiré en même temps que la ligne ; les deux autres restent, sur
+    le titre et sur les barres.
+
+    Une station dont la couverture n'est pas complète ajoute une ligne. Un pourcentage
+    ne corrige pas une différence de période, donc elle est dite.
     """
-    implantations = list(perimetre_a4()["implantation"])
-    rurales = [i for i in implantations if est_rurale(i)]
-    autres = [i for i in implantations if not est_rurale(i)]
-    # Familles, pas catégories entières : « une station rurale » et non « rurale
-    # régionale ». L'échelle de représentativité n'apprend rien à qui lit un décompte de
-    # milieux, la barre de la station la porte, et la ligne y gagne 77 px — elle mesurait
-    # 976 px pour 974 disponibles, `export_html` la refusait.
-    return _sous_titre(
-        "En part des journées mesurées, non en nombre de jours — "
-        f"{_stations(len(rurales))} {enumeration(rurales, len(rurales) > 1, famille=True)}, "
-        f"{NOMBRES[len(autres)].lower()} {enumeration(autres, famille=True)}.")
+    texte = PERIMETRE
+    for ligne in perimetre_a4().itertuples():
+        if list(ligne.etes) != list(range(AN_DEBUT, AN_FIN + 1)):
+            annees = ", ".join(str(an) for an in ligne.etes)
+            texte += (f"<br>{ligne.station.title()} : journées valides disponibles "
+                      f"en {annees} seulement.")
+    return texte
+
+
+NOTE_A4 = (
+    "Étiquettes : jours en dépassement / jours valides."
+    "<br>Dépassement : maximum journalier de la moyenne glissante sur 8 h "
+    f"> {OBJECTIF_QUALITE} µg/m³."
+)
 
 
 ST_A5 = _sous_titre("Moyenne de chaque heure de la journée.")
@@ -812,7 +852,7 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
     # Le titre énonce donc l'observation, avec ses nombres, et s'arrête là.
     titre = (f"À {rurale.title()}, les dépassements d'ozone sont plus fréquents"
              f"<br>que dans {devancees} des {len(autres)} stations "
-             f"{c['implantations']}")
+             f"{c['implantations']} comparées")
     couleurs = [AIR_OZONE if s == rurale else PALETTE["muted"] for s in df["station"]]
     # Explicitation (04/08/2026) : chaque station dit son implantation, et non la seule
     # rurale — sans quoi le lecteur doit deviner celle des autres.
@@ -824,43 +864,38 @@ def fig_a4_campagne_contre_ville() -> go.Figure:
         marker=dict(color=couleurs, line=dict(color=PALETTE["surface"], width=2)),
         # L'unité est portée par chaque étiquette : « 15 » seul se lit comme un nombre
         # de jours, ce que la figure ne montre justement pas.
-        text=[f"{v:.0f} %" for v in df["taux"]], textposition="outside",
-        textfont=dict(family=SANS, size=17, color=PALETTE["ink"]),
-        customdata=df["jours"],
+        text=[f"{r.taux:.0f} %<br>{r.depassements} / {r.jours} jours"
+              for r in df.itertuples()], textposition="outside", cliponaxis=False,
+        textfont=dict(family=SANS, size=16, color=PALETTE["ink"]),
+        customdata=df[["depassements", "jours"]],
         hovertemplate="%{y}<br>%{x:.1f} % des journées au-dessus de "
                       f"{OBJECTIF_QUALITE} µg/m³"
-                      "<br>sur %{customdata} journées mesurées<extra></extra>",
+                      "<br>%{customdata[0]} jours en dépassement / "
+                      "%{customdata[1]} jours valides"
+                      "<br>Maximum journalier de la moyenne glissante sur 8 h<extra></extra>",
     ))
-    fig.add_annotation(
-        # L'encart ne répète plus le décompte : depuis que le titre le porte, il ne lui
-        # reste que l'explication — et deux lignes au lieu de quatre rendent au tracé la
-        # hauteur que le titre sur deux lignes lui prend.
-        # « Peuvent détruire » : le mécanisme est établi, son poids dans l'écart mesuré ici
-        # ne l'est pas. Ce que nous montrons est une coïncidence sur nos propres mesures
-        # (le pic de NO2 tombe dans le creux d'ozone, cf. A3) — pas la démonstration que
-        # c'est elle qui creuse l'écart entre ces cinq stations.
-        text=("En ville, les gaz d'échappement peuvent"
-              "<br>détruire une partie de l'ozone."),
-        xref="paper", yref="paper", x=0.99, y=0.04, xanchor="right", yanchor="bottom",
-        showarrow=False, align="right",
-        font=dict(family=SANS, size=17, color=PALETTE["ink"]),
-        bgcolor=PALETTE["page"], borderpad=12,
-    )
     fig.update_layout(
-        title=dict(text=titre),
-        xaxis=dict(title=dict(text=f"Part des journées d'été où l'ozone dépasse "
-                                   f"l'objectif de qualité ({OBJECTIF_QUALITE} µg/m³)",
+        # Ancrage en haut du conteneur : sans lui, Plotly centre le bloc titre dans la
+        # marge haute et la deuxième ligne du titre redescend sur la première barre.
+        # `preparer_figure` calcule ensuite `y` pour laisser au titre autant d'air
+        # au-dessus de lui qu'en dessous, une fois le sous-titre posé.
+        title=dict(text=titre, yanchor="top", yref="container"),
+        xaxis=dict(title=dict(text="Part des journées valides en dépassement (%)",
                               font=AXE),
                    ticksuffix=" %",
                    # Air à droite : l'étiquette de la barre la plus longue est posée
                    # hors barre et se faisait rogner au bord du tracé.
                    range=[0, float(df["taux"].max()) * 1.14]),
         yaxis=dict(title=""),
-        # t=175 et non 170 : le titre sur deux lignes en exige exactement 175, mesuré par
-        # `marge_haute_minimale`, qui refusait la figure sinon. Les cinq pixels rendus par
-        # le tracé sont largement repris à l'encart, passé de quatre lignes à deux.
-        margin=dict(t=175, b=190, l=300, r=90),
-        height=580,
+        # Marges remesurées le 24/09/2026 : le gabarit réclame t=175 et b=228. La réserve
+        # couvre une ligne de plus de chaque côté. Une station dont la couverture devient
+        # incomplète ajoute une ligne de sous-titre.
+        # t=185 laisse 26 px au-dessus du titre, comme A1. Le vide qui restait sous le
+        # sous-titre éloignait le tracé du texte de la page sans rien apporter.
+        # La zone de tracé garde 330 px : les étiquettes tiennent sur deux lignes, il leur
+        # faut 66 px par barre.
+        margin=dict(t=185, b=250, l=300, r=90),
+        height=765,
     )
     return fig
 
@@ -937,7 +972,7 @@ def main() -> int:
     export_html(fig_a3_ozone_contre_azote(), "a3_ozone_contre_azote",
                 SRC_AIR, d_air, sous_titre=st_a3())
     export_html(fig_a4_campagne_contre_ville(), "a4_campagne_contre_ville",
-                SRC_AIR, d_air, sous_titre=st_a4())
+                SRC_AIR, d_air, sous_titre=st_a4(), note=NOTE_A4)
     export_html(fig_a5_creneau_a_eviter(), "a5_creneau_a_eviter",
                 SRC_AIR, d_air, sous_titre=ST_A5, note=NOTE_A5)
     return 0
