@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vitrine de projets — page de présentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<style>/* cyrillic-ext */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("4bdd0ed3-0a31-4929-ba9e-6891f7320820") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("c4cb440d-2083-4e2b-a38d-227aab9b7c6c") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("95c27b13-01d8-43ad-8d06-6cdd72234362") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fb7b6f9d-e84d-4d4c-82df-850292a314aa") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url("afa7cfe6-8d13-45fc-acf2-ba99821745e1") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("de1e0e44-f7cd-470a-a6ec-8146f60e2304") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("869c8d77-d624-4dda-a4f6-5570410048b6") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("1eedc3be-e3f9-4f5d-b1c9-ae24138d9298") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("de25a71a-c2df-4cd5-8179-4cd8a62ddf62") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("808fc2f7-f2f7-49b8-9355-9e219e222466") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("de1e0e44-f7cd-470a-a6ec-8146f60e2304") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("869c8d77-d624-4dda-a4f6-5570410048b6") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("1eedc3be-e3f9-4f5d-b1c9-ae24138d9298") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("de25a71a-c2df-4cd5-8179-4cd8a62ddf62") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("808fc2f7-f2f7-49b8-9355-9e219e222466") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("e376c1a5-e7c7-4c7d-bb4d-6154507f1f78") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("9b04ba4b-e6ec-48d2-b7fa-f7e48c8e85fe") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("40819621-8aa0-442b-afc7-f8ef1629e7b8") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("463c4af9-cec8-4378-bbe5-223e6380d837") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fe3ee478-8e0e-4485-a067-3423d39584f3") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("d386edaf-a9d4-41bd-a99f-e5bf765d7a2c") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("e3dc81f6-86de-437b-a95c-7d315bcdbb5c") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("e376c1a5-e7c7-4c7d-bb4d-6154507f1f78") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("9b04ba4b-e6ec-48d2-b7fa-f7e48c8e85fe") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("40819621-8aa0-442b-afc7-f8ef1629e7b8") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("463c4af9-cec8-4378-bbe5-223e6380d837") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fe3ee478-8e0e-4485-a067-3423d39584f3") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("d386edaf-a9d4-41bd-a99f-e5bf765d7a2c") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("e3dc81f6-86de-437b-a95c-7d315bcdbb5c") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("e376c1a5-e7c7-4c7d-bb4d-6154507f1f78") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("9b04ba4b-e6ec-48d2-b7fa-f7e48c8e85fe") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("40819621-8aa0-442b-afc7-f8ef1629e7b8") format('woff2');
+  unicode-range: U+1F00-1FFF;
+}
+/* greek */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("463c4af9-cec8-4378-bbe5-223e6380d837") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("fe3ee478-8e0e-4485-a067-3423d39584f3") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("d386edaf-a9d4-41bd-a99f-e5bf765d7a2c") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("e3dc81f6-86de-437b-a95c-7d315bcdbb5c") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("fa298fae-1193-4efd-a307-dff72cc9f486") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("0d69280f-1526-4521-9459-94934f0db782") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("c507a992-3747-40ca-94f9-60ce3f8e9687") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("e67cb671-b177-4dbd-83db-465323a3d808") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("d2dfa02d-b5bd-4bc7-90e8-90d8b917d789") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("2e9b5d39-2421-4065-ae84-7c1f08a979ea") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("fa298fae-1193-4efd-a307-dff72cc9f486") format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("0d69280f-1526-4521-9459-94934f0db782") format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("c507a992-3747-40ca-94f9-60ce3f8e9687") format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("e67cb671-b177-4dbd-83db-465323a3d808") format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("d2dfa02d-b5bd-4bc7-90e8-90d8b917d789") format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("2e9b5d39-2421-4065-ae84-7c1f08a979ea") format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+</style>
+<script src="6091a863-0025-4c15-ad27-0fb72ca4be88" integrity="sha384-CjloA8y00+1SDAUkjs099PVfnY2KmDC2BZnws9kh8D/lX1s46w6EPhpXdqMfjK6i" crossorigin="anonymous"></script>
+<style>
+:root{
+  --pacioli-bg:#F5F1E8;--pacioli-bg-paper:#FBF8F1;--pacioli-ink:#1B2238;--pacioli-ink-soft:#4A5169;--pacioli-ink-muted:#8A8FA0;
+  --pacioli-rule:#D9D2BF;--pacioli-rule-soft:#E8E2D0;--pacioli-monetary:#B07A2B;--pacioli-physical:#3B6B57;--pacioli-accent:#A23D2A;
+  --pacioli-radius-md:6px;--pacioli-radius-sm:4px;
+  --pacioli-font-serif:'Cormorant Garamond',Georgia,serif;--pacioli-font-sans:'Inter',-apple-system,system-ui,sans-serif;--pacioli-font-mono:'JetBrains Mono','Consolas',monospace;
+  /* extension nocturne — dérivée du token encre, réservée à l'illustration */
+  --pacioli-ink-hi:color-mix(in oklch,var(--pacioli-ink) 88%,var(--pacioli-bg-paper));
+  --pacioli-ink-lo:color-mix(in oklch,var(--pacioli-ink) 88%,#000);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--pacioli-bg);color:var(--pacioli-ink);font-family:var(--pacioli-font-sans);font-size:15px;line-height:1.55;min-height:100vh}
+a{color:var(--pacioli-monetary);text-decoration:none;border-bottom:1px solid rgba(176,122,43,.35)}
+a:hover{color:var(--pacioli-accent);border-bottom-color:var(--pacioli-accent)}
+.page{max-width:1180px;margin:0 auto;padding:40px 48px 80px}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:32px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--pacioli-rule)}
+header.top img{display:block;height:64px;width:auto}
+.eyebrow{font-family:var(--pacioli-font-mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--pacioli-ink-muted);white-space:nowrap}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.85fr);gap:56px;align-items:center;padding:56px 0 8px}
+h1{font-family:var(--pacioli-font-serif);font-weight:600;font-size:clamp(34px,4.6vw,52px);line-height:1.02;letter-spacing:-.01em;margin:0 0 20px;text-wrap:balance}
+h1 em{font-style:italic;color:var(--pacioli-monetary)}
+.lede{font-size:16px;line-height:1.6;color:var(--pacioli-ink-soft);max-width:52ch;text-wrap:pretty;margin:0 0 28px}
+.themes{display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0;list-style:none}
+.themes li{font-family:var(--pacioli-font-mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;padding:5px 11px;border-radius:50px;background:var(--pacioli-rule-soft);color:var(--pacioli-ink-soft)}
+figure.viz{margin:0}
+.plate{position:relative;aspect-ratio:1/1.06;border-radius:var(--pacioli-radius-md);border:1px solid var(--pacioli-rule);overflow:hidden;background:radial-gradient(120% 90% at 50% 12%,var(--pacioli-ink-hi) 0%,var(--pacioli-ink) 45%,var(--pacioli-ink-lo) 100%);box-shadow:0 24px 60px -40px rgba(27,34,56,.25)}
+.plate svg{position:absolute;inset:0;width:100%;height:100%}
+figcaption{font-family:var(--pacioli-font-serif);font-style:italic;font-size:14.5px;line-height:1.5;color:var(--pacioli-ink-soft);margin-top:14px;text-wrap:pretty}
+.lbl{font-family:var(--pacioli-font-mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase}
+.tw{animation:tw 4.2s ease-in-out infinite}
+@keyframes tw{0%,100%{opacity:1}50%{opacity:.45}}
+.stars circle{transform-box:fill-box;transform-origin:center}
+.halo{animation:halo 5.6s ease-in-out infinite}
+@keyframes halo{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.14;transform:scale(1.5)}}
+.draw{stroke-dasharray:900;stroke-dashoffset:900;animation:draw 3s ease-out .25s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+footer{margin-top:56px;padding-top:18px;border-top:1px solid var(--pacioli-rule);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;font-family:var(--pacioli-font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--pacioli-ink-muted)}
+footer .contact{font-size:13px;letter-spacing:.04em;text-transform:none;color:var(--pacioli-ink)}
+footer .contact a{color:var(--pacioli-monetary);font-weight:600;border-bottom:1px solid var(--pacioli-monetary)}
+footer .contact a:hover{color:var(--pacioli-accent);border-bottom-color:var(--pacioli-accent)}
+@media (max-width:820px){.page{padding:28px 24px 56px}.hero{grid-template-columns:minmax(0,1fr);gap:36px;padding-top:36px}.studies{grid-template-columns:minmax(0,1fr)}}
+.studies-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:64px 0 18px;padding-bottom:12px;border-bottom:1px solid var(--pacioli-rule)}
+.studies-head h2{font-family:var(--pacioli-font-serif);font-weight:600;font-size:26px;margin:0}
+.studies{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
+.study{background:var(--pacioli-bg-paper);border:1px solid var(--pacioli-rule);border-radius:var(--pacioli-radius-md);padding:20px 22px;display:flex;flex-direction:column;gap:10px}
+.study.done{border-color:var(--pacioli-physical);box-shadow:inset 3px 0 0 var(--pacioli-physical)}
+.study.soon{border-style:dashed;background:transparent;min-height:150px;justify-content:flex-start}
+.study.soon h3{color:var(--pacioli-ink-muted);font-style:italic}
+.study .status{font-family:var(--pacioli-font-mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--pacioli-ink-muted)}
+.study.done .status{color:var(--pacioli-physical)}
+.study h3{font-family:var(--pacioli-font-serif);font-weight:600;font-size:20px;line-height:1.15;margin:0}
+.study p{font-size:13.5px;line-height:1.5;color:var(--pacioli-ink-soft);margin:0;text-wrap:pretty}
+.study .go{margin-top:auto;padding-top:6px;font-family:var(--pacioli-font-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.study .go a{display:inline-block;white-space:nowrap;background:var(--pacioli-physical);color:var(--pacioli-bg-paper);text-decoration:none;padding:11px 15px;border-radius:var(--pacioli-radius-sm);font-weight:500;transition:background .15s ease}
+.study .go a:hover{background:var(--pacioli-ink)}
+.study .go.off{color:var(--pacioli-ink-muted)}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <img src="e3a65591-e7df-403e-9d67-7a69d12604a1" alt="Méthodes &amp; Révélations — vitrine de projets">
+    <div class="eyebrow">Données · Machine learning · Corse</div>
+  </header>
+
+  <section class="hero">
+    <div>
+      <h1>Études de données <em>sur la Corse</em></h1>
+      <p class="lede">Analyse de données et machine learning appliqués à un territoire. Premier volet publié : l'électricité et l'air.</p>
+    </div>
+    <figure class="viz">
+      <div class="plate"><svg viewBox="0 0 520 552" preserveAspectRatio="xMidYMid meet"></svg></div>
+      <figcaption>Chaque étoile est un port, un cap ou un sommet réel de l'île.</figcaption>
+    </figure>
+  </section>
+
+  <div class="studies-head">
+    <h2>Les études</h2>
+    <div class="eyebrow">Une publiée · deux à définir</div>
+  </div>
+  <section class="studies">
+    <article class="study done">
+      <div class="status">Publiée</div>
+      <h3>Électricité &amp; air en Corse</h3>
+      <p>Deux volets : consommation électrique journalière et ozone. Figures interactives, notes méthodologiques.</p>
+      <!-- ÉTUDE 1 — le /index.html final est obligatoire : la racine du bucket répond 403 -->
+      <div class="go"><a href="https://air-et-energie-en-corse.s3.fr-par.scw.cloud/index.html" target="_blank" rel="noopener">Consulter l'étude →</a></div>
+    </article>
+    <article class="study soon">
+      <div class="status">Volet 02</div>
+      <h3>Sujet à l'étude</h3>
+    </article>
+    <article class="study soon">
+      <div class="status">Volet 03</div>
+      <h3>Sujet à l'étude</h3>
+    </article>
+  </section>
+
+  <footer>
+    <span>Méthodes &amp; Révélations</span>
+    <span class="contact"><a href="mailto:contact@methodes-revelations.fr">contact@methodes-revelations.fr</a></span>
+    <span>Données · Machine learning · Région Corse</span>
+  </footer>
+</div>
+
+<script>
+// Coordonnées réelles [lon, lat] — figure d'origine : le pourtour et la chaîne intérieure.
+const NODES = [
+  { id:'ersa', name:'Cap Corse',     lon:9.362, lat:43.001, mag:2.6 },
+  { id:'bast', name:'Bastia',        lon:9.451, lat:42.700, mag:3.5 },
+  { id:'casa', name:'Casamozza',     lon:9.532, lat:42.500, mag:1.7 },
+  { id:'aler', name:'Aléria',        lon:9.513, lat:42.115, mag:2.3 },
+  { id:'sole', name:'Solenzara',     lon:9.401, lat:41.858, mag:1.8 },
+  { id:'pove', name:'Porto-Vecchio', lon:9.279, lat:41.591, mag:2.8 },
+  { id:'boni', name:'Bonifacio',     lon:9.159, lat:41.387, mag:2.6 },
+  { id:'prop', name:'Propriano',     lon:8.903, lat:41.676, mag:2.2 },
+  { id:'ajac', name:'Ajaccio',       lon:8.738, lat:41.927, mag:3.6 },
+  { id:'sago', name:'Sagone',        lon:8.700, lat:42.112, mag:1.7 },
+  { id:'port', name:'Porto',         lon:8.697, lat:42.259, mag:2.0 },
+  { id:'calv', name:'Calvi',         lon:8.757, lat:42.567, mag:2.9 },
+  { id:'flor', name:'Saint-Florent', lon:9.302, lat:42.681, mag:2.0 },
+  { id:'cort', name:'Corte',         lon:9.150, lat:42.308, mag:3.2 },
+  { id:'cint', name:'Monte Cintu',   lon:8.943, lat:42.381, mag:2.4 }
+];
+const RING = ['ersa','bast','casa','aler','sole','pove','boni','prop','ajac','sago','port','calv','flor','ersa'];
+const SPINE = [['cort','cint'],['cort','bast'],['cort','ajac'],['cort','aler'],['cint','calv']];
+const EDGES = RING.slice(0,-1).map((id,i) => [id, RING[i+1]]).concat(SPINE);
+const byId = Object.fromEntries(NODES.map(n => [n.id, n]));
+const LABELLED = { bast:'r', ajac:'l', cort:'r', cint:'l', calv:'l', pove:'r', boni:'r' };
+const STAR='#F3E7CE', CORE='#FFFFFF', LINE='rgba(176,122,43,.62)', LABEL='rgba(243,231,206,.78)';
+
+const svg = d3.select('.plate svg');
+const [,,W,H] = svg.attr('viewBox').split(' ').map(Number);
+const proj = d3.geoMercator()
+  .fitExtent([[68,64],[W-68,H-64]], { type:'MultiPoint', coordinates: NODES.map(n => [n.lon, n.lat]) });
+const P = id => proj([byId[id].lon, byId[id].lat]);
+
+const lines = svg.append('g');
+EDGES.forEach(([a,b],i) => {
+  const p1 = P(a), p2 = P(b), spine = i >= RING.length - 1;
+  lines.append('line').attr('class','draw')
+    .attr('x1',p1[0]).attr('y1',p1[1]).attr('x2',p2[0]).attr('y2',p2[1])
+    .attr('stroke',LINE).attr('stroke-width', spine ? .7 : 1.1)
+    .attr('stroke-opacity', spine ? .55 : 1)
+    .attr('stroke-dasharray', spine ? '2 3' : null)
+    .attr('stroke-linecap','round')
+    .style('animation-delay',(.25 + i*.1)+'s');
+});
+
+const grad = svg.append('defs').append('radialGradient').attr('id','starGlow');
+grad.append('stop').attr('offset','0%').attr('stop-color',CORE).attr('stop-opacity',.55);
+grad.append('stop').attr('offset','100%').attr('stop-color',CORE).attr('stop-opacity',0);
+
+const stars = svg.append('g').attr('class','stars');
+NODES.forEach((n,i) => {
+  const p = proj([n.lon,n.lat]), r = n.mag * 1.45;
+  stars.append('circle').attr('class','halo').attr('cx',p[0]).attr('cy',p[1])
+    .attr('r', r*2.8).attr('fill','url(#starGlow)').style('animation-delay',(i*.43)+'s');
+  stars.append('circle').attr('class','tw').attr('cx',p[0]).attr('cy',p[1]).attr('r', r).attr('fill',STAR)
+    .style('animation-delay',(i*.37)+'s');
+  stars.append('circle').attr('cx',p[0]).attr('cy',p[1]).attr('r', r*.38).attr('fill',CORE);
+  if (LABELLED[n.id]) {
+    const right = LABELLED[n.id] === 'r';
+    stars.append('text').attr('class','lbl')
+      .attr('x', p[0] + (right ? r+10 : -(r+10))).attr('y', p[1] + 3.2)
+      .attr('text-anchor', right ? 'start' : 'end').attr('fill',LABEL).text(n.name);
+  }
+});
+</script>
+
+
+
+</body></html>
