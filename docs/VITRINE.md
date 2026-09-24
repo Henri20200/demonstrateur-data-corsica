@@ -26,8 +26,10 @@ La page d'entrée de l'étude mène aux deux volets — l'électricité et l'ozo
 sa note méthodologique. Les figures sont interactives (survol, zoom) et se lisent dans la
 page.
 
-Chaque figure est aussi une page autonome (`t4_heure_verte.html`, `a2_ozone_et_chaleur.html`…)
+Chaque figure est aussi une page à part (`t4_heure_verte.html`, `a2_ozone_et_chaleur.html`…)
 qui s'intègre en `<iframe>` sans dépendance tierce, si l'interlocuteur veut en reprendre une.
+Elle charge le fichier `plotly-<sha256>.min.js` placé dans le même dossier : reprendre une
+figure, c'est reprendre ce fichier avec elle.
 
 ## Avant d'envoyer le lien
 
