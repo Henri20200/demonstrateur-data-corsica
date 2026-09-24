@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vérifier la hausse de demande entre juin et juillet</title>
+<style>
+body { margin:0; padding:2rem 1.2rem; font:17px/1.65 system-ui, -apple-system, 'Segoe UI', sans-serif;
+        color:#1A1A18; background:#F7F6F3; }
+main { max-width:52rem; margin:auto; } h1 { font-size:2rem; line-height:1.2; }
+h2 { font-size:1.3rem; margin-top:2rem; } a { color:#A23D2A; }
+.cle { font-size:1.2rem; padding:1rem; background:#FCFCFB;
+        border-left:3px solid #A23D2A; }
+table { border-collapse:collapse; width:100%; font-size:15px; }
+th,td { text-align:left; padding:.65rem; border-bottom:1px solid #E4E2DB; }
+.table { overflow:auto; } code { overflow-wrap:anywhere; }
+pre { padding:1rem; overflow:auto; background:#FCFCFB; }
+footer { border-top:1px solid #E4E2DB; margin-top:2rem; padding-top:1rem; }
+</style></head><body><main>
+<nav><a href="index.html">Accueil</a> · <a href="etude.html">L'électricité corse</a>
+ · <a href="t0_note_methodologique.html">Note méthodologique</a></nav>
+<h1>Retrouver les +22 % entre juin et juillet</h1>
+<p class="cle">La demande moyenne de juillet dépasse celle de juin d'environ
+22 %, sur les années 2019 à 2024 prises ensemble.</p>
+<p>Ce dossier permet de contrôler un résultat précis de l'étude. Il contient les
+mesures horaires utilisées, conservées dans leurs colonnes d'origine, et un calcul
+autonome. Il ne constitue pas une validation externe de l'ensemble de l'étude.</p>
+<p><a href="verification-demande.zip" download><strong>Télécharger les données et le calcul</strong></a>
+— fichier ZIP, sans compte.</p>
+<h2>1. Vérifier le périmètre</h2>
+<p>Producteur : EDF — Open Data Groupe EDF (Corse &amp; Outre-mer). Données collectées le
+2026-07-22. Licence : Licence Ouverte (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence.</p>
+<p><a href="https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv">Export CSV du producteur</a>.
+Ce lien peut aujourd'hui fournir une version révisée. L'empreinte du fichier utilisé
+ici est conservée dans le dossier ; le CSV joint en est un extrait limité à la Corse,
+aux mois de juin et juillet et aux années 2019–2024.</p>
+<p>Les statuts « validé » et « estimé » sont conservés, comme dans l'étude.
+La colonne EDF <code>production_totale_mw</code> comprend les importations et sert
+ici de mesure de la demande. Ses étiquettes horaires sont lues en heure légale corse,
+sans convertir leur suffixe trompeur <code>+00:00</code>. Aucun changement d'heure
+ne tombe en juin ou en juillet.</p>
+<h2>2. Refaire le calcul</h2>
+<p>Pour chaque mois, additionner les mesures horaires et diviser par le nombre
+d'heures. Chaque heure a le même poids. On compare les moyennes de puissance en MW,
+pas les volumes d'énergie des deux mois, dont la durée diffère.</p>
+<div class="table"><table><thead><tr><th>Mois</th><th>Heures</th>
+<th>Moyenne (MW)</th><th>Barre affichée (MW)</th></tr></thead>
+<tbody><tr><th scope='row'>Juin</th><td>4320</td><td>230.870693</td><td>231</td></tr><tr><th scope='row'>Juillet</th><td>4464</td><td>281.415837</td><td>281</td></tr></tbody></table></div>
+<p>Sur les moyennes non arrondies : <strong>21.893270 %</strong>.
+Le graphique arrondit d'abord les deux barres au MW, puis son annotation au pour cent :</p>
+<pre>100 × (281 − 231) / 231
+≈ 22 %</pre>
+<p>Dans un tableur, ouvrir le CSV avec le séparateur point-virgule et le point
+comme séparateur décimal, puis calculer la moyenne pour chaque mois.</p>
+<p>Avec Python 3, décompresser le dossier et exécuter :</p>
+<pre>python verifier_demande.py</pre>
+<p>Le script utilise seulement la bibliothèque standard. Il vérifie l'empreinte
+du CSV, l'absence de doublons et les 720 ou 744 heures attendues pour chaque
+mois de chaque année, puis affiche les moyennes et l'écart. Il ne se connecte à aucun service.</p>
+<h2>3. Lire les limites</h2>
+<p>Cet écart ne mesure ni la part du tourisme ni celle de la climatisation.
+Il ne décrit pas les pointes instantanées et ne prédit pas la consommation de 2026.
+Une empreinte identifie un fichier ; elle ne garantit pas l'exactitude des mesures
+du producteur. Les conventions et approximations complètes figurent dans la
+<a href="t0_note_methodologique.html">note méthodologique</a>.</p>
+<footer><p>Une réserve sur le calcul ou un usage à discuter :
+<a href="mailto:contact@methodes-revelations.fr">contact@methodes-revelations.fr</a>
+ · <a href="https://www.methodes-revelations.fr/">Méthodes &amp; Révélations</a>.</p>
+</footer></main></body></html>
