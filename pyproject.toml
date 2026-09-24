@@ -14,7 +14,7 @@ dependencies = [
     # sans changer son API. Nécessaire, pas confortable : les XML parsés viennent du
     # réseau et la stdlib expanse les entités internes (S-04 de l'audit du 30/08).
     "defusedxml>=0.7",
-    # Épinglé : la version de Plotly détermine le contenu des HTML et du plotly.min.js
+    # Épinglé : la version de Plotly détermine le contenu des HTML et du bundle JavaScript
     # commités dans outputs/ — le CI planifié doit produire les mêmes octets qu'en local.
     "plotly==6.9.0",
     "httpx>=0.27",
@@ -48,6 +48,7 @@ line-length = 100
 src = ["src"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 # `fraicheur` : verrou d'EXPLOITATION, pas de code. Il mesure l'âge du dernier relevé,
 # donc la date du dernier passage du cron — rien que le diff d'une PR puisse corriger.
 # La CI de PR éprouve les verrous sur les données du cache, vieilles de quelques heures

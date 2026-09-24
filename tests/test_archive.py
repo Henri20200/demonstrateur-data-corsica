@@ -32,6 +32,7 @@ import pytest
 from conftest import SOURCES_FICTIVES
 
 from demonstrateur import archive, config, depot
+from demonstrateur.provenance import empreinte
 
 
 class DepotFactice:
@@ -85,6 +86,138 @@ FIGE = {
     "url": "https://exemple.test/tranche_close.csv.gz",
     "filename": "tranche_close.csv.gz",
 }
+
+
+@pytest.mark.parametrize("canonique", [False, True])
+@pytest.mark.parametrize("reprise", ["locale", "courante"])
+def test_une_reprise_refuse_des_octets_alteres(archive_isolee, monkeypatch, canonique, reprise):
+    """Q3 : même longueur, et pour XML même contenu canonique, mais octets différents."""
+    meta = {**GLISSANT, "filename": "mix.xml" if canonique else "mix.csv"}
+    if canonique:
+        meta["empreinte_ignore_xml"] = ["GL_MarketDocument/mRID"]
+    contenu = ("<GL_MarketDocument><mRID>a</mRID><q>42</q></GL_MarketDocument>"
+               if canonique else "a,42\n")
+    fichier = _source(archive_isolee, contenu, meta["filename"])
+    sha = empreinte(fichier, meta)
+    version = archive.enregistrer_version("mix", meta, fichier, sha)
+    copie = archive.DATA_ARCHIVE / "mix" / version["fichier_archive"]
+    copie.write_bytes(copie.read_bytes().replace(b">a<", b">b<") if canonique
+                     else copie.read_bytes().replace(b"a", b"b", 1))
+    if canonique:
+        assert empreinte(copie, meta) == sha
+    if reprise == "courante":
+        fichier.write_bytes(copie.read_bytes())
+    revenu = DepotFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: revenu)
+    avant = archive.VERSIONS_FILE.read_bytes()
+
+    if reprise == "locale":
+        assert archive.retenter_depots_en_attente() == []
+    else:
+        archive.enregistrer_version("mix", meta, fichier, sha)
+
+    assert revenu.objets == {}, "une empreinte fournie ne certifie pas les octets de reprise"
+    assert archive.VERSIONS_FILE.read_bytes() == avant
+
+
+def test_la_reprise_xml_conserve_les_octets_de_la_premiere_enveloppe(archive_isolee, monkeypatch):
+    meta = {**GLISSANT, "filename": "mix.xml",
+            "empreinte_ignore_xml": ["GL_MarketDocument/mRID"]}
+    fichier = _source(archive_isolee,
+                      "<GL_MarketDocument><mRID>a</mRID></GL_MarketDocument>", "mix.xml")
+    initial = fichier.read_bytes()
+    sha = empreinte(fichier, meta)
+    version = archive.enregistrer_version("mix", meta, fichier, sha)
+    fichier.write_bytes(initial.replace(b">a<", b">b<"))
+    assert empreinte(fichier, meta) == sha
+    revenu = DepotFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: revenu)
+
+    archive.enregistrer_version("mix", meta, fichier, sha)
+
+    assert revenu.objets[version["payload_key"]] == initial
+    assert _versions()[0]["payload_sha256"] == empreinte(
+        archive.DATA_ARCHIVE / "mix" / version["fichier_archive"], {}
+    )
+
+
+@pytest.mark.parametrize("alteree", [False, True])
+def test_une_ancienne_entree_sans_empreinte_des_octets_est_verifiee(
+    archive_isolee, monkeypatch, alteree
+):
+    fichier = _source(archive_isolee, "a,42\n")
+    version = archive.enregistrer_version("mix", GLISSANT, fichier, empreinte(fichier, {}))
+    index = archive._charger(archive.VERSIONS_FILE)
+    del index["mix"][0]["payload_sha256"]
+    archive._sauver(archive.VERSIONS_FILE, index)
+    copie = archive.DATA_ARCHIVE / "mix" / version["fichier_archive"]
+    if alteree:
+        copie.write_bytes(b"b,42\n")
+    revenu = DepotFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: revenu)
+
+    reprises = archive.retenter_depots_en_attente()
+
+    assert reprises == ([] if alteree else [version["payload_key"]])
+    assert bool(revenu.objets) is not alteree
+    assert _versions()[0]["payload_archived"] is not alteree
+
+
+def test_une_ancienne_empreinte_canonique_seule_ne_certifie_pas_les_octets(
+    archive_isolee, monkeypatch
+):
+    meta = {**GLISSANT, "filename": "mix.xml",
+            "empreinte_ignore_xml": ["GL_MarketDocument/mRID"]}
+    fichier = _source(archive_isolee, "<GL_MarketDocument><mRID>a</mRID></GL_MarketDocument>")
+    archive.enregistrer_version("mix", meta, fichier, empreinte(fichier, meta))
+    index = archive._charger(archive.VERSIONS_FILE)
+    del index["mix"][0]["payload_sha256"]
+    archive._sauver(archive.VERSIONS_FILE, index)
+    revenu = DepotFactice()
+    monkeypatch.setattr(archive, "_depot_durable", lambda: revenu)
+
+    assert archive.retenter_depots_en_attente() == []
+    assert revenu.objets == {}
+    assert _versions()[0]["payload_archived"] is False
+
+
+def test_une_copie_deja_absente_ne_repete_pas_un_avertissement_de_corruption(
+    archive_isolee, capsys
+):
+    fichier = _source(archive_isolee, "a,42\n")
+    version = archive.enregistrer_version("mix", GLISSANT, fichier, empreinte(fichier, {}))
+    (archive.DATA_ARCHIVE / "mix" / version["fichier_archive"]).unlink()
+    capsys.readouterr()
+    assert archive.retenter_depots_en_attente() == []
+    assert capsys.readouterr().out == ""
+
+
+@pytest.mark.parametrize("instant,attendue", [
+    ("2026-09-21T12:00:00Z", "ancienne"),
+    ("2026-09-21T12:00:00.000000Z", "ancienne"),
+    ("2026-09-21T14:00:00+02:00", "ancienne"),
+    ("2026-09-21T12:00:00.5Z", "nouvelle"),
+    ("2026-09-21T12:00:00.500000Z", "nouvelle"),
+    ("2026-09-21T07:00:00.5-05:00", "nouvelle"),
+    ("2026-09-21T11:59:59Z", None),
+])
+@pytest.mark.parametrize("borne", ["2026-09-21T12:00:00.500000Z", "2026-09-21T14:00:00.5+02:00"])
+def test_la_recherche_historique_compare_des_instants(archive_isolee, instant, attendue, borne):
+    """Q2 : la demi-seconde future reste inconnue ; la borne de fin est exclue."""
+    archive._sauver(archive.VERSIONS_FILE, {"mix": [
+        {"sha256": "ancienne", "first_observed_at": "2026-09-21T11:59:59.500000Z",
+         "superseded_at": "2026-09-21T12:00:00.500000Z"},
+        {"sha256": "nouvelle", "first_observed_at": borne,
+         "superseded_at": None},
+    ]})
+    version = archive.version_connue_a("mix", instant)
+    assert (version["sha256"] if version else None) == attendue
+
+
+@pytest.mark.parametrize("instant", ["2026-09-21", "2026-09-21T12:00:00", "invalide"])
+def test_la_recherche_historique_exige_un_instant_avec_fuseau(archive_isolee, instant):
+    with pytest.raises(ValueError):
+        archive.version_connue_a("mix", instant)
 
 
 def test_une_empreinte_inchangee_n_ecrit_pas_de_millesime(archive_isolee):
@@ -221,7 +354,7 @@ def test_l_index_des_versions_ne_porte_aucun_contenu(archive_isolee):
     assert "secret_metier" not in brut
     attendus = {
         "sha256", "resolved_url", "first_observed_at", "superseded_at",
-        "fichier_archive", "payload_key", "payload_archived", "taille_octets",
+        "fichier_archive", "payload_key", "payload_archived", "payload_sha256", "taille_octets",
         "revision_policy", "origine",
     }
     assert set(json.loads(brut)["mix"][0]) == attendus

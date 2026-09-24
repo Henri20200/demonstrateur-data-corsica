@@ -8,7 +8,7 @@ au fil de la journée et des saisons, et quand il est le plus renouvelable — e
 **l'ozone**, sur la qualité de l'air. Chaque sujet donne une page d'étude rédigée, ses
 visuels interactifs et sa note méthodologique.
 
-## Pourquoi les chiffres ne seront pas faux
+## Comment les résultats sont contrôlés
 
 C'est la seule question qui compte pour qui envisage de réutiliser ce travail. La
 réponse ne tient pas à une promesse, elle tient à des mécanismes qu'on peut inspecter.
@@ -16,8 +16,8 @@ réponse ne tient pas à une promesse, elle tient à des mécanismes qu'on peut 
 Chaque fichier téléchargé est **empreinté en SHA-256** et inscrit dans un manifeste
 versionné, avec son URL, son producteur, sa licence et sa date de collecte. À chaque
 exécution, les sources figées sont **re-vérifiées** contre cette empreinte : si un octet
-a bougé, la chaîne s'arrête au lieu de publier. Aucun Parquet n'est construit depuis une
-donnée non certifiée, et une **lignée de build** relie ensuite chaque figure aux données
+a bougé, la chaîne s'arrête au lieu de publier. Les bruts déclarés sont contrôlés avant
+préparation, et une **lignée de build** relie ensuite chaque figure aux données
 exactes dont elle est tirée — c'est elle, et non la date du dernier téléchargement, qui
 date les visuels.
 
@@ -39,22 +39,38 @@ distante, pas d'appel réseau au chargement. Une seule copie de la bibliothèque
 graphique est partagée par tous les visuels. Le dossier `outputs/` se déploie d'un bloc
 sur n'importe quel hébergement statique, et s'intègre en iframe.
 
+Le livrable comporte aussi un **dossier de vérification téléchargeable** du résultat
+« +22 % entre juin et juillet » : extrait EDF, provenance et script Python autonome
+sans dépendances ni réseau. La page indique la différence entre la date de compilation
+et la période des observations. Le site du porteur est
+[Méthodes & Révélations](https://www.methodes-revelations.fr/) ;
+contact : contact@methodes-revelations.fr.
+
 ## Faire tourner la chaîne
 
-    uv venv && uv pip install -e ".[dev]"
+    uv sync --locked --extra dev
 
-    fetch-data                          # télécharge, empreinte, écrit le manifeste
-    python -m demonstrateur.prepare     # brut -> Parquet (DuckDB), écrit la lignée
-    python -m demonstrateur.figures     # visuels électricité
-    python -m demonstrateur.figures_air # visuels air, puis note_air et page_air
-    python -m demonstrateur.compile_etude
-    pytest                              # fumée + verrous de résultats
+    uv run --no-sync fetch-data                         # collecte et manifeste
+    uv run --no-sync python -m demonstrateur.prepare    # Parquet et lignée
+    uv run --no-sync python -m demonstrateur.figures    # visuels électricité
+    uv run --no-sync python -m demonstrateur.figures_air
+    uv run --no-sync python -m demonstrateur.note_elec
+    uv run --no-sync python -m demonstrateur.note_air
+    uv run --no-sync python -m demonstrateur.page_air
+    uv run --no-sync python -m demonstrateur.compile_etude
+    uv run --no-sync python -m demonstrateur.preuve_demande
+    uv run --no-sync python -m demonstrateur.accueil
+    uv run --no-sync pytest                             # fumée + verrous de résultats
 
     python -m http.server -d outputs 8000   # http://127.0.0.1:8000/etude.html
 
 L'étude se lit par ce serveur local, pas par un double-clic : la page assemble ses
-figures en `<iframe>` relatives qui tirent le `plotly.min.js` mutualisé d'`outputs/`,
+figures en `<iframe>` relatives qui tirent le bundle Plotly mutualisé d'`outputs/`,
 et un `file://` les bloque.
+
+Le cron utilise le même `uv.lock` que la validation. La CI vérifie également, dans un
+parcours séparé, les dernières dépendances autorisées avant leur adoption. Chaque nouveau
+bundle JavaScript porte son SHA-256 dans son nom pour rendre le cache navigateur fiable.
 
 Ajouter une source de données, c'est ajouter une entrée dans `sources.yaml` — rien ne se
 télécharge à la main. `docs/BRIEF.md` porte la question de départ et les critères de

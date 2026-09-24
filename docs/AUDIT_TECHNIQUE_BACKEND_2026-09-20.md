@@ -2,6 +2,8 @@
 
 Le backend présente une base solide de traçabilité, mais **plusieurs défauts peuvent laisser passer des données non vérifiées ou interrompre la publication**. Les priorités concernent la cohérence des fichiers, les reprises d’archive et la gestion des échecs.
 
+**Suivi actualisé le 21 septembre 2026 :** les tableaux conservent les constats du 20 septembre. L’état des corrections fusionnées, du lot de stabilisation et des limites conservées figure dans le [suivi](#suivi).
+
 Audit réalisé **en lecture seule**, sans modification des fichiers du projet pendant l’analyse : 19 modules Python, 8 778 lignes de source et 284 fonctions de test examinées par analyse statique et lectures ciblées. Plusieurs défauts ont été reproduits entièrement en mémoire. La suite pytest n’a pas été exécutée, car ses fixtures écrivent des fichiers ; aucun taux de couverture mesuré n’est donc annoncé.
 
 Le lint configuré passe. Les contrôles complémentaires relèvent cinq fonctions de complexité supérieure à 10, quatorze dépassements de la limite de 100 caractères et 32 fichiers que Ruff reformaterait. Aucun constat n’est classé **CRITIQUE** sur les éléments vérifiés.
@@ -108,10 +110,46 @@ Un complément, enfin, que le rapport ne fait pas : T2 et T3 ont la même racine
 
 ## Suivi
 
-**T2 et T3 — corrigés localement, en attente de fusion.** Branche `codes-sortie-figures`, partie d’`origin/master`. `figures` rend désormais `CODE_FRAICHEUR = 2` pour un relevé périmé, distinct du 1 que Python rend sur une exception ; les deux workflows discriminent — 0 et 2 publient, tout autre code arrête la chaîne ; le verrou de fraîcheur se joue dans une étape à part, non bloquante, et son issue rougit le run APRÈS le commit et le déploiement. Treize tests, dont les trois parcours joués sur le `run:` réel des workflows sous `bash -e`, et l’ordre des étapes verrouillé — sa présence ne prouvant pas sa position.
+**T2 et T3 — fusionnés dans `master`.** [PR #62](https://github.com/Henri20200/demonstrateur-data-corsica/pull/62), commit de fusion `aff1907`. `figures` rend désormais `CODE_FRAICHEUR = 2` pour un relevé périmé, distinct du 1 que Python rend sur une exception ; les deux workflows discriminent — 0 et 2 publient, tout autre code arrête la chaîne ; le verrou de fraîcheur se joue dans une étape à part, non bloquante, et son issue rougit le run APRÈS le commit et le déploiement. Treize tests, dont les trois parcours joués sur le `run:` réel des workflows sous `bash -e`, et l’ordre des étapes verrouillé — sa présence ne prouvant pas sa position.
 
 Ce correctif ferme la moitié d’AUD-13 restée ouverte depuis le 05/08 (« distinguer un statut dégradé attendu d’une erreur technique ») et en écarte délibérément l’autre moitié (« décider avant le commit si le build est publiable, puis pousser seulement cet état ») : pour la fraîcheur, le choix retenu est de publier l’avertissement puis de signaler, parce que c’est le visuel suspendu qui informe le lecteur, et parce qu’un gel du flux électrique ne doit pas retenir la publication des pages de l’air.
 
 **Mesure de contexte, et sa limite.** Sur les 92 publications du cron depuis le 27/08/2026 — âge du relevé lu dans le `new Date(…)` de `t1_soleil_live.html`, comparé à l’horodatage du commit : médiane 0,4 h, une seule au-delà de 12 h (15,5 h le 04/09, flux EDF figé depuis la veille), aucune au-delà de 24 h. Ce relevé ne voit que ce qui a été PUBLIÉ — un run bloqué ne laisse pas de commit — et ne peut donc pas établir que T3 ne s’est jamais déclenché ; seuls les journaux Actions le trancheraient. Il rend le déclenchement peu probable, une publication ayant dû passer d’abord dans la bande 18-24 h, qu’on n’y trouve pas.
 
-**Les autres constats restent ouverts.** Aucun n’est fermé par ce correctif.
+**Q4 — écriture atomique du manifeste fusionnée.** [PR #63](https://github.com/Henri20200/demonstrateur-data-corsica/pull/63), commit `14063fc`. Une écriture interrompue conserve le manifeste précédent ; les tests interrompent réellement l’écriture du fichier temporaire. Le couplage entre le remplacement du brut et celui du manifeste reste une limite distincte : aucun journal de reprise commun n’a été ajouté.
+
+**Q5 — configuration d’archive refusée signalée, fusionnée.** [PR #64](https://github.com/Henri20200/demonstrateur-data-corsica/pull/64), commit `6b4fcf9`. `DepotMalConfigure` renseigne l’état d’échec du run ; une configuration absente reste un cas autorisé. Le refus du bucket de la vitrine est éprouvé par un test.
+
+### Lot de stabilisation du 21 septembre
+
+Corrections préparées sur la branche locale `stabilisation-backend`, à partir de `4132680`. Elles ne sont pas encore fusionnées ni déployées. Chacun des cinq défauts Q a été reproduit sur le code précédent avant correction.
+
+| Réf. | Correction préparée | Vérification |
+|---|---|---|
+| Q1 | Même reconnaissance des citations indentées dans les deux branches du compilateur ; un bloc non consommé déclenche une erreur plutôt qu’une boucle. | Compilation dans un processus borné : espaces, tabulation, plusieurs paragraphes, encadré repliable et paragraphes voisins. |
+| Q3 | `payload_sha256` certifie séparément les octets du millésime. Chaque reprise recalcule cette empreinte ; une copie originale valide prime sur un XML réestampillé. | Altération de même longueur, enveloppe XML canonique inchangée, reprise courante ou locale, anciennes entrées avec et sans empreinte brute. |
+| Q2 | Comparaison de `datetime` normalisés en UTC ; instants sans fuseau refusés. Le registre n’est pas réécrit. | Fraction de seconde future, précisions variables, décalages positifs et négatifs, bornes semi-ouvertes et date invalide. |
+| Q6 | Décompression complète en streaming avant remplacement, y compris les membres gzip concaténés ; plafond de 2 Gio décompressés. | Pied tronqué, CRC erroné, second membre tronqué, conservation exacte du brut et du manifeste, dépassement du plafond et gzip valide. |
+| Q7 | Chaque période ENTSO-E doit porter une mesure en position 1 ; sinon le document est refusé. Un zéro explicitement mesuré reste valide. | Période vide ou commençant en position 2, première période ou suivante, pas horaires ou de quinze minutes, report depuis un vrai zéro. |
+| D1 | Le cron et les verrous sur données utilisent `uv.lock`. Un parcours séparé teste les dernières dépendances autorisées par `pyproject.toml`. | Contrat des installations vérifié dans les workflows ; versions locales des dépendances directes et de pytest conformes au verrou. |
+| D2 | Les nouvelles pages référencent `plotly-<sha256>.min.js`. Le bundle précède les pages au déploiement ; les anciennes URL sont conservées pour les pages en cache. | Vrai export Plotly en présence d’un ancien `plotly.min.js`, même référence dans la page air, changement d’URL après modification des octets, réparation d’un bundle local altéré. |
+| D3 | Contrôle de la révision distante même sans changement à committer ; suppression du rebase après les tests. Un push non-fast-forward arrête le déploiement. | Le script réel du workflow est exécuté sur des dépôts Git temporaires : révision stable, avancée avant contrôle et avancée entre contrôle et push. |
+
+Les tests nouveaux vivent dans `test_compilation.py`, `test_archive.py`, `test_gzip.py`, `test_entsoe.py` et `test_publication.py`. Les tests de navigation et de provenance acceptent les références des pages générées avec le nouveau bundle ; les sorties versionnées restent produites par le cron.
+
+**Validation locale.** La chaîne a été rejouée dans `audit/stabilisation-20260921/`, sans modifier les bruts, le registre ni les sorties versionnées du poste. Les 31 sources du build local ont été revérifiées contre ses empreintes, puis les 14 fichiers ENTSO-E manquants ont été collectés dans cette copie depuis les déclarations existantes de `sources.yaml`. La reconstruction produit 12 Parquet à partir de 49 sources ; couverture, figures et pages passent, y compris le parcours T1 en « affichage suspendu ». La suite complète sur ces sorties donne **370 tests réussis, aucun sauté, un test de fraîcheur exclu** (`pytest -m "not fraicheur"`). Après les derniers ajustements des reprises et du workflow, **96 tests ciblés** passent également. Ruff et `git diff --check` passent. L’environnement local utilise Python 3.12 et les versions verrouillées des dépendances directes, de pytest et de Ruff ; le parcours CI des dernières versions reste à exécuter après publication de la branche.
+
+**T1 est partiellement traité** par ces nouveaux scénarios. La couverture des branches n’est pas mesurée et le test de panne pendant la bascule de l’ensemble des Parquet reste à ajouter avec le traitement d’A4.
+
+### Production vérifiée et limites conservées
+
+Le [cron du 21 septembre à 13:02:48 UTC](https://github.com/Henri20200/demonstrateur-data-corsica/actions/runs/35603104050), révision `acf1de2`, contient les trois correctifs déjà fusionnés : T2/T3, Q4 et Q5. Il termine avec succès à 13:05:18 UTC ; collecte, préparation, figures, verrous, commit et déploiement ont tous réussi. Leur passage ensemble en production est donc confirmé sur le parcours normal. Ce succès ne prouve pas le déclenchement des cas de panne simulés dans les tests, ni le fonctionnement en production du nouveau lot local.
+
+La clôture peut être examinée après fusion, validation sur le cache complet en CI et un passage du cron contenant ce nouveau lot, avec les limites suivantes explicites :
+
+- **D4 reste différé selon l’arbitrage retenu.** Un échec avant la conservation Git peut perdre les observations du runner, même si des objets ont déjà été déposés. Aucun journal durable indépendant n’est ajouté ici.
+- **Q4 reste partiel sur le couplage brut/manifeste**, et **A4** sur la bascule des Parquet : les incohérences sont détectées, mais il n’existe pas de restauration transactionnelle de l’ensemble.
+- **A3 et A5 restent ouverts**, notamment pour les fichiers locaux hors lignée et les entrées retrouvées par glob. Une reconstruction dans un dossier neuf évite de réutiliser un ancien Parquet local, sans fermer à elle seule ces constats.
+- Une ancienne archive dépourvue d’empreinte brute n’est reprise que si ses octets correspondent au SHA-256 déjà enregistré. Si ce dernier est uniquement canonique, la reprise est refusée : l’intégrité historique de l’enveloppe ne peut pas être inventée après coup. Les octets déjà perdus ne sont pas recréés.
+- Les anciennes URL JavaScript sont conservées pour les pages déjà en cache. Leur éventuelle rétention future relève de la maintenance.
+- La dette de structure, de typage, de formatage et de performance reste suivie par les constats A1/A2, Q8 à Q10 et P1 à P4. Ce lot ne constitue pas une refonte générale.

@@ -5,7 +5,7 @@ Usage :
 
 Les cinq figures restent publiées séparément (chacune reste déployable seule en iframe) ;
 cette page les rassemble dans un récit. Elle n'emboîte pas d'iframes : chaque graphique y
-est inséré comme un bloc Plotly, et `plotly.min.js` — déjà mutualisé dans outputs/ — n'est
+est inséré comme un bloc Plotly, et le bundle nommé par empreinte dans outputs/ n'est
 chargé qu'une fois pour les cinq.
 
 Les figures passent par `viz.preparer_figure`, exactement comme les fichiers individuels :
@@ -25,7 +25,7 @@ import sys
 from .config import OUTPUTS
 from .navigation import AIR, pied as pied_navigation
 from .prepare import verifier_sorties
-from .viz import PALETTE, SANS, date_collecte, preparer_figure
+from .viz import PALETTE, SANS, date_collecte, ecrire_bundle_plotly, preparer_figure
 from . import figures_air as fa
 
 TITRE = "L'air corse les jours où rien n'est signalé"
@@ -203,7 +203,7 @@ def _titre_figure(fig) -> str:
     return " ".join(re.sub(r"<[^>]+>", " ", fig.layout.title.text or "").split())
 
 
-def _html(blocs, collecte: str) -> str:
+def _html(blocs, collecte: str, bundle: str) -> str:
     # Encart d'actualité : la couche vivante, à côté du cœur analytique figé. Il tombe de
     # lui-même si aucun millésime ne dépasse la fenêtre d'étude — la page n'a alors rien à
     # dire de plus que ses cinq figures, et ne fabrique pas une ligne vide pour autant.
@@ -216,7 +216,7 @@ def _html(blocs, collecte: str) -> str:
     corps = []
     for i, (texte, div_id, fig) in enumerate(blocs):
         # include_plotlyjs=False sur TOUS les blocs : la balise <script> est posée une
-        # seule fois dans l'en-tête, sur le plotly.min.js déjà présent dans outputs/.
+        # seule fois dans l'en-tête, vers les octets exacts de la version utilisée.
         graphique = fig.to_html(full_html=False, include_plotlyjs=False, div_id=div_id)
         corps.append(f'<section>{texte}\n<figure>{graphique}</figure></section>')
         if i in CLES:
@@ -225,7 +225,7 @@ def _html(blocs, collecte: str) -> str:
 <html lang="fr"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{TITRE}</title>
-<script src="plotly.min.js"></script>
+<script src="{bundle}"></script>
 <style>
   :root {{ color-scheme: light; }}
   body {{ margin:0; padding:2.2rem 1.2rem 3.4rem; background:{PALETTE["page"]};
@@ -296,7 +296,8 @@ def main() -> int:
     blocs = _blocs()
     dest = OUTPUTS / "air_ozone.html"
     # newline="\n" : cf. la note de `accueil.main` — même diff fantôme Windows/Linux.
-    dest.write_text(_html(blocs, date_collecte("aee_o3_venaco_continu")),
+    bundle = ecrire_bundle_plotly(OUTPUTS)
+    dest.write_text(_html(blocs, date_collecte("aee_o3_venaco_continu"), bundle),
                     encoding="utf-8", newline="\n")
     print(f"[ok] {dest}")
     return 0

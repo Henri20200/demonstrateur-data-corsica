@@ -35,6 +35,7 @@ import os
 import re
 import shutil
 import subprocess
+from pathlib import Path
 
 import plotly.graph_objects as go
 import pytest
@@ -154,7 +155,16 @@ def test_une_figure_qui_casse_remonte_sans_code_de_sortie(monkeypatch):
 
 # --- Les trois parcours vus par le `run:` des workflows -------------------------------
 
-_BASH = shutil.which("bash")
+def _bash():
+    # Le lanceur WSL de Windows n'exécute pas ces chemins Windows.
+    # Même choix que test_publication : Git Bash sur Windows, bash du PATH ailleurs.
+    if os.name == "nt":
+        chemin = Path("C:/Program Files/Git/bin/bash.exe")
+        return str(chemin) if chemin.is_file() else None
+    return shutil.which("bash")
+
+
+_BASH = _bash()
 besoin_bash = pytest.mark.skipif(_BASH is None, reason="bash absent — snippet non jouable")
 
 

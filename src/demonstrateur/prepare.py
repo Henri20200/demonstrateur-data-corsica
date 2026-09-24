@@ -24,6 +24,7 @@ Garde-fous (cf. docs/RECONNAISSANCE.md) :
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -387,7 +388,12 @@ def _lignes_entsoe_horaires(path, *, direction: str = "inBiddingZone_Domain.mRID
                 for p in period.findall(q("Point"))
             }
             # Report A03 : on parcourt tous les pas, en gardant la dernière valeur connue.
-            derniere = 0.0
+            if 1 not in valeurs:
+                raise ValueError(
+                    f"{path} : période {debut.isoformat()} sans mesure en position 1 — "
+                    "report ENTSO-E impossible"
+                )
+            derniere = valeurs[1]
             for i in range(1, n_pas + 1):
                 if i in valeurs:
                     derniere = valeurs[i]
@@ -1470,14 +1476,49 @@ def construire(plan: list, entrees: dict) -> dict:
 
 
 def verifier_sorties() -> dict:
-    """Vérifie que chaque Parquet sur disque correspond à l'empreinte de la lignée de build.
+    """Refuse une lignée incomplète, un Parquet hors lignée ou une sortie altérée.
 
     Garde-fou de publication (AUD-01) : une sortie altérée après la préparation est
     refusée (EmpreinteDivergente). À appeler avant de publier (ex. en tête des figures).
     Renvoie la lignée.
     """
     build = json.loads(BUILD_FILE.read_text(encoding="utf-8"))
-    for nom, info in build.get("sorties", {}).items():
+    if not isinstance(build, dict):
+        raise ValueError("Lignée de build invalide — relancer prepare dans un dossier neuf.")
+    sorties = build.get("sorties")
+    sources = build.get("sources")
+    if not isinstance(sorties, dict) or not sorties or not isinstance(sources, dict) or not sources:
+        raise ValueError("Lignée de build vide ou incomplète — publication refusée.")
+
+    for nom, info in sorties.items():
+        if not isinstance(nom, str) or Path(nom).name != nom or not nom.endswith(".parquet"):
+            raise ValueError("Nom de sortie invalide dans la lignée — publication refusée.")
+        sha = info.get("sha256") if isinstance(info, dict) else None
+        if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{64}", sha):
+            raise ValueError(f"{nom} : empreinte de sortie absente ou invalide.")
+        ids = info.get("sources")
+        if not isinstance(ids, list) or not ids or any(
+            not isinstance(sid, str) or sid not in sources for sid in ids
+        ):
+            raise ValueError(f"{nom} : sources absentes de la lignée — publication refusée.")
+        for sid in ids:
+            entree = sources[sid]
+            if not isinstance(entree, dict) or any(
+                not isinstance(entree.get(champ), str) or not entree[champ]
+                for champ in ("filename", "sha256", "date_collecte")
+            ):
+                raise ValueError(f"{sid} : source incomplète dans la lignée.")
+
+    # Les figures optionnelles choisissent encore leur fichier par sa présence.
+    # Un ancien Parquet local ne doit donc jamais contourner la lignée courante.
+    hors_lignee = sorted(p.name for p in DATA_PROCESSED.glob("*.parquet") if p.name not in sorties)
+    if hors_lignee:
+        raise ValueError(
+            f"Parquet hors lignée : {', '.join(hors_lignee)} — publication refusée. "
+            "Reconstruire dans un dossier neuf ; aucun fichier n'a été supprimé."
+        )
+
+    for nom, info in sorties.items():
         chemin = DATA_PROCESSED / nom
         if not chemin.exists():
             raise FileNotFoundError(f"sortie {nom} manquante — relancer prepare.")

@@ -1,6 +1,6 @@
 """Export des visualisations en HTML déployable en iframe sans dépendance tierce.
 
-Plotly n'est pas chargé depuis un CDN : `plotly.min.js` est écrit UNE fois dans
+Plotly n'est pas chargé depuis un CDN : un bundle nommé par son empreinte est écrit dans
 outputs/ et partagé par tous les visuels — le dossier outputs/ se déploie d'un bloc.
 
 La mention de source « Source … — données collectées le … » est câblée dans
@@ -11,10 +11,13 @@ fond neutre clair, sans-serif) est porté par le template appliqué à chaque fi
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import textwrap
+from pathlib import Path
 
 import plotly.graph_objects as go
+from plotly.offline import get_plotlyjs
 
 from .config import BUILD_FILE, MANIFEST_FILE, OUTPUTS
 
@@ -396,20 +399,41 @@ def date_collecte(source_id: str) -> str:
     reflète les octets certifiés que prepare a consommés, pas le dernier passage de fetch
     (qui peut avoir rafraîchi le manifeste sans que prepare soit rejoué — sinon la figure
     afficherait une date plus récente que la donnée qu'elle montre). Repli sur le manifeste
-    si la lignée est absente (figure hors pipeline, ex. exploration)."""
+    si la lignée est absente (figure hors pipeline, ex. exploration). Une source absente
+    d'une lignée existante ne peut pas emprunter la date d'un téléchargement plus récent."""
     if BUILD_FILE.exists():
         build = json.loads(BUILD_FILE.read_text(encoding="utf-8"))
         entree = build.get("sources", {}).get(source_id)
         if entree and entree.get("date_collecte"):
             return entree["date_collecte"]
+        raise ValueError(f"{source_id} absent de la lignée de build — date de figure non certifiée.")
     manifest = json.loads(MANIFEST_FILE.read_text(encoding="utf-8"))
     return manifest[source_id]["date_collecte"]
+
+
+def ecrire_bundle_plotly(dossier: Path) -> str:
+    """Écrit les octets de Plotly sous une URL immuable propre à leur SHA-256.
+
+    Les anciennes URL restent disponibles pour les pages déjà en cache. Un fichier
+    local altéré est réparé avant qu'une nouvelle page le référence.
+    """
+    contenu = get_plotlyjs().encode("utf-8")
+    nom = f"plotly-{hashlib.sha256(contenu).hexdigest()}.min.js"
+    dest = dossier / nom
+    if not dest.exists() or dest.read_bytes() != contenu:
+        temporaire = dest.with_name(dest.name + ".tmp")
+        try:
+            temporaire.write_bytes(contenu)
+            temporaire.replace(dest)
+        finally:
+            temporaire.unlink(missing_ok=True)
+    return nom
 
 
 def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = "",
                 note: str = "", pied_decalage_px: int = -85,
                 script_apres: str | None = None) -> str:
-    """Écrit outputs/<name>.html (fichier léger, plotly.min.js mutualisé dans outputs/).
+    """Écrit outputs/<name>.html avec un bundle Plotly local partagé, nommé par empreinte.
 
     Applique le template, incruste la mention de source obligatoire.
     fig       : figure Plotly
@@ -431,12 +455,13 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     """
     preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px, nom=name)
     dest = OUTPUTS / f"{name}.html"
-    # "directory" : pas de CDN (le visuel se charge sans réseau tiers) ni de JS
-    # embarqué par fichier (~4,5 Mo x5) — une seule copie partagée dans outputs/.
+    # Une URL par contenu : le cache immutable ne peut pas conserver un ancien bundle
+    # sous le nom d'une version nouvelle. L'export "directory" conservait ce défaut.
     # div_id fixe : sans lui, Plotly tire un UUID à chaque export et deux runs sur les
     # mêmes données produisent des fichiers différents — or la planification ne committe
     # que ce qui a réellement changé.
-    fig.write_html(dest, include_plotlyjs="directory", full_html=True, div_id=name,
+    bundle = ecrire_bundle_plotly(OUTPUTS)
+    fig.write_html(dest, include_plotlyjs=bundle, full_html=True, div_id=name,
                    post_script=script_apres)
     print(f"[ok] {dest}")
     return str(dest)

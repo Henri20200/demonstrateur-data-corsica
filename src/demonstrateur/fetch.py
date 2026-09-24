@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import zlib
 import json
 import os
 import re
@@ -85,6 +86,8 @@ _MAX_REDIRECTIONS = 10
 # et n'explose qu'à la lecture DuckDB, dans prepare — son volume compressé est plafonné
 # ici, son expansion ne l'est pas.
 _MAX_OCTETS = 512 * 1024 * 1024
+# Volume utile des fichiers .gz, distinct du plafond des octets téléchargés.
+_MAX_OCTETS_DECOMPRESSES = 2 * 1024 * 1024 * 1024
 # Journée visée par `date_url`, en jours de recul. « avant-hier » n'est pas un excès de
 # prudence : il ALIGNE deux producteurs qui ne publient pas au même rythme. Le fichier
 # météo est réécrit au petit matin et sa dernière journée, tronquée, est coupée par
@@ -398,6 +401,21 @@ def _entete_csv(dest: Path, gz: bool) -> str:
         return f.readline().strip()
 
 
+def _verifier_gzip(dest: Path) -> None:
+    """Lit tous les membres, CRC et pieds gzip, sans charger le contenu en mémoire."""
+    try:
+        with gzip.open(dest, "rb") as flux:
+            taille = 0
+            for bloc in iter(lambda: flux.read(1 << 20), b""):
+                taille += len(bloc)
+                if taille > _MAX_OCTETS_DECOMPRESSES:
+                    raise ValueError(
+                        f"gzip : plafond de {_MAX_OCTETS_DECOMPRESSES} octets décompressés dépassé"
+                    )
+    except (EOFError, OSError, zlib.error) as exc:
+        raise ValueError(f"gzip invalide ou tronqué : {exc}") from exc
+
+
 def _valider(dest: Path, meta: dict, content_type: str) -> None:
     """Vérifie que le fichier téléchargé EST bien la donnée attendue.
 
@@ -414,6 +432,8 @@ def _valider(dest: Path, meta: dict, content_type: str) -> None:
     # 2) Contrôle par format : l'en-tête doit être tabulaire et contenir les
     #    colonnes attendues (CSV), ou le JSON doit porter sa clé racine.
     if fmt in {"csv", "csv.gz"}:
+        if fmt == "csv.gz":
+            _verifier_gzip(dest)
         entete = _entete_csv(dest, gz=(fmt == "csv.gz"))
         delim = meta.get("delimiter", ",")
         # .strip('"') : les producteurs qui citent leurs en-têtes ("Polluant";"valeur",

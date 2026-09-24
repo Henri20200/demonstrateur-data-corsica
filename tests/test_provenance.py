@@ -496,8 +496,10 @@ def test_la_page_ne_depend_d_aucun_service_tiers():
         if reference.startswith("#"):
             continue
         assert (OUTPUTS / reference).exists(), f"ressource locale manquante : {reference}"
-    assert h.count('src="plotly.min.js"') == 1, (
-        "plotly.min.js doit être chargé UNE fois pour les cinq graphiques"
+    # L'ancien nom reste lisible dans les sorties versionnées avant la migration D2 ;
+    # les nouveaux exports sont éprouvés avec leur empreinte dans test_publication.py.
+    assert len(re.findall(r'src="plotly(?:-[0-9a-f]{64})?\.min\.js"', h)) == 1, (
+        "le bundle Plotly doit être chargé UNE fois pour les cinq graphiques"
     )
 
 

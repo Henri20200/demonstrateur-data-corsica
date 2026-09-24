@@ -4,10 +4,9 @@
 # ni écrire dans le dépôt ni voir le jeton ENTSO-E. Ne pas greffer pull_request
 # sur pipeline.yml, qui cumule contents:write + secret + push vers master.
 #
-# DEUX JOBS, ET LEUR ÉCART EST UN DIAGNOSTIC. `valider` tient le code sous
-# l'environnement épinglé d'uv.lock, sans données : lint, fumée, provenance, pages.
-# `verrous` rejoue la chaîne du cron sur les données de son cache, dans l'environnement
-# du cron. Vert + rouge dans cet ordre = l'environnement a bougé, pas le code.
+# `valider` tient le code sous uv.lock, sans données. `verrous` rejoue les données
+# du cache dans deux environnements : celui du cron, verrouillé, et les dernières
+# dépendances autorisées, comme canari avant toute mise à jour du verrou.
 
 name: validation
 
@@ -66,10 +65,9 @@ jobs:
   # producteur qui bouge, une fois l'environnement.
   #
   # TROIS CHOIX VOULUS, chacun contre une façon de rendre la garde muette :
-  #  1. L'environnement est celui du CRON (pip, dernières versions), PAS uv.lock. Un
-  #     verrou doit être éprouvé là où il devra tenir. Le 28/08, pandas 3 a cessé
-  #     d'entraîner pytz, DuckDB n'a plus su rendre un TIMESTAMPTZ en objet Python, et le
-  #     verrou de T1 est passé sous uv.lock avant de tomber en production.
+  #  1. Le cron et les verrous de production suivent uv.lock. Le parcours séparé
+  #     « dernières » conserve l'alerte sur les évolutions de dépendances qui a motivé
+  #     ce job : il faut détecter leur casse avant de mettre le verrou à jour.
   #  2. La donnée vient du cache du pipeline en LECTURE SEULE (`cache/restore`) : une PR
   #     ne doit ni écrire ce cache ni provoquer l'éviction de l'entrée dont le cron vit.
   #  3. Sans cache, le job ÉCHOUE. Il a d'abord averti puis laissé passer, ce qui
@@ -80,18 +78,33 @@ jobs:
   #     protège rien. Un cache vide se résout (relancer le pipeline), il ne se traverse
   #     pas.
   verrous:
+    # Conserver le nom du contrôle de production pour les éventuelles protections de branche.
+    name: ${{ matrix.dependances == 'verrouillees' && 'verrous' || 'verrous (dernieres)' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        dependances: [verrouillees, dernieres]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
         with:
-          python-version: "3.12"
+          enable-cache: true
 
-      # Même commande que pipeline.yml, à dessein : cf. le point 1 ci-dessus.
-      - name: Installer comme le cron
-        run: python -m pip install -e . pytest
+      - name: Installer comme le cron depuis uv.lock
+        if: matrix.dependances == 'verrouillees'
+        run: uv sync --locked --extra dev --python 3.12
+
+      - name: Tester les dernières dépendances autorisées
+        if: matrix.dependances == 'dernieres'
+        run: |
+          uv venv --python 3.12
+          uv pip install --python .venv/bin/python -e . pytest
+
+      - name: Activer l'environnement du parcours
+        run: echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
 
       - name: Restaurer data/raw du pipeline (lecture seule)
         id: donnees
@@ -155,6 +168,7 @@ jobs:
           python -m demonstrateur.note_air
           python -m demonstrateur.page_air
           python -m demonstrateur.compile_etude
+          python -m demonstrateur.preuve_demande
           python -m demonstrateur.accueil
 
       # Tout sauf les verrous d'exploitation (`fraicheur`), qui mesurent la date du

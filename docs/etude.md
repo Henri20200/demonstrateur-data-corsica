@@ -54,9 +54,11 @@
   part de solaire et d'éolien. Elle produit aussi bien plus d'électricité qu'elle n'en
   consomme, et en exporte.
 
-Tout ce qui suit repose sur des données publiques d'EDF et d'ENTSO-E, mises à jour
-plusieurs fois par jour. Chaque graphique indique sa source et sa date. Les chiffres
-sont recalculés et vérifiés à chaque mise à jour.
+Cette étude repose sur des données publiques d'EDF et d'ENTSO-E. L'historique de
+production couvre 2019 à 2024 ; les données de bridage solaire s'arrêtent en 2023.
+La jauge du dernier relevé est rafraîchie toutes les six heures lorsque la source
+est disponible. Chaque graphique indique sa période et sa date de collecte.
+Une nouvelle compilation ne rend pas les observations historiques plus récentes.
 
 ## 2. Pourquoi cette étude
 
@@ -589,9 +591,14 @@ Trois étapes sont appliquées à chaque mise à jour.
 - **Produire les graphiques.** Les figures sont générées automatiquement à partir des
   données préparées. La source et la date de collecte sont ajoutées à chaque graphique.
 
-Les données sont mises à jour plusieurs fois par jour. Si une source n'est
-temporairement pas disponible, la dernière version complète est conservée plutôt que
-d'utiliser un fichier incomplet.
+La chaîne s'exécute toutes les six heures : elle rafraîchit les sources glissantes et
+contrôle les fichiers historiques conservés. Ce rythme est celui de la publication,
+pas celui de toutes les observations. Si une source est temporairement indisponible,
+la dernière version complète est conservée ; la jauge signale un relevé trop ancien.
+
+Le résultat « +22 % entre juin et juillet » dispose d'un
+[dossier de vérification](verification-demande.html) : mesures horaires utilisées,
+calcul reproductible et limites de lecture.
 
 Les principaux résultats sont également contrôlés automatiquement. Si une mise à jour
 modifie sensiblement un chiffre utilisé dans le document — par exemple les 22 % de

@@ -47,7 +47,11 @@ def test_accueil_ne_depend_d_aucun_service_tiers():
     Une police distante ou une bibliothèque appelée ailleurs le démentirait — et c'est
     exactement ce qui a été reproché à la vitrine précédente."""
     page = INDEX.read_text(encoding="utf-8")
-    externes = re.findall(r'(?:href|src)="(https?://[^"]+)"', page)
+    # Un lien sortant ne charge pas de ressource à l'ouverture de la page.
+    externes = re.findall(
+        r'<(?:script|link|img|iframe|source|video|audio|embed|object)\b[^>]*'
+        r'\b(?:href|src|srcset|data)="((?:https?:)?//[^"]+)"', page, re.I,
+    )
     assert not externes, (
         f"la page charge des ressources tierces : {externes} — elle affirme pourtant "
         "ne dépendre d'aucun service tiers"
