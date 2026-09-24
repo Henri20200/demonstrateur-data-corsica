@@ -136,18 +136,24 @@ def _html(genere_le: str, groupes, n_sources: int, n_prod: int) -> str:
   :root {{ color-scheme: light; }}
   body {{ margin:0; padding:3rem 1.2rem 4rem; background:{PALETTE["page"]};
           color:{PALETTE["ink"]}; font-family:{SANS}; font-size:17px; line-height:1.62; }}
-  /* 48rem, et non les 62rem de la page de l'air : celle-ci porte des figures larges, pas
-     celle-ci. Au-delà, les filets de séparation courent bien plus loin que le texte et la
-     page paraît bancale à droite — un vide qui se lit comme un manque, pas comme du calme.
-     Le seul élément large est le tableau des sources, qui défile dans sa propre boîte. */
-  main {{ max-width:48rem; margin:0 auto; }}
-  h1 {{ font-size:2rem; line-height:1.2; margin:0 0 .5rem; max-width:22em; }}
+  /* Deux études côte à côte sur écran large, une seule colonne sur téléphone. */
+  main {{ max-width:66rem; margin:0 auto; }}
+  .marque {{ display:flex; justify-content:space-between; align-items:baseline;
+             flex-wrap:wrap; gap:1rem; padding-bottom:1.2rem; margin-bottom:3rem;
+             border-bottom:1px solid {PALETTE["rule"]}; font-size:15px; }}
+  .marque a {{ font-weight:650; text-decoration:none; }}
+  .marque span, .repere {{ color:{PALETTE["ink_soft"]}; }}
+  .repere {{ text-transform:uppercase; letter-spacing:.12em; font-size:12px; }}
+  h1 {{ font-size:clamp(2.1rem, 5vw, 3.6rem); line-height:1.12;
+        letter-spacing:-.03em; margin:.7rem 0 1.2rem; max-width:19em; }}
   .chapeau {{ font-size:1.1rem; color:{PALETTE["ink_soft"]}; max-width:44em; margin:0 0 1.6rem; }}
   .cachet {{ display:inline-block; padding:.55rem .9rem; background:{PALETTE["surface"]};
              border:1px solid {PALETTE["rule"]}; border-radius:5px; font-size:15.5px; }}
   .cachet.alerte {{ border-left:4px solid {PALETTE["accent"]}; }}
   .cachet .abs {{ color:{PALETTE["ink_soft"]}; }}
-  article {{ margin:2.8rem 0 0; padding-top:1.6rem; border-top:1px solid {PALETTE["rule"]}; }}
+  .etudes {{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+             gap:2.5rem; margin:2.8rem 0 0; }}
+  article {{ padding-top:1.4rem; border-top:2px solid {PALETTE["accent"]}; }}
   article h2 {{ font-size:1.45rem; margin:0 0 .35rem; }}
   article p {{ max-width:44em; margin:0 0 .3rem; }}
   a {{ color:{PALETTE["accent"]}; text-underline-offset:3px; }}
@@ -157,7 +163,8 @@ def _html(genere_le: str, groupes, n_sources: int, n_prod: int) -> str:
   h2 a {{ color:{PALETTE["ink"]}; text-decoration:none; }}
   h2 a:hover {{ text-decoration:underline; text-decoration-thickness:1px; }}
   .annexes {{ font-size:15.5px; }}
-  .preuve {{ margin:3.2rem 0 0; padding-top:1.6rem; border-top:1px solid {PALETTE["rule"]}; }}
+  .preuve {{ margin:3.2rem 0 0; padding:1.6rem; background:{PALETTE["surface"]};
+             border:1px solid {PALETTE["rule"]}; border-radius:5px; }}
   .preuve h2 {{ font-size:1.45rem; margin:0 0 .6rem; }}
   .preuve li {{ max-width:44em; margin:0 0 .5rem; }}
   details {{ margin-top:1.6rem; }}
@@ -178,38 +185,61 @@ def _html(genere_le: str, groupes, n_sources: int, n_prod: int) -> str:
             font-size:15.5px; color:{PALETTE["ink_soft"]}; }}
   footer p {{ max-width:44em; }}
   footer a {{ color:{PALETTE["accent"]}; }}
+  .contact {{ margin:2.6rem 0 0; max-width:44em; }}
+  .contact h2 {{ font-size:1.3rem; }}
+  a:focus-visible, summary:focus-visible {{ outline:2px solid {PALETTE["accent"]};
+                                         outline-offset:4px; }}
+  @media (max-width:640px) {{
+    body {{ padding:1.4rem 1rem 2.5rem; }}
+    .marque {{ margin-bottom:2rem; }}
+    .etudes {{ grid-template-columns:1fr; gap:2rem; }}
+    .preuve {{ padding:1.1rem; }}
+  }}
 </style></head><body><main>
 
+<nav class="marque" aria-label="Méthodes et Révélations">
+<a href="https://www.methodes-revelations.fr/">Méthodes &amp; Révélations</a>
+<span>Études sur données publiques</span>
+</nav>
+<p class="repere">Comprendre le territoire</p>
 <h1>{_txt(TITRE)}</h1>
-<p class="chapeau">Deux études sur données publiques. Chaque chiffre porte sa source et sa
-date, chaque fichier collecté porte son empreinte, et la chaîne qui produit ces pages
-tourne toute seule.</p>
+<p class="chapeau">D'où vient notre électricité ? Que disent les mesures d'ozone ?
+Deux études pour préparer une note, documenter un article ou éclairer un échange
+sur la Corse, avec les sources, les calculs et leurs limites.</p>
 
 <p class="cachet" id="cachet" data-genere="{html.escape(genere_le)}">
-  <span id="age"></span><span class="abs">Données compilées le
+  <span id="age"></span><span class="abs">Pages compilées le
   <time datetime="{html.escape(genere_le)}">{_txt(genere_le[:10])}</time>.</span>
 </p>
 
-{_sujets()}
+<div class="etudes">{_sujets()}</div>
+<p class="annexes">La date de compilation est celle des pages. Chaque étude précise
+la période de ses observations ; la jauge électrique indique l'âge de son dernier relevé.</p>
 
 <section class="preuve">
-<h2>Comment vérifier que ces chiffres tiennent</h2>
+<h2>Du résultat aux données</h2>
+<p>La demande moyenne augmente de 22 % entre juin et juillet : comment ce chiffre
+est-il obtenu ? Le dossier donne les mesures retenues, le calcul et ses limites.</p>
+<p><a href="verification-demande.html"><strong>Vérifier ce résultat</strong></a>
+— données téléchargeables et calcul autonome.</p>
 <ul>
-<li>Chaque fichier téléchargé est <strong>empreinté en SHA-256</strong> et re-vérifié à
-chaque exécution : si un octet a bougé, la chaîne s'arrête au lieu de publier.</li>
-<li>Aucune figure n'est dessinée depuis une donnée non certifiée, et une lignée relie
-chaque visuel aux données exactes dont il est tiré — c'est elle qui le date.</li>
-<li>Les nombres écrits dans les études sont <strong>tenus par des tests</strong> : si une
-révision de la donnée source en déplace un, rien n'est publié. Plusieurs figures refusent
-même de se dessiner quand la donnée cesse de soutenir leur titre.</li>
-<li>Ces pages ne dépendent d'aucun service tiers : ni police distante, ni bibliothèque
-appelée ailleurs, aucun appel réseau au chargement.</li>
+<li>Les notes méthodologiques exposent les sources, les conventions de calcul et les limites.</li>
+<li>Les empreintes permettent de repérer une modification des fichiers utilisés.</li>
+<li>Les tests contrôlent la cohérence des résultats avant publication. Ils ne remplacent
+pas une relecture indépendante de la méthode et de ses conclusions.</li>
 </ul>
 
 <details>
 <summary>Les {n_sources} sources, leurs {n_prod} producteurs et leurs empreintes</summary>
 <div class="defile">{_lignes_manifeste(groupes)}</div>
 </details>
+</section>
+
+<section class="contact">
+<h2>Discuter d'un usage ou signaler une réserve</h2>
+<p>Vous souhaitez recommander une étude, en reprendre un résultat ou proposer une
+vérification ? Précisez le sujet et l'usage envisagé dans votre message à
+<a href="mailto:contact@methodes-revelations.fr">contact@methodes-revelations.fr</a>.</p>
 </section>
 
 <footer>
@@ -230,11 +260,11 @@ conclusions.</p>
   var h = (Date.now() - t) / 3600000;
   var texte;
   if (h < 0) return;                       /* horloge du lecteur en avance : on se tait */
-  else if (h < 1) texte = "Rafraîchi il y a moins d'une heure. ";
-  else if (h < 24) texte = "Rafraîchi il y a " + Math.round(h) + " h. ";
+  else if (h < 1) texte = "Compilation il y a moins d'une heure. ";
+  else if (h < 24) texte = "Compilation il y a " + Math.round(h) + " h. ";
   else {{
     var j = Math.floor(h / 24);
-    texte = "Dernier rafraîchissement il y a " + j + (j > 1 ? " jours" : " jour") + ". ";
+    texte = "Dernière compilation il y a " + j + (j > 1 ? " jours" : " jour") + ". ";
     /* La chaîne tourne toutes les 6 h : au-delà d'une journée, le cycle est manqué et la
        page doit le dire elle-même plutôt que de laisser croire à de la donnée fraîche. */
     texte += j > 2 ? "La chaîne automatique semble interrompue. " : "Un cycle a été manqué. ";

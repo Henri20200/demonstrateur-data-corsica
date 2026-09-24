@@ -64,6 +64,7 @@ from pathlib import Path
 
 from . import depot
 from .config import DATA_ARCHIVE, LAST_CHECKED_FILE, VERSIONS_FILE
+from .provenance import empreinte
 
 # Politiques de révision déclarables dans sources.yaml. Le défaut est `unknown`, et
 # `unknown` s'archive : nous croyons savoir aujourd'hui quelles sources se révisent, nous
@@ -93,11 +94,8 @@ def _maintenant() -> str:
     passe toutes les 6 h et n'y arriverait jamais ; un rattrapage manuel, deux runs
     concurrents ou un test, si. La précision coûte six caractères par horodatage.
 
-    Elle est FORCÉE, jamais laissée à `isoformat()`, qui omet les microsecondes quand
-    elles valent exactement zéro. Une fois sur un million le registre porterait alors un
-    instant plus court que ses voisins — et `version_connue_a` compare ses bornes comme du
-    TEXTE, où `'.'` (0x2E) précède `'Z'` (0x5A) : `...:21.999999Z` passerait AVANT
-    `...:21Z`, qu'il suit pourtant d'une seconde presque entière. Largeur fixe, toujours.
+    La largeur reste fixe dans le registre. Les recherches comparent toutefois des
+    datetime avec fuseau : l'appelant peut exprimer le même instant à une autre précision.
     """
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f") + "Z"
 
@@ -423,17 +421,35 @@ def _copier_localement(source_id: str, meta: dict, fichier: Path,
     return nom
 
 
+def _payload_conforme(version: dict, fichier: Path) -> bool:
+    """Vérifie les octets de reprise, indépendamment d'une empreinte XML canonique.
+
+    Les anciennes entrées sans `payload_sha256` ne sont reprenables que si leurs
+    octets correspondent au SHA-256 déjà enregistré. Une empreinte canonique seule
+    ne permet pas de certifier rétroactivement une enveloppe : on refuse cette reprise.
+    """
+    attendue = version.get("payload_sha256") or version.get("sha256")
+    try:
+        return bool(attendue) and empreinte(fichier, {}) == attendue
+    except OSError:
+        return False
+
+
 def _retenter_depot(source_id: str, version: dict, fichier: Path, index: dict) -> bool:
     """Redépose les octets d'une version déjà indexée mais jamais parvenue au stockage.
 
-    `fichier` doit porter EXACTEMENT le contenu de cette version — l'appelant l'établit en
-    comparant les empreintes, jamais en le supposant. Déposer sous la clé d'une version des
-    octets qui n'en sont pas serait pire que l'absence : l'index cesserait de dire vrai, et
-    rien ne le signalerait.
+    `fichier` doit porter EXACTEMENT les octets promis : leur empreinte est recalculée
+    ici, même si l'appelant vient de vérifier l'empreinte canonique du contenu.
     """
     if version.get("payload_archived") or not version.get("payload_key"):
         return False
     if not fichier.exists():
+        # Les copies déjà perdues ont leur bilan séparé ; ne pas répéter un avertissement
+        # pour chacune à chaque collecte, au risque de masquer une vraie corruption.
+        return False
+    if not _payload_conforme(version, fichier):
+        print(f"[!] {source_id} : reprise refusée — octets illisibles ou "
+              f"différents de l'empreinte d'archive ({fichier.name}).")
         return False
     if not _deposer(source_id, version["payload_key"], fichier):
         return False
@@ -471,7 +487,15 @@ def enregistrer_version(source_id: str, meta: dict, fichier: Path, sha: str) -> 
         # Rien de neuf — sauf, peut-être, des octets qui n'ont jamais atteint le stockage.
         # C'est ici, et nulle part ailleurs, qu'on tient encore le contenu de cette
         # version : `fichier` vient d'être téléchargé ou revérifié sous cette empreinte.
-        _retenter_depot(source_id, versions[-1], fichier, index)
+        version = versions[-1]
+        if version.get("payload_archived") or not version.get("payload_key"):
+            return None
+        # Une réponse XML réestampillée peut garder son empreinte canonique tout en
+        # changeant d'octets. La copie originale, si elle existe, reste prioritaire.
+        nom = version.get("fichier_archive")
+        copie = DATA_ARCHIVE / source_id / nom if nom else None
+        candidat = copie if copie and _payload_conforme(version, copie) else fichier
+        _retenter_depot(source_id, version, candidat, index)
         return None
 
     if versions and not archive_demandee(meta):
@@ -481,6 +505,7 @@ def enregistrer_version(source_id: str, meta: dict, fichier: Path, sha: str) -> 
 
     instant = _maintenant()
     cle = depot.cle_objet(source_id, instant, sha, _extension(meta["filename"]))
+    sha_octets = empreinte(fichier, {})
     # Copie locale avant le réseau : si le processus meurt pendant l'envoi, le filet de
     # reprise existe déjà.
     copie = _copier_localement(source_id, meta, fichier, instant, sha)
@@ -490,6 +515,7 @@ def enregistrer_version(source_id: str, meta: dict, fichier: Path, sha: str) -> 
         versions[-1]["superseded_at"] = instant
     entree = {
         "sha256": sha,
+        "payload_sha256": sha_octets,
         # L'url RÉSOLUE (jetons {AAAA}/{MM}/{JJ} expansés, secrets encore sous forme de
         # gabarit `${NOM}` — même régime que le manifeste, aucune valeur de jeton ici).
         # C'est elle qui distingue deux choses que l'empreinte seule confond :
@@ -540,11 +566,8 @@ def retenter_depots_en_attente() -> list[str]:
                 # ne passent que par `enregistrer_version`, qui vérifie l'empreinte.
                 continue
             copie = DATA_ARCHIVE / source_id / nom
-            if copie.exists() and _deposer(source_id, version["payload_key"], copie):
-                version["payload_archived"] = True
+            if _retenter_depot(source_id, version, copie, index):
                 deposees.append(version["payload_key"])
-    if deposees:
-        _sauver(VERSIONS_FILE, index)
     return deposees
 
 
@@ -566,7 +589,7 @@ def _redeposable(source_id: str, version: dict) -> bool:
     if version.get("superseded_at") is None:
         return True
     nom = version.get("fichier_archive")
-    return bool(nom) and (DATA_ARCHIVE / source_id / nom).exists()
+    return bool(nom) and _payload_conforme(version, DATA_ARCHIVE / source_id / nom)
 
 
 def _millesimes(predicat) -> list[tuple[str, str]]:
@@ -652,8 +675,16 @@ def versions_sans_octets() -> list[tuple[str, str]]:
     ]
 
 
+def _instant_utc(instant: str) -> datetime:
+    """Normalise un instant ISO 8601 ; une date sans fuseau est ambiguë et refusée."""
+    valeur = datetime.fromisoformat(instant.replace("Z", "+00:00"))
+    if valeur.tzinfo is None or valeur.utcoffset() is None:
+        raise ValueError(f"Instant sans fuseau horaire : {instant!r}")
+    return valeur.astimezone(timezone.utc)
+
+
 def version_connue_a(source_id: str, instant: str) -> dict | None:
-    """Quelle version cette chaîne détenait-elle à `instant` (ISO 8601 UTC) ?
+    """Quelle version cette chaîne détenait-elle à `instant` (ISO 8601 avec fuseau) ?
 
     Le cœur de l'usage : à `forecast_origin = 2026-10-15T08:00:00Z`, retourne la version
     dont l'intervalle `[first_observed_at ; superseded_at[` contient cet instant — et
@@ -675,9 +706,10 @@ def version_connue_a(source_id: str, instant: str) -> dict | None:
     la détention — doit croiser avec le manifeste de la date voulue, que
     `reconstitution.instantanes` sait rendre.
     """
+    demande = _instant_utc(instant)
     for version in _charger(VERSIONS_FILE).get(source_id, []):
-        debut = version["first_observed_at"]
+        debut = _instant_utc(version["first_observed_at"])
         fin = version.get("superseded_at")
-        if debut <= instant and (fin is None or instant < fin):
+        if debut <= demande and (fin is None or demande < _instant_utc(fin)):
             return version
     return None

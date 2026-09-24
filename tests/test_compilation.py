@@ -3,11 +3,39 @@ résiduel, et chaque visuel cité existe vraiment. Ne nécessite pas le pipeline
 — il lit les visuels déjà versionnés dans outputs/ (dont il tire la hauteur d'iframe)."""
 
 import re
+import json
+import subprocess
+import sys
 
 import pytest
 
 from demonstrateur.compile_etude import compiler, rendre_page
 from demonstrateur.config import ETUDE_HTML, ETUDE_SOURCE, OUTPUTS
+
+
+def test_les_citations_indentees_terminent_et_conservent_leur_contenu():
+    """Q1 : un processus borné permet de constater la boucle sans bloquer pytest."""
+    cas = [
+        ("  > Citation", "<blockquote><p>Citation</p></blockquote>"),
+        ("Avant\n\t> Citation\nAprès",
+         "<p>Avant</p>\n<blockquote><p>Citation</p></blockquote>\n<p>Après</p>"),
+        ("  > Premier\n >\n\t> Second", "<blockquote><p>Premier</p><p>Second</p></blockquote>"),
+        ("  > **Pour aller plus loin**\n  > Détail",
+         "<details><summary>Pour aller plus loin</summary><p>Détail</p></details>"),
+    ]
+    script = (
+        "import json, sys; from demonstrateur.compile_etude import compiler; "
+        "print(json.dumps([compiler(md) for md in json.load(sys.stdin)]))"
+    )
+    try:
+        resultat = subprocess.run(
+            [sys.executable, "-c", script],
+            input=json.dumps([md for md, _ in cas]),
+            capture_output=True, text=True, timeout=10, check=True,
+        )
+    except subprocess.TimeoutExpired:
+        pytest.fail("la compilation reste bloquée sur une citation indentée")
+    assert json.loads(resultat.stdout) == [html for _, html in cas]
 
 
 def test_compilation_sans_artefact_ni_visuel_manquant():

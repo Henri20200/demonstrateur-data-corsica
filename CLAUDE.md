@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Démonstrateur d'analyse de données ouvertes corses. Le livrable final : des
 visualisations HTML datées et sourcées, déployables en iframe sans dépendance tierce
-(`plotly.min.js` mutualisé dans `outputs/` — déployer le dossier d'un bloc).
+(`plotly-<sha256>.min.js` mutualisé dans `outputs/` — déployer le dossier d'un bloc).
 Le repo lui-même est une preuve de sérieux — il doit rester propre et reproductible.
 
 La question fermée (électricité corse : mix, profil horaire, saisonnalité) et les critères
@@ -22,9 +22,9 @@ test : donnée fraîche (pas de 15 min) + pipeline récurrent + manifeste daté/
 
 ```bash
 # Installation (l'environnement .venv existe déjà)
-uv pip install -e ".[dev]"          # + ".[insee]" si besoin de pynsee
+uv sync --locked --extra dev       # + --extra insee si besoin de pynsee
 
-# Pipeline, dans l'ordre
+# Pipeline, dans l'ordre (environnement activé, sinon préfixer par uv run --no-sync)
 fetch-data                          # = python -m demonstrateur.fetch : télécharge sources.yaml -> data/raw/
 python -m demonstrateur.prepare     # data/raw/*.csv.gz -> data/processed/*.parquet (via DuckDB)
 
@@ -138,6 +138,14 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   dépose donc pas plus à la main que les visuels ne se committent à la main. Sans les secrets
   `SCW_ACCESS_KEY` / `SCW_SECRET_KEY`, l'étape se saute avec un avertissement plutôt que de
   faire échouer le run.
+- **Le code publié doit être celui qui a produit et validé les sorties.** Avant le commit,
+  le cron compare `master` distant à `GITHUB_SHA`, même sans changement d'artefact. S'il
+  a avancé, le run s'arrête et doit être rejoué depuis la nouvelle révision ; aucun rebase
+  n'est permis après les tests. Le push normal refuse aussi une avancée concurrente.
+- **Le cache long du JavaScript exige une URL propre à ses octets.** Le bundle partagé
+  porte son SHA-256 dans `plotly-<sha256>.min.js` et monte avant les pages. Les anciennes
+  URL, y compris `plotly.min.js` pendant la migration, restent exclues du `--delete` pour
+  préserver les pages déjà en cache. Les nouveaux exports passent par `viz.ecrire_bundle_plotly`.
 - **On publie, PUIS on rougit — et `figures` rend trois verdicts, pas deux.** Depuis le
   20/09/2026, `python -m demonstrateur.figures` sort en `0` (génération normale), en
   `CODE_FRAICHEUR` = `2` (génération complète, T1 en « affichage suspendu » : on publie
@@ -217,7 +225,10 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   enveloppe (ex. ENTSO-E) est **canonique** : `empreinte_ignore_xml` liste les **chemins XML
   précis** à neutraliser (`GL_MarketDocument/mRID`, `.../createdDateTime` — l'enveloppe de
   document, jamais les `mRID` imbriqués des TimeSeries, qui sont de la donnée), reproductible
-  d'un téléchargement à l'autre. Calcul unique dans `provenance.py`.
+  d'un téléchargement à l'autre. Calcul unique dans `provenance.py`. Depuis le lot de
+  stabilisation du 21/09, chaque nouvelle version porte aussi `payload_sha256`, calculé
+  sur les octets bruts : toutes les reprises le revérifient avant envoi. Une ancienne
+  entrée à empreinte uniquement canonique ne suffit pas à certifier son enveloppe.
 - **Un verrou s'éprouve sur des données AVANT d'être fusionné.** Depuis le 28/08/2026 la
   CI de PR a deux jobs : `valider` (environnement d'`uv.lock`, sans données) et `verrous`,
   qui restaure le cache `data/raw` du pipeline en lecture seule, rejoue `prepare` → figures
@@ -225,11 +236,12 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   date du dernier passage du cron, pas le code. Depuis le 20/09/2026 le CRON les écarte lui
   aussi de sa passe bloquante et les joue dans une étape à part : ce qui distingue les deux
   jobs n'est donc plus cette exclusion, mais ce qu'ils en font — `verrous` les ignore, le
-  cron s'en sert pour rougir APRÈS avoir publié (cf. le contrat de publication ci-dessus). `verrous` tourne dans l'environnement du
-  CRON (pip, dernières versions) et non sous `uv.lock`, sans quoi il ne prédirait rien :
-  c'est un `pandas` sans `pytz` qui a suspendu la publication le 28/08, sous un `uv.lock`
-  qui, lui, passait. Lire les deux ensemble : `valider` vert + `verrous` rouge =
-  l'environnement a bougé, pas le code. Et ne PAS y recopier le
+  cron s'en sert pour rougir APRÈS avoir publié (cf. le contrat de publication ci-dessus).
+  Depuis le lot de stabilisation du 21/09, le cron et un parcours `verrous` installent
+  exactement `uv.lock`. Un deuxième parcours `verrous` teste les dernières dépendances
+  autorisées : il conserve l'alerte qui avait manqué lors de la panne pandas du 28/08.
+  Un échec limité à ce canari signale une incompatibilité à résoudre avant adoption.
+  Et ne PAS y recopier le
   `git checkout -- data/raw/_manifest.json` du pipeline : ce job ne collecte pas, le couple
   (octets, empreintes) du cache est cohérent, le manifeste versionné ne l'est plus avec ces
   octets-là.

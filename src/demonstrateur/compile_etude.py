@@ -12,7 +12,7 @@ Conventions (cf. l'en-tête de `docs/etude.md`) :
   - `# Titre` suivi d'une ligne `*en italique*` -> titre + sous-titre de page
 
 La page ne charge aucun JS : ce sont les iframes des visuels qui tirent (chacun dans
-son coin) le `plotly.min.js` mutualisé de `outputs/`. Le style reprend la palette et
+son coin) le bundle Plotly mutualisé de `outputs/`. Le style reprend la palette et
 les règles de lisibilité des figures (encre pleine, plancher 16 px, contraste WCAG AA).
 """
 
@@ -250,10 +250,10 @@ def compiler(md: str) -> str:
             i += 1
             continue
 
-        if ligne.startswith(">"):
+        if ligne.lstrip().startswith(">"):
             bloc = []
-            while i < n and lignes[i].startswith(">"):
-                bloc.append(re.sub(r"^> ?", "", lignes[i]))
+            while i < n and lignes[i].lstrip().startswith(">"):
+                bloc.append(re.sub(r"^> ?", "", lignes[i].lstrip()))
                 i += 1
             sortie.append(_encadre(bloc))
             continue
@@ -282,6 +282,9 @@ def compiler(md: str) -> str:
         while i < n and lignes[i].strip() and not _est_special(lignes[i]):
             para.append(lignes[i].strip())
             i += 1
+        if not para:
+            # Une divergence entre reconnaissance et traitement ne doit jamais boucler.
+            raise ValueError(f"Bloc Markdown non traité à la ligne {i + 1} : {ligne!r}")
         texte = " ".join(para)
         classe = ' class="lede"' if re.fullmatch(r"\*[^*].*[^*]\*", texte) else ""
         sortie.append(f"<p{classe}>{_inline(texte)}</p>")

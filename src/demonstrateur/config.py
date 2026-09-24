@@ -11,7 +11,7 @@ OUTPUTS = ROOT / "outputs"
 DOCS = ROOT / "docs"
 
 # Source éditoriale de l'étude (versionnée) et page compilée (déployée AVEC outputs/
-# d'un bloc : ses iframes pointent vers les visuels voisins, plotly.min.js mutualisé).
+# d'un bloc : ses iframes pointent vers les visuels voisins et le bundle Plotly partagé).
 ETUDE_SOURCE = DOCS / "etude.md"
 ETUDE_HTML = OUTPUTS / "etude.html"
 

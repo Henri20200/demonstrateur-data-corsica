@@ -81,7 +81,7 @@ def _page_air_rendue(monkeypatch) -> str:
     """
     monkeypatch.setattr(fa, "phrase_actualite_courte", lambda: "")
     blocs = [(f"<p>section {sid}</p>", sid, go.Figure()) for sid in page_air.SECTIONS]
-    return page_air._html(blocs, "01/01/2026")
+    return page_air._html(blocs, "01/01/2026", "plotly-test.min.js")
 
 
 @pytest.fixture
