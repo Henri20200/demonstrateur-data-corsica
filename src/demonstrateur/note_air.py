@@ -188,11 +188,11 @@ côté air comme côté température.</p>
     {c["a4"]["implantations"]}.
     Les polluants qu'on suit au voisinage d'une
     source — particules, dioxyde de soufre, oxydes d'azote — ne sont pas traités ici.</li>
-<li><strong>D'où vient cet ozone.</strong> Une mesure donne une quantité, pas une
-    provenance. L'ozone se forme dans l'air à partir d'autres polluants, puis il se
-    déplace avec le vent : une partie de celui qu'on mesure en Corse s'est formée
-    ailleurs. Savoir quelle part demanderait un modèle de transport, que des mesures de
-    concentration ne remplacent pas.</li>
+<li><strong>D'où vient cet ozone.</strong> Une concentration ne porte pas d'étiquette
+    d'origine : une mesure donne une quantité, pas une provenance. L'ozone se forme dans
+    l'air à partir d'autres polluants, puis il se déplace avec le vent. Une partie de
+    celui qu'on mesure en Corse s'est donc formée ailleurs. Savoir quelle part demanderait
+    un modèle de transport, que des mesures de concentration ne remplacent pas.</li>
 <li><strong>Ce qui a causé un pic.</strong> Un dépassement dit qu'une journée a été
     chargée en ozone. Il ne dit pas ce qui l'a chargée. Ces mesures ne permettent de
     désigner ni une installation, ni un navire, ni une route.</li>
