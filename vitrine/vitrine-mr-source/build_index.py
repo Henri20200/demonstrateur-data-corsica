@@ -178,16 +178,43 @@ body = body.replace(
     f"{SVG}\n</svg></div>",
 )
 TEXTE_RETOUCHES = [
-    # L'étude porte sur la composition du courant, pas sur la consommation.
+    # Les deux analyses restent distinctes : aucun lien causal n'est suggéré.
     (
-        "Deux volets : consommation électrique journalière et ozone.",
-        "Deux parties : de quoi est faite l'électricité corse, et l'ozone.",
+        "Deux volets : consommation électrique journalière et ozone. "
+        "Figures interactives, notes méthodologiques.",
+        "D’où vient l’électricité consommée en Corse ? Que montrent les mesures d’ozone ? "
+        "Deux analyses distinctes, avec des graphiques interactifs, "
+        "les sources utilisées et les limites expliquées.",
     ),
     (
         "Analyse de données et machine learning appliqués à un territoire. "
         "Premier volet publié : l'électricité et l'air.",
-        "Analyse de données et machine learning appliqués à la Corse. "
-        "Première étude publiée : électricité et qualité de l’air.",
+        "Des études pour répondre à des questions précises sur la Corse à partir de données publiques. "
+        "Les sources sont indiquées, les calculs expliqués et les limites présentées.",
+    ),
+    ("Données · Machine learning · Corse", "Données · Études · Corse"),
+    ("Données · Machine learning · Région Corse", "Données · Études · Région Corse"),
+    (
+        '<div class="eyebrow">Une publiée · deux à définir</div>',
+        '<div class="eyebrow studies-summary"><span>Une publiée</span> · '
+        '<span>deux projets à l’étude</span></div>',
+    ),
+    ("Volet 02", "Projet 02"),
+    ("Volet 03", "Projet 03"),
+    ("Sujet à l'étude", "À l’étude"),
+    (
+        "Consulter l'étude →</a></div>",
+        "Consulter le dossier →</a></div>\n"
+        '      <div class="verification">\n'
+        '        <a href="https://air-et-energie-en-corse.s3.fr-par.scw.cloud/verification-demande.html" '
+        'target="_blank" rel="noopener">Vérifier un résultat</a>\n'
+        '        <p>Un exemple documenté permet de retrouver les données, le calcul et ses limites.</p>\n'
+        '      </div>',
+    ),
+    (
+        '<span class="contact"><a href="mailto:',
+        '<span class="contact"><span class="contact-note">Pour discuter d’une étude, '
+        'de sa réutilisation ou d’une réserve sur la méthode.</span><a href="mailto:',
     ),
     # La légende englobe les différents lieux représentés.
     (
@@ -257,6 +284,23 @@ CSS_RETOUCHES = [
         "</style>",
         "@media (max-width:820px){.studies{grid-template-columns:minmax(0,1fr)}.eyebrow{white-space:normal}}\n</style>",
     ),
+    # Retouches limitées aux cartes et au contact : ni la constellation ni ses
+    # conteneurs, ses couleurs, ses animations ou ses règles responsive ne changent.
+    (
+        "</style>",
+        ".studies-head .studies-summary{white-space:normal;letter-spacing:.12em;line-height:1.6}\n"
+        ".studies-summary span{display:inline-block;max-width:100%}\n"
+        "@media (min-width:821px){.studies{grid-template-columns:minmax(0,1.5fr) repeat(2,minmax(0,1fr))}}\n"
+        ".study.done .go{margin-top:4px;letter-spacing:.08em}\n"
+        ".study.done .go a{white-space:normal;max-width:100%}\n"
+        ".study.done .verification{margin-top:4px;padding-top:14px;border-top:1px solid var(--pacioli-rule-soft)}\n"
+        ".study.done .verification a{font-size:14px}\n"
+        ".study.done .verification p{margin-top:6px}\n"
+        "footer .contact{flex-basis:100%;order:1}\n"
+        "footer .contact-note{display:block;margin-bottom:6px;font-family:var(--pacioli-font-sans);"
+        "font-size:14px;line-height:1.5;letter-spacing:normal;color:var(--pacioli-ink-soft)}\n"
+        "</style>",
+    ),
 ]
 for old, new in CSS_RETOUCHES:
     assert old in css, old[:70]
@@ -268,13 +312,13 @@ head = """<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Méthodes &amp; Révélations</title>
-<meta name="description" content="Études de données sur la Corse. Analyse de données et machine learning appliqués à la Corse. Première étude publiée : électricité et qualité de l’air.">
+<meta name="description" content="Études de données sur la Corse : des questions précises, des sources indiquées, des calculs expliqués et des limites présentées. Dossier publié : électricité et ozone.">
 <link rel="canonical" href="https://www.methodes-revelations.fr/">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Méthodes &amp; Révélations">
 <meta property="og:locale" content="fr_FR">
 <meta property="og:title" content="Méthodes &amp; Révélations — Études de données sur la Corse">
-<meta property="og:description" content="Analyse de données et machine learning appliqués à la Corse. Première étude publiée : électricité et qualité de l’air.">
+<meta property="og:description" content="Des questions précises sur la Corse, des sources indiquées, des calculs expliqués et des limites présentées. Dossier publié : électricité et ozone.">
 <meta property="og:url" content="https://www.methodes-revelations.fr/">
 """
 html = head + css + "\n</head>\n<body>\n" + body.rstrip() + "\n</body>\n</html>\n"

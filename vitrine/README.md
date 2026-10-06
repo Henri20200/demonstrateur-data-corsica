@@ -25,6 +25,17 @@ et de style sont centralisés dans `TEXTE_RETOUCHES` et `CSS_RETOUCHES` du
 générateur. Le HTML final embarque le logo, le SVG et les animations CSS ;
 il ne charge aucun script ni aucune ressource distante.
 
+## Prévisualiser localement
+
+Depuis la racine du dépôt :
+
+```shell
+python -m http.server 8000 --bind 127.0.0.1 --directory vitrine
+```
+
+Ouvrir `http://127.0.0.1:8000/`. Les liens du dossier publié pointent vers ses
+pages publiques ; le serveur affiche uniquement la copie locale de l’accueil.
+
 ## Mise en ligne
 
 Le commit et le push sauvegardent ces fichiers sur GitHub. Ils ne déploient

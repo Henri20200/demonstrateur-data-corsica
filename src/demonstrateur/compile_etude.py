@@ -26,7 +26,7 @@ from . import navigation
 from .config import ETUDE_HTML, ETUDE_SOURCE, OUTPUTS
 from .viz import LARGEUR_VISUEL, PALETTE, SANS
 
-# --- Rendu inline : échappement + le seul balisage inline présent (gras, italique) ---
+# --- Rendu inline : échappement, gras, italique et liens vers les pages HTML voisines ---
 
 
 def _echapper(txte: str) -> str:
@@ -37,10 +37,11 @@ def _echapper(txte: str) -> str:
 
 def _inline(txte: str) -> str:
     """Échappe puis rend `**gras**` et `*italique*` — dans cet ordre, pour que `**`
-    ne soit pas capté comme deux `*`. L'étude n'a ni lien ni code inline."""
+    ne soit pas capté comme deux `*`. Les liens restent limités aux pages HTML voisines."""
     txte = _echapper(txte)
     txte = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", txte)
     txte = re.sub(r"\*(.+?)\*", r"<em>\1</em>", txte)
+    txte = re.sub(r"\[([^\[\]]+)\]\(([a-zA-Z0-9_-]+\.html)\)", r'<a href="\2">\1</a>', txte)
     return txte
 
 
