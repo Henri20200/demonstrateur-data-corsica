@@ -91,7 +91,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             ),
         ),
         (
-            "<p>De tout cela découle une seule chose utile, et la voici.</p>",
+            "<p>De cela découle une seule chose utile, et la voici.</p>",
             a5,
             preparer_figure(
                 fa.fig_a5_creneau_a_eviter(), fa.SRC_AIR, d_air,
