@@ -617,11 +617,10 @@ sources:
   # n'est plus l'empreinte mais le contrôle de couverture, qui bloque la chaîne dès que
   # la fenêtre publiée cesse d'être peuplée.
   #
-  # FUSEAU : UTC+1 FIXE, horodatage en FIN de période — l'inverse du flux LCSQA, qui
-  # étiquette le début. Établi sur pièce, pas supposé : le décalage entre les deux
-  # sources vaut +1 h en été COMME en hiver (écart max 0,00 µg/m³ sur les journées
-  # communes du 30/07/2026 et du 15/01/2025). Un décalage de fuseau aurait varié d'une
-  # saison à l'autre ; un décalage d'étiquetage, non. La conversion se fait dans prepare.
+  # FUSEAU : UTC+1 FIXE, Start = DÉBUT de période (guide AEE, p. 18, et aide Parquet).
+  # Le LCSQA date aussi le début, mais en UTC (note DRC-18-174316-08157A, p. 6).
+  # Leur décalage constant d'une heure vient donc des fuseaux, pas d'un étiquetage
+  # début/fin. Corrigé le 06/10/2026 ; relevé de contrôle dans prepare.air_corse_to_parquet.
   #
   # URL déterministe : SPO-<code station>_<code polluant>.parquet, 7 = ozone. Les codes
   # station sont ceux de STATIONS_AIR (prepare.py), issus du référentiel du producteur.
@@ -750,13 +749,12 @@ sources:
   # ============================================================================
   # DIOXYDE D'AZOTE — AEE, mêmes conteneurs, code polluant 8
   # ============================================================================
-  # Sert le titre n° 3 du BRIEF (« le pic n'est pas à l'heure de pointe ») : l'heure
+  # Sert le titre n° 3 du BRIEF (comparaison des pics horaires) : l'heure
   # du maximum d'ozone contre celle du maximum de NO2, À STATION CONSTANTE. D'où ces
   # CINQ stations et non six — Venaco a mesuré le NO2 par le passé (le jeu validé en
   # porte), mais ne le mesure plus aujourd'hui. Comparer deux polluants au même endroit
-  # exige qu'ils y soient tous deux mesurés : la station rurale sort du titre n° 3, et
-  # n'a de toute façon pas d'heure de pointe à opposer.
-  # Tout le reste est identique à l'ozone : conteneurs, fuseau (UTC+1 fixe, fin de
+  # exige qu'ils y soient tous deux mesurés : la station rurale sort du titre n° 3.
+  # Tout le reste est identique à l'ozone : conteneurs, fuseau (UTC+1 fixe, début de
   # période), raccord des deux jeux, colonne Verification.
 
   aee_no2_ajaccio_canetto_valide:

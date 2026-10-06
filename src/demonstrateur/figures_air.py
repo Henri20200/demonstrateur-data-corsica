@@ -585,7 +585,7 @@ NOTE_A4 = (
 
 
 ST_A5 = _sous_titre("Moyenne de chaque heure de la journée.")
-NOTE_A5 = ("Le creux du petit matin est aussi le maximum de dioxyde d'azote : l'air y est "
+NOTE_A5 = ("Le creux d'ozone du petit matin est proche du pic de dioxyde d'azote : l'air y est "
            "moins chargé en ozone, pas plus pur.")
 
 
@@ -765,7 +765,7 @@ def fig_a2_ozone_et_chaleur() -> go.Figure:
     return fig
 
 
-# --- A3 : « le pic n'est pas à l'heure de pointe » ----------------------------
+# --- A3 : les deux pics horaires --------------------------------------------
 def fig_a3_ozone_contre_azote() -> go.Figure:
     """Cycles diurnes de l'ozone et du NO2, chacun ramené à son propre maximum.
 
@@ -799,7 +799,7 @@ def fig_a3_ozone_contre_azote() -> go.Figure:
     """).df()
     pivot = df.pivot(index="h", columns="polluant", values="v")
     fig = go.Figure()
-    for pol, couleur, nom in (("NO2", AIR_AZOTE, "Dioxyde d'azote (moteurs)"),
+    for pol, couleur, nom in (("NO2", AIR_AZOTE, "Dioxyde d'azote"),
                               ("O3", AIR_OZONE, "Ozone")):
         serie = pivot[pol]
         rel = 100 * serie / serie.max()
@@ -817,8 +817,8 @@ def fig_a3_ozone_contre_azote() -> go.Figure:
             font=dict(family=SANS, size=19, color=couleur),
         )
     fig.update_layout(
-        title=dict(text="L'heure de pointe n'est pas l'heure de l'ozone"),
-        xaxis=dict(title=dict(text="Heure locale", font=AXE), dtick=3, ticksuffix=" h"),
+        title=dict(text="Le dioxyde d'azote culmine avant l'ozone"),
+        xaxis=dict(title=dict(text="Heure locale (UTC+2)", font=AXE), dtick=3, ticksuffix=" h"),
         # Titre court : le sous-titre dit déjà de quel maximum il s'agit.
         yaxis=dict(title=dict(text="Part du maximum", font=AXE),
                    ticksuffix=" %", range=[0, 118]),
@@ -950,8 +950,8 @@ def fig_a5_creneau_a_eviter() -> go.Figure:
         font=dict(family=SANS, size=20, color=AIR_OZONE),
     )
     fig.update_layout(
-        title=dict(text="L'été, l'air est le plus chargé de 11 h à 18 h"),
-        xaxis=dict(title=dict(text="Heure locale", font=AXE), dtick=3, ticksuffix=" h"),
+        title=dict(text=f"L'été, l'air est le plus chargé de {plateau[0]} h à {plateau[-1]} h"),
+        xaxis=dict(title=dict(text="Heure locale (UTC+2)", font=AXE), dtick=3, ticksuffix=" h"),
         yaxis=dict(title=dict(text="Ozone (µg/m³)", font=AXE)),
         margin=dict(t=200, b=220, l=140, r=60),
         height=650,

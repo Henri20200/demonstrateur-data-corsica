@@ -155,6 +155,11 @@ erreur, c'est le relevé qui s'affine. La date portée au pied de chaque figure 
 état de la donnée elle a été construite.</p>
 
 <h2>Comment les chiffres sont calculés</h2>
+<p>Les heures affichées sont les heures locales en Corse. Les profils de juin à août
+sont donc en <strong>UTC+2</strong>. Chaque heure désigne le début de l'intervalle mesuré :
+8 h correspond à la moyenne de 8 h à 9 h. Les fichiers de l'AEE datent ce début en UTC+1
+fixe ; le flux LCSQA le date en UTC. Les deux sources sont ramenées à l'UTC, puis à
+l'heure locale, avant les calculs.</p>
 <p>Deux repères réglementaires reviennent, et ils <strong>ne comptent pas la même
 chose</strong> :</p>
 <ul>

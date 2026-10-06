@@ -736,12 +736,7 @@ def test_air_corse_le_perimetre_ozone_reste_hors_trafic(con):
 
 @besoin_air
 def test_air_corse_horodatage_en_heure_locale(con):
-    """L'heure locale se lit telle quelle : établi le 31/07/2026 (le flux publiait
-    19:00 alors qu'il était 20 h 07 locale, soit 18 h 07 UTC — impossible en UTC).
-
-    Verrou de bornes : une conversion de fuseau introduite par erreur en amont, ou un
-    changement de convention du producteur, décalerait toutes les conclusions horaires.
-    """
+    """Bornes de l'heure locale calculée depuis l'UTC ; ne prouve pas le fuseau."""
     mini, maxi = con.execute(
         f"SELECT min(heure_locale), max(heure_locale) FROM '{AIR.as_posix()}'"
     ).fetchone()
@@ -1120,18 +1115,11 @@ def test_confina_2_est_trop_jeune_pour_l_historique():
 
 
 @besoin_air
-def test_le_flux_lcsqa_est_en_fuseau_fixe_pas_en_heure_legale(con):
-    """Le test qui manquait, et dont l'absence a laissé passer un axe UTC faux en été.
+def test_le_flux_lcsqa_est_deja_en_utc(con):
+    """Début en UTC : convention LCSQA DRC-18-174316-08157A, p. 6.
 
-    Le brief a longtemps affirmé que le flux LCSQA publiait en heure légale française. Une
-    seule observation le fondait — le fichier publiait 19:00 alors qu'il était 20 h 07 locale
-    — qui écarte bien l'UTC mais s'accommode tout aussi bien d'UTC+1 fixe. Les archives des
-    deux dimanches de changement d'heure 2025 ont tranché : 24 heures publiées, de 00:00 à
-    23:00, sans doublon, là où une heure légale en compterait 23 et 25.
-
-    D'où l'axe UTC par soustraction d'une heure. Ce test verrouille les deux faces :
-    l'écart doit être CONSTANT — c'est la signature d'un fuseau fixe, et une conversion de
-    fuseau le ferait varier d'une saison à l'autre — et la grille doit rester régulière.
+    Une grille régulière ne permet pas de distinguer UTC de UTC+1. Les conversions
+    sont aussi testées sur des dates explicites dans test_horodatage_air.py.
     """
     ecarts, mini, maxi = con.execute(
         f"""SELECT count(DISTINCT date_diff('minute', date_heure_utc, debut)),
@@ -1139,10 +1127,9 @@ def test_le_flux_lcsqa_est_en_fuseau_fixe_pas_en_heure_legale(con):
                    max(date_diff('minute', date_heure_utc, debut))
             FROM '{AIR.as_posix()}'"""
     ).fetchone()
-    assert ecarts == 1 and mini == 60, (
+    assert ecarts == 1 and mini == 0, (
         f"écart brut→UTC : {ecarts} valeur(s) distincte(s), de {mini} à {maxi} min — "
-        "attendu 60 min partout. Un écart variable signalerait une heure légale, et "
-        "l'axe UTC ne pourrait plus se déduire par soustraction"
+        "attendu 0 min partout : le début brut est déjà en UTC"
     )
     attendues, distinctes = con.execute(
         f"""SELECT date_diff('hour', min(debut), max(debut)) + 1, count(DISTINCT debut)
@@ -1158,10 +1145,8 @@ def test_le_flux_lcsqa_est_en_fuseau_fixe_pas_en_heure_legale(con):
 def test_l_heure_locale_derive_de_l_utc_et_non_du_brut(con):
     """L'heure des titres est l'heure VÉCUE, pas l'étiquette du producteur.
 
-    En été, l'heure locale vaut UTC+2 quand le brut est en UTC+1 : la colonne heure_locale
-    doit donc différer de l'heure du brut. Les lire comme identiques — ce que faisait le
-    code avant correction — décalerait d'une heure « le pire créneau pour un effort en plein
-    air », qui est la conclusion actionnable du brief.
+    En été, l'heure locale vaut UTC+2 quand le brut LCSQA est en UTC : la colonne
+    heure_locale doit donc différer de l'heure du brut de deux heures.
     """
     ecart_ete = con.execute(
         f"""SELECT DISTINCT (heure_locale - extract('hour' FROM date_heure_utc) + 24) % 24
@@ -1177,13 +1162,10 @@ def test_l_heure_locale_derive_de_l_utc_et_non_du_brut(con):
 @besoin_serie
 @besoin_air
 def test_la_serie_aee_et_le_flux_lcsqa_coincident(con):
-    """Contrôle croisé de deux canaux indépendants — le seul garde-fou sérieux du fuseau.
+    """Contrôle croisé complémentaire des conventions documentées.
 
-    L'AEE et le LCSQA servent la même mesure par deux chemins différents, avec deux
-    conventions horaires différentes : UTC+1 en fin de période pour l'un, UTC+1 en début
-    pour l'autre. D'où deux heures à retirer d'un côté, une seule de l'autre. Une erreur
-    d'une heure ne se verrait sur AUCUNE figure — le profil serait simplement décalé, et
-    « le pire créneau pour un effort en plein air » désignerait la mauvaise heure.
+    Les deux canaux datent le début : AEE en UTC+1 fixe, LCSQA en UTC. Leur accord
+    ne détecte pas une erreur commune ; test_horodatage_air.py ancre les conversions.
 
     Sur l'axe UTC reconstruit, les valeurs doivent être IDENTIQUES, pas seulement proches.
     """
@@ -1288,14 +1270,10 @@ def test_le_titre_d_a1_ne_confond_pas_information_et_alerte(con):
 
 
 @besoin_serie
-def test_le_pic_d_ozone_n_est_pas_a_l_heure_de_pointe(con):
-    """TITRE N° 3 : l'ozone et le NO2 culminent à des heures opposées.
+def test_le_pic_d_ozone_suit_celui_du_no2(con):
+    """TITRE N° 3 : les pics moyens diffèrent, sur le périmètre publié.
 
-    Comparaison à STATION CONSTANTE — les cinq qui mesurent les deux polluants, Venaco
-    exclue puisqu'elle n'a plus de NO2 et n'a pas d'heure de pointe à opposer. Le NO2 suit
-    les moteurs et culmine le matin ; l'ozone se fabrique sous le soleil et culmine
-    l'après-midi. Si les deux pics se rapprochaient à moins de quatre heures, le titre
-    n'aurait plus de sens.
+    Quatre stations de fond, étés 2020-2025. Aucun comptage routier n'est utilisé.
     """
     pics = dict(
         con.execute(
@@ -1303,6 +1281,8 @@ def test_le_pic_d_ozone_n_est_pas_a_l_heure_de_pointe(con):
                   SELECT polluant, heure_locale, avg(valeur) AS m
                   FROM '{SERIE.as_posix()}'
                   WHERE extract('month' FROM date_locale) IN (6, 7, 8)
+                    AND extract('year' FROM date_locale) BETWEEN 2020 AND 2025
+                    AND influence = 'Fond'
                     AND station <> 'VENACO'
                   GROUP BY 1, 2) GROUP BY 1"""
         ).fetchall()
@@ -1311,7 +1291,7 @@ def test_le_pic_d_ozone_n_est_pas_a_l_heure_de_pointe(con):
     assert 5 <= pics["NO2"] <= 10, f"pic de NO2 à {pics['NO2']} h — attendu le matin"
     assert pics["O3"] - pics["NO2"] >= 4, (
         f"pics distants de {pics['O3'] - pics['NO2']} h seulement — le titre n° 3 oppose "
-        "l'heure de pointe et l'heure du soleil, il lui faut un écart net"
+        "les deux profils horaires, il lui faut un écart net"
     )
 
 
@@ -1414,7 +1394,7 @@ def test_le_pire_creneau_estival_est_l_apres_midi(con):
     """TITRE N° 5 : la conclusion actionnable du livrable.
 
     Sur les étés 2020-2025 et les stations de fond, l'ozone dessine un plateau très net de
-    11 h à 18 h, à plus de 95 % de son maximum, contre un creux au petit matin. C'est ce
+    12 h à 19 h, à plus de 95 % de son maximum, contre un creux au petit matin. C'est ce
     créneau que la figure nomme — et il doit rester CONTIGU : une plage trouée ne se
     résumerait pas en « entre X et Y heures », et le titre devrait changer de forme.
 
@@ -1440,21 +1420,19 @@ def test_le_pire_creneau_estival_est_l_apres_midi(con):
     assert plateau == list(range(plateau[0], plateau[-1] + 1)), (
         f"plateau troué {plateau} — « entre X et Y heures » suppose une plage contiguë"
     )
-    assert plateau[0] == 11 and plateau[-1] == 18, (
-        f"créneau {plateau[0]}-{plateau[-1]} h — le brief publie « 11 h à 18 h »"
+    assert plateau[0] == 12 and plateau[-1] == 19, (
+        f"créneau {plateau[0]}-{plateau[-1]} h — le brief publie « 12 h à 19 h »"
     )
     ecart = 100 * (profil[pic_h] - profil[creux_h]) / profil[creux_h]
     assert ecart > 25, f"écart creux→pic de {ecart:.0f} % — trop faible pour un titre"
 
 
 @besoin_serie
-def test_l_heure_la_plus_propre_en_ozone_est_la_pire_en_no2(con):
+def test_le_creux_d_ozone_est_proche_du_pic_de_no2(con):
     """La nuance qui empêche le titre n° 5 de devenir un mauvais conseil.
 
-    Le creux d'ozone du petit matin coïncide avec le PIC de NO2 : l'air le moins chargé en
-    l'un est le plus chargé en l'autre, et pour la même raison chimique — le monoxyde d'azote
-    des moteurs détruit l'ozone. Publier « courez le matin » sans cette réserve reviendrait
-    à déplacer l'exposition plutôt qu'à la réduire.
+    Le creux d'ozone du petit matin est proche du pic de NO2. Cette observation ne
+    suffit pas à attribuer causalement les profils à la consommation d'ozone par le NO.
     """
     pics = {}
     for pol, extremum in (("O3", "min"), ("NO2", "max")):

@@ -71,8 +71,8 @@ def _blocs() -> list[tuple[str, str, str]]:
             ),
         ),
         (
-            "<p>Reste à savoir quand. Le réflexe est de penser aux heures de circulation — "
-            "c'est l'inverse.</p>",
+            "<p>Reste à savoir quand. Le dioxyde d'azote et l'ozone n'atteignent pas "
+            "leur maximum au même moment de la journée.</p>",
             a3,
             preparer_figure(
                 fa.fig_a3_ozone_contre_azote(), fa.SRC_AIR, d_air,
@@ -91,7 +91,7 @@ def _blocs() -> list[tuple[str, str, str]]:
             ),
         ),
         (
-            "<p>De tout cela découle une seule chose utile, et la voici.</p>",
+            "<p>De cela découle une seule chose utile, et la voici.</p>",
             a5,
             preparer_figure(
                 fa.fig_a5_creneau_a_eviter(), fa.SRC_AIR, d_air,
@@ -119,12 +119,14 @@ MOTS = [
      "le « bon ozone », celui de la couche. En bas, il ne protège de rien ; "
      "respiré à forte dose, il enflamme les bronches et irrite les yeux. Il se forme "
      "dans l'air, quand le soleil tape sur les gaz "
-     "d'échappement et les vapeurs d'essence. C'est pour ça qu'il apparaît l'été, "
-     "l'après-midi, et qu'il est le seul polluant que le beau temps favorise."),
+     "d'échappement et les vapeurs d'essence. Ses concentrations peuvent ainsi "
+     "augmenter lors des après-midi ensoleillés."),
     ("Dioxyde d'azote",
-     "Un gaz qui sort, lui, directement des pots d'échappement. Il suit donc la "
-     "circulation : beaucoup aux heures de pointe, peu la nuit. Curiosité utile — là où "
-     "il y en a beaucoup, il détruit une partie de l'ozone."),
+     "Un gaz lié notamment aux combustions des moteurs. Une partie est émise "
+     "directement ; une autre se forme dans l'air. Sa concentration dépend du trafic, "
+     "mais aussi de la météo et des réactions chimiques. Près des routes, un autre "
+     "gaz des échappements, le monoxyde d'azote (NO), peut consommer une partie de "
+     "l'ozone en devenant du NO₂."),
     ("µg/m³ (microgramme par mètre cube)",
      "L'unité qui dit combien de gaz on trouve dans l'air. Un microgramme, c'est un "
      "millionième de gramme ; un mètre cube, c'est un cube d'un mètre de côté, à peu "
