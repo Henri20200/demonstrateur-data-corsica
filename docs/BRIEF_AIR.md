@@ -39,8 +39,10 @@ Titres-affirmations que l'analyse doit valider, invalider ou chiffrer :
    (90,4) et celles de 30 à 35 °C (99,0) — puis **redescend à 95,1 au-delà de 35 °C**. La
    relation n'est pas monotone. Un titre promettant « plus il fait chaud, plus il y en a »
    serait faux dans sa partie haute ; un test fige la montée *et* le plafond)
-3. « Le pic n'est pas à l'heure de pointe » (heure du maximum d'ozone contre heure du
-   maximum de NO₂, à station constante sur les cinq qui mesurent les deux)
+3. « Le dioxyde d'azote culmine avant l'ozone » (heure du maximum moyen d'ozone contre
+   celle du NO₂, sur quatre stations de fond mesurant les deux). Après correction des
+   fuseaux le 06/10/2026 : **8 h pour le NO₂, 16 h pour l'ozone**, en heure locale
+   (UTC+2). Ces profils ne mesurent pas la circulation automobile.
 4. **Observation** : à Venaco, les dépassements d'ozone sont plus fréquents que dans
    3 des 4 stations urbaines ou périurbaines étudiées. **Interprétation** : ce contraste
    est compatible avec le mécanisme de consommation locale de l'ozone par certaines
@@ -51,17 +53,17 @@ Titres-affirmations que l'analyse doit valider, invalider ou chiffrer :
    extrapolait deux fois — une seule station rurale y devenait « la campagne », et un
    résultat sur le seul ozone y devenait « l'air », quand une station peut porter plus
    d'ozone et moins de dioxyde d'azote.)
-5. « L'été, l'air est le plus chargé **entre 11 h et 18 h** » — mesuré le 01/08/2026
+5. « L'été, l'air est le plus chargé **entre 12 h et 19 h** » — corrigé le 06/10/2026
    (conclusion actionnable, pendant de « l'heure la plus verte ». Elle change de nature avec
    le recentrage : plus une consigne de crise, une information du quotidien).
    Sur les étés 2020-2025 et les stations de fond, l'ozone dessine un plateau à plus de 95 %
-   de son maximum de 11 h à 18 h, culmine à **93,8 µg/m³ vers 14 h** et creuse à **66,5 vers
-   6 h** : **40 % d'écart** entre le meilleur et le pire moment de la journée. Le créneau est
+   de son maximum de 12 h à 19 h, culmine à **93,8 µg/m³ vers 15 h** et creuse à **66,5 vers
+   7 h** : **41 % d'écart** entre le creux et le pic du profil moyen. Le créneau est
    contigu — un test l'exige, une plage trouée ne se résumant pas en « entre X et Y heures ».
-   **Réserve à publier avec le chiffre** : le creux d'ozone du petit matin coïncide avec le
-   **pic de NO₂** (7 h), et pour la même raison chimique — le monoxyde d'azote des moteurs
-   détruit l'ozone. Écrire « courez le matin » sans cette réserve déplacerait l'exposition
-   au lieu de la réduire. Et le chiffre reste un niveau d'exposition, jamais une
+   **Réserve à publier avec le chiffre** : le creux d'ozone du petit matin est proche du
+   **pic de NO₂** (8 h). Le monoxyde d'azote peut consommer l'ozone, mais les profils seuls
+   ne permettent pas d'attribuer leur forme à cette réaction. Les deux polluants n'ont
+   pas les mêmes heures de faible concentration. Le chiffre reste un niveau d'exposition, jamais une
    prescription : la figure dit quand l'air est le plus chargé, elle ne donne pas de conseil
    médical
 
@@ -132,8 +134,7 @@ les 26 Go qu'aurait coûtés le même historique par le flux national.
 Le NO₂ sert le titre n° 3, qui oppose l'heure du pic d'ozone à celle du pic de NO₂ **à
 station constante**. Venaco en est écartée : elle a mesuré le NO₂ par le passé — le jeu
 validé en porte encore — mais ne le mesure plus. Comparer deux polluants au même endroit
-exige qu'ils y soient tous deux mesurés, et une station rurale n'a de toute façon pas
-d'heure de pointe à opposer.
+exige qu'ils y soient tous deux mesurés. Ce graphique ne mesure pas le trafic routier.
 
 Trois choses que ce canal règle et que Geod'air ne réglait pas :
 
@@ -145,11 +146,16 @@ Trois choses que ce canal règle et que Geod'air ne réglait pas :
 - **les frictions 2 et 3**, qui disparaissent : plus d'export en deux temps, plus d'UUID
   instable, et un format Parquet que DuckDB lit nativement.
 
-**Fuseau : UTC+1 fixe, horodatage en FIN de période** — l'inverse du flux LCSQA. L'axe UTC
-s'obtient donc en retirant **deux heures** : une pour revenir au début de période, une pour
-quitter UTC+1. Établi sur pièce, et vérifié en continu : sur leurs heures communes, les deux
-canaux coïncident à **0,00 µg/m³**. Un test rejoue cette comparaison à chaque run — c'est le
-seul garde-fou sérieux, une erreur d'une heure ne se voyant sur aucune figure.
+**Fuseau corrigé le 06/10/2026 : UTC+1 fixe, Start = DÉBUT de période.** L'axe UTC
+s'obtient en retirant **une heure**, puis l'heure locale par conversion Europe/Paris.
+Le guide AEE (p. 18) définit Start et End ; l'aide Parquet du service précise UTC+1.
+Le LCSQA date le même début en UTC (note DRC-18-174316-08157A, p. 6). Leur concordance
+reste contrôlée, mais elle ne détectait pas l'erreur commune d'une heure. Des tests sur
+des dates explicites vérifient désormais hiver, été, minuit et passage à l'heure d'été.
+Le même jour, un repère extérieur aux deux sources a confirmé l'UTC du LCSQA : dans son
+fichier du jour en cours, les cinq organismes d'outre-mer, publiés en heure locale à
+décalage fixe, et les treize de métropole lus en UTC s'arrêtent tous à 09:00 UTC (relevé
+détaillé dans `prepare.air_corse_to_parquet`).
 
 **Geod'air n'est pas abandonné** : le jour où la clé arrivera, deux canaux servant la même
 donnée feront une vérification croisée gratuite. Ce qui suit reste donc valable si ce jour
@@ -247,30 +253,18 @@ ne doit se lire comme un reproche, ni laisser croire qu'une information serait t
   celui de la météo. Sur l'étiquette locale, une fenêtre de 8 heures se raccourcit en mars
   et compte double en octobre. Le jour d'attribution, lui, reste **local** : c'est la
   journée vécue qui a un sens, pas le découpage UTC.
-- **Aucune des sources n'est en heure légale** (établi le 01/08/2026, après correction).
-  Météo-France publie en **UTC**, le flux LCSQA en **UTC+1 fixe**. Le brief a longtemps
-  affirmé « heure légale » pour le LCSQA, sur la foi d'une observation qui écartait l'UTC
-  mais s'accommodait tout aussi bien d'UTC+1 : le fichier publiait 19:00 quand il était
-  20 h 07 locale. Le test qui tranche est celui déjà appliqué à la météo — aux deux
-  dimanches de changement d'heure, le flux publie **24 heures**, de 00:00 à 23:00, sans
-  doublon, là où une heure légale en compterait 23 et 25 (vérifié sur les archives des
-  30/03 et 26/10/2025). L'axe UTC du flux d'air se construit donc par **soustraction d'une
-  heure**, non par conversion de fuseau : l'ancien calcul était juste en hiver et faux d'une
-  heure en été. L'heure **légale** se déduit ensuite de l'axe UTC — c'est celle que vivent
-  les gens, donc celle des titres, et elle ne se lit pas dans le brut.
-- **Ce que la correction change, et ce qu'elle épargne.** La jointure avec les températures
-  — que ce brief exige justement sur l'axe UTC — était décalée d'une heure en été, comme
-  l'attribution du jour pour l'heure de minuit. La moyenne glissante sur 8 heures, elle,
-  était juste : un décalage constant ne déforme pas une fenêtre. En revanche une journée de
-  brut ne recouvre plus une journée locale : elle donne 23 heures du jour J et une heure du
-  jour J+1, ce qui suffit encore à un maximum journalier opposable (23 heures ≥ 18) mais
-  produit une journée résiduelle, correctement marquée invalide.
-- **Le piège du retour à l'heure d'hiver tombe** avec cette correction : en fuseau fixe,
-  2 h du matin n'existe jamais deux fois dans le brut. La garde a donc changé d'objet —
-  elle vérifie désormais que la grille horaire reste **régulière**, un horodatage par heure
-  sans trou ni doublon. Si le producteur basculait un jour en heure légale, le dimanche de
-  mars perdrait une heure et celui d'octobre en doublerait une : le build s'arrêterait ce
-  jour-là, au lieu de laisser filer un axe faux pendant des mois — ce qui vient d'arriver.
+- **Aucune source brute n'est en heure légale** (conventions rectifiées le 06/10/2026).
+  Météo-France et le LCSQA publient en **UTC**, l'AEE en **UTC+1 fixe**. Les deux sources
+  d'air datent le début de période. L'heure légale dérive ensuite de l'UTC ; les profils
+  de juin à août sont tous en **UTC+2**.
+- **Ce que la correction change.** Les deux traitements d'air avaient une heure de
+  retard. Leur accord masquait l'erreur. Corriger les heures déplace aussi certaines
+  mesures d'une journée locale à l'autre : maxima journaliers et rapprochement avec la
+  météo doivent donc être recalculés, pas seulement les libellés des figures.
+- **La régularité n'établit pas le fuseau.** UTC et UTC+1 fixe donnent tous deux
+  24 heures aux changements d'heure. Cette garde contrôle la couverture ; le fuseau est
+  ancré par les conventions documentées, des exemples horaires explicites et le relevé
+  de l'outre-mer du 06/10/2026.
 - **Le fichier météo a ses propres réserves**, du même genre que le flux temps réel. Son
   code qualité `QT` distingue la donnée validée de la douteuse en cours de vérification :
   il se filtre avant tout calcul. Et sa dernière journée est tronquée — le fichier
@@ -398,7 +392,7 @@ le titre n° 2 repose sur le NO₂, et un second export serait une seconde inter
 où la règle de bonne conduite pousse à l'inverse. Le relevé du 31/07/2026 confirme que ce
 périmètre suffit — les cinq stations urbaines et périurbaines mesurent les deux polluants,
 ce qui permet de jouer le titre n° 2 à station constante, même lieu et même heure. Venaco
-n'a pas de NO₂, et n'a pas d'heure de pointe non plus.
+ne mesure plus le NO₂.
 
 Trois frictions à lever dans `fetch.py`, aucune rédhibitoire :
 

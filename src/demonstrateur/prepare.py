@@ -12,10 +12,10 @@ Garde-fous (cf. docs/RECONNAISSANCE.md) :
    le thermique fabriquerait un faux aplomb). Seule `micro_hydraulique_mw` tolère des
    NULL (absente en 2024) et est coalescée à 0, ce que le bouclage 2024 justifie
    (`production_totale_mw` l'exclut aussi). Un test `ENR >= solaire` verrouille la sortie.
- - fuseaux du sujet air : les trois sources diffèrent, et AUCUNE n'est en heure légale.
-   Météo-France publie en UTC, le flux LCSQA en UTC+1 FIXE (corrigé le 01/08/2026 — le
-   brief disait « heure légale », démenti par les 24 heures publiées aux dimanches de
-   changement d'heure). Chacune est ramenée ici à un axe UTC commun, d'où se déduit
+ - fuseaux du sujet air : aucune source brute n'est en heure légale.
+   Météo-France et le flux LCSQA publient en UTC ; l'AEE en UTC+1 fixe, au début
+   de la période horaire (conventions documentées, correction du 06/10/2026).
+   Chacune est ramenée ici à un axe UTC commun, d'où se déduit
    l'heure légale — celle des titres, seul axe par lequel les séries se lisent. S'y ajoutent le
    filtre du code qualité `QT` (pendant de la `validité` de l'air) et le retrait des deux
    journées de bord, tronquées par construction.
@@ -695,19 +695,22 @@ def air_corse_to_parquet(dest: str) -> None:
       donnée manquante (cf. RECONNAISSANCE.md) — ces lignes ne contiennent aucune mesure.
       Les valeurs 1 et 4 en portent toutes une.
 
-    **Horodatage en UTC+1 FIXE**, corrigé le 01/08/2026 — le brief affirmait « heure légale »,
-    et c'était faux. L'observation qui fondait cette affirmation (le fichier publiait 19:00
-    alors qu'il était 20 h 07 locale, donc 18 h 07 UTC) écarte bien l'UTC, mais elle est tout
-    aussi compatible avec UTC+1 fixe. Le test qui tranche est celui que ce module applique
-    déjà à la météo : aux deux dimanches de changement d'heure, le flux publie **24 heures**,
-    de 00:00 à 23:00, sans doublon (vérifié sur les archives des 30/03 et 26/10/2025). Une
-    heure légale en compterait 23 et 25. Seule une échelle à décalage fixe fait ça.
+    **Début de période en UTC**, selon la note LCSQA DRC-18-174316-08157A, p. 6
+    (France métropolitaine). Aucune heure à soustraire. La grille de 24 heures aux
+    changements d'heure exclut l'heure légale, mais ne distingue PAS UTC de UTC+1.
+    L'ancienne soustraction d'une heure décalait donc toutes les mesures d'une heure.
+    L'heure locale est calculée depuis l'UTC avec Europe/Paris : UTC+2 de juin à août.
 
-    Conséquence : l'axe UTC se construit par **soustraction d'une heure**, pas par conversion
-    de fuseau. L'ancien calcul était juste en hiver et faux d'une heure en été — de quoi
-    décaler la jointure avec les températures, que le BRIEF exige justement sur l'axe UTC.
-    L'heure LÉGALE, elle, se calcule depuis l'axe UTC : c'est celle que vivent les gens, donc
-    celle des titres (« à quelle heure »), et elle ne se lit plus directement dans le brut.
+    Vérifié le 06/10/2026 sur le fichier du jour en cours, écrit par le serveur à 10:30 UTC.
+    L'outre-mer y est en heure locale, à décalage fixe. Dernière « Date de fin » : 13:00 à
+    La Réunion (UTC+4), 12:00 à Mayotte (UTC+3), 06:00 en Guyane (UTC−3), 05:00 en
+    Martinique et en Guadeloupe (UTC−4), 09:00 pour les 13 organismes de métropole, Corse
+    comprise. Ramenées en UTC, toutes ces heures valent 09:00 si la métropole est en UTC.
+    En UTC+1, la métropole se serait arrêtée une heure avant l'outre-mer. Ce repère
+    n'existe que dans un fichier en cours de journée : un fichier complet couvre la journée
+    locale de chaque organisme. Il ne peut donc pas devenir un test du pipeline.
+    L'observation du 01/08/2026 qui avait fait retenir UTC+1 (« 19:00 » lu à 18 h 07 UTC)
+    portait sur le fichier national sans filtre, donc très probablement sur La Réunion.
 
     Aucune ligne corse = ÉCHEC : si le producteur renomme son organisme, il faut un arrêt
     bruyant, jamais un Parquet vide qui se propagerait en figures muettes.
@@ -727,15 +730,13 @@ def air_corse_to_parquet(dest: str) -> None:
         f"""
         COPY (
           SELECT "Date de début"                       AS debut,
-                 -- Le brut est en UTC+1 FIXE (cf. docstring) : l'axe UTC s'obtient en
-                 -- retirant une heure, jamais par conversion de fuseau. C'est l'axe continu
-                 -- sur lequel la fenêtre glissante de 8 h et la jointure météo s'appuient.
-                 "Date de début" - INTERVAL 1 HOUR     AS date_heure_utc,
+                 -- Le début de période LCSQA est déjà en UTC (cf. docstring).
+                 "Date de début"                       AS date_heure_utc,
                  -- L'heure LÉGALE se déduit de l'UTC, symétrique de la météo. C'est elle que
                  -- lisent les titres — 14 h veut dire 14 h pour qui habite l'île.
-                 timezone('Europe/Paris', timezone('UTC', "Date de début" - INTERVAL 1 HOUR))                                 AS date_heure_locale,
-                 CAST(timezone('Europe/Paris', timezone('UTC', "Date de début" - INTERVAL 1 HOUR)) AS DATE)                   AS date_locale,
-                 extract('hour' FROM timezone('Europe/Paris', timezone('UTC', "Date de début" - INTERVAL 1 HOUR)))            AS heure_locale,
+                 timezone('Europe/Paris', timezone('UTC', "Date de début"))                                 AS date_heure_locale,
+                 CAST(timezone('Europe/Paris', timezone('UTC', "Date de début")) AS DATE)                   AS date_locale,
+                 extract('hour' FROM timezone('Europe/Paris', timezone('UTC', "Date de début")))            AS heure_locale,
                  "Zas"                                 AS zone,
                  "code site"                           AS code_site,
                  "nom site"                            AS station,
@@ -751,12 +752,8 @@ def air_corse_to_parquet(dest: str) -> None:
         ) TO '{dest}' (FORMAT PARQUET)
         """
     )
-    # Garde : la grille du brut doit rester RÉGULIÈRE — un horodatage par heure, sans trou
-    # ni doublon. C'est la signature d'un fuseau fixe, et c'est ce qui autorise à retirer une
-    # heure plutôt qu'à convertir. Si le producteur passait un jour à l'heure légale, le
-    # dimanche de mars perdrait une heure et celui d'octobre en doublerait une : la garde
-    # sauterait ce jour-là, au lieu de laisser filer un axe UTC faux pendant des mois.
-    # C'est exactement l'erreur qu'a connue ce module, faute d'avoir posé ce test plus tôt.
+    # Garde de couverture : la grille du brut doit rester régulière. Sa régularité
+    # ne prouve pas le fuseau ; celui-ci est ancré sur la documentation du producteur.
     attendues, distinctes = con.execute(
         f"SELECT date_diff('hour', min(debut), max(debut)) + 1, count(DISTINCT debut) "
         f"FROM '{dest}'"
@@ -764,8 +761,8 @@ def air_corse_to_parquet(dest: str) -> None:
     if distinctes != attendues:
         raise ValueError(
             f"air Corse : grille horaire irrégulière — {distinctes} horodatages distincts "
-            f"pour {attendues} heures entre les bornes. Le producteur a-t-il basculé en heure "
-            "légale ? L'axe UTC ne se déduit plus par soustraction (cf. docs/BRIEF_AIR.md)."
+            f"pour {attendues} heures entre les bornes. Vérifier la couverture et la "
+            "convention UTC du producteur (cf. docs/BRIEF_AIR.md)."
         )
     doublons = con.execute(
         f"SELECT count(*) FROM (SELECT code_site, polluant, debut FROM '{dest}' "
@@ -883,15 +880,14 @@ def air_serie_to_parquet(dest: str) -> None:
     COLONNE et non une sortie séparée : le titre n° 3 compare l'ozone au NO2 à station et à
     heure constantes, ce qu'une seule table rend immédiat.
 
-    **Fuseau — deux heures à retirer, et pas une.** L'AEE publie en UTC+1 fixe, horodaté à
-    la FIN de la période : une heure pour revenir au début de période, une autre pour
-    quitter UTC+1. Le flux LCSQA, lui, est en UTC+1 fixe au DÉBUT — d'où l'écart d'une seule
-    heure entre les deux sources, mesuré à 0,00 µg/m³ près sur leurs journées communes d'été
-    et d'hiver. Un test rejoue cette comparaison ; c'est le seul garde-fou sérieux contre un
-    décalage qui, ici, ne se verrait sur aucune figure.
+    **Fuseau — une heure à retirer.** Start désigne le DÉBUT de période, en UTC+1 fixe
+    (guide AEE de téléchargement, p. 18, et aide Parquet du service). On retire une heure
+    pour obtenir l'UTC, sans décaler le début vers une hypothétique fin de période.
+    Le LCSQA publie ce même début en UTC. Leur accord ne suffit pas à prouver le fuseau :
+    des tests sur des dates explicites ancrent les deux conversions sur ces conventions.
 
-    **Raccord des deux jeux : rien à dédoublonner.** Le jeu validé s'arrête au 01/01/2025
-    à 00:00, le continu reprend à 01:00 — vérifié, zéro horodatage commun. La colonne
+    **Raccord des deux jeux.** La présence de doublons est contrôlée par les tests de
+    la série ; les bornes des jeux peuvent évoluer avec les publications. La colonne
     `verification` distingue ensuite ce qui est vérifié (1) de ce qui ne l'est pas encore
     (2, 3) : la frontière entre les deux régimes est déclarée par le producteur, elle n'a
     pas à être reconstituée.
@@ -907,7 +903,7 @@ def air_serie_to_parquet(dest: str) -> None:
         WITH brut AS (
           SELECT regexp_extract("Samplingpoint", 'SPO-(FR[0-9]+)_', 1) AS code_site,
                  CAST(regexp_extract("Samplingpoint", '_([0-9]+)$', 1) AS INTEGER) AS code_pol,
-                 "Start" - INTERVAL 2 HOUR                             AS date_heure_utc,
+                 "Start" - INTERVAL 1 HOUR                             AS date_heure_utc,
                  CAST("Value" AS DOUBLE)                               AS valeur,
                  CAST("Validity" AS INTEGER)                           AS validite,
                  CAST("Verification" AS INTEGER)                       AS verification
@@ -1116,7 +1112,7 @@ def air_temperature_to_parquet(dest: str) -> None:
 
     Le jour est le jour LOCAL, celui que vivent les gens, et non un découpage UTC. C'est
     licite ici parce que les deux séries ont déjà été ramenées à l'heure légale depuis leur
-    axe UTC respectif, chacune avec sa propre convention (UTC pour la météo, UTC+1 en fin de
+    axe UTC respectif, chacune avec sa propre convention (UTC pour la météo, UTC+1 en début de
     période pour l'air) : la jointure porte donc sur des journées comparables, pas sur des
     étiquettes brutes qui ne voudraient pas dire la même chose de part et d'autre.
 
