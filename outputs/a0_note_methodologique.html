@@ -51,7 +51,7 @@ relevé pris à une autre porte.</p>
     <td>Météo-France — données climatologiques de base</td>
     <td>Licence Ouverte 2.0 (Etalab)</td><td>2026-10-06</td></tr>
 </table></div>
-<p><strong>1 069 080 mesures horaires</strong> d'air, du 2013-01-01 au
+<p><strong>1 069 207 mesures horaires</strong> d'air, du 2013-01-01 au
 2026-10-06, dont 997 820 portent le statut « vérifié » du producteur — les
 plus récentes ne l'ont pas encore, et c'est normal : la vérification vient après.
 Côté températures, 3 065 258 relevés du 2020-01-02 au 2026-10-05.</p>
@@ -73,7 +73,7 @@ Le canal européen reprend ces corrections, et cette étude avec lui, à chaque
 rafraîchissement.</p>
 <p>Le statut « vérifié » du producteur, lui, ne vient qu'une fois par an : les mesures
 d'une année sont rapportées validées au 30 septembre de l'année suivante. Ici, la
-vérification s'arrête au <strong>2025-12-31</strong> — au-delà, ce sont les relevés
+vérification s'arrête au <strong>2026-01-01</strong> — au-delà, ce sont les relevés
 transmis au fil de l'eau, et ils restent corrigeables.</p>
 <p>La conséquence pour qui lit ces figures tient en une phrase : deux visites espacées de
 quelques semaines peuvent ne pas donner exactement le même chiffre. Ce n'est pas une
@@ -81,6 +81,11 @@ erreur, c'est le relevé qui s'affine. La date portée au pied de chaque figure 
 état de la donnée elle a été construite.</p>
 
 <h2>Comment les chiffres sont calculés</h2>
+<p>Les heures affichées sont les heures locales en Corse. Les profils de juin à août
+sont donc en <strong>UTC+2</strong>. Chaque heure désigne le début de l'intervalle mesuré :
+8 h correspond à la moyenne de 8 h à 9 h. Les fichiers de l'AEE datent ce début en UTC+1
+fixe ; le flux LCSQA le date en UTC. Les deux sources sont ramenées à l'UTC, puis à
+l'heure locale, avant les calculs.</p>
 <p>Deux repères réglementaires reviennent, et ils <strong>ne comptent pas la même
 chose</strong> :</p>
 <ul>
@@ -93,7 +98,7 @@ chose</strong> :</p>
 ici, en suivant à la lettre le guide du producteur (LCSQA/Ineris, guide de calcul des
 statistiques de qualité de l'air). Chaque moyenne exige au moins 6 mesures
 horaires valides sur huit ; une journée est retenue si elle compte au moins
-18 moyennes valides — <strong>24 238 journées</strong> le sont.
+18 moyennes valides — <strong>24 260 journées</strong> le sont.
 Un dépassement exige un maximum strictement supérieur au seuil, pas égal à celui-ci.
 Le calcul est vérifié contre l'exemple chiffré publié dans ce guide.</p>
 <p>Les heures signalées comme douteuses par les producteurs sont écartées avant tout calcul,
