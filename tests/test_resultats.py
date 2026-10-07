@@ -1287,8 +1287,12 @@ def test_le_pic_d_ozone_suit_celui_du_no2(con):
                   GROUP BY 1, 2) GROUP BY 1"""
         ).fetchall()
     )
-    assert 13 <= pics["O3"] <= 18, f"pic d'ozone à {pics['O3']} h — attendu l'après-midi"
-    assert 5 <= pics["NO2"] <= 10, f"pic de NO2 à {pics['NO2']} h — attendu le matin"
+    # Heures EXACTES depuis le 07/10/2026. Les intervalles d'avant (13-18 h, 5-10 h) ont
+    # laissé passer deux mois d'heures décalées d'une heure (correction du 06/10/2026).
+    # Les étés 2020-2025 sont tous validés par le producteur : la valeur ne doit plus
+    # bouger, et si elle bouge, c'est la convention horaire qu'il faut regarder d'abord.
+    assert pics["O3"] == 16, f"pic d'ozone à {pics['O3']} h — attendu à 16 h"
+    assert pics["NO2"] == 8, f"pic de NO2 à {pics['NO2']} h — attendu à 8 h"
     assert pics["O3"] - pics["NO2"] >= 4, (
         f"pics distants de {pics['O3'] - pics['NO2']} h seulement — le titre n° 3 oppose "
         "les deux profils horaires, il lui faut un écart net"
