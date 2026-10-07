@@ -240,8 +240,9 @@ n'est pas dessinée.</p>
 <li><strong>{n(c["heures"])} heures retenues.</strong> De {c["an1"]} à {c["an2"]}, soit
     {c["an2"] - c["an1"] + 1} années pleines, la période couvre {n(c["couvertes"])} heures.
     Il en manque {c["manquantes"]}. Elles tombent aux passages à l'heure d'été, quand on
-    saute de deux heures du matin à trois : ces heures-là n'ont pas existé, et le fichier
-    d'EDF les porte tout de même, à production nulle. Elles sont retirées avant calcul.
+    saute de deux heures du matin à trois : ces heures-là n'ont pas existé. Le fichier
+    d'EDF contient néanmoins ces six heures ; seules trois portent une production nulle.
+    Elles sont retirées avant calcul.
     Le total retenu sert de dénominateur à toutes les parts publiées.</li>
 <li><strong>La petite hydraulique manque sur la dernière année.</strong> Sa colonne
     disparaît des données EDF sur {n(c["sans_micro"])} heures. Elle est comptée comme
