@@ -51,7 +51,7 @@ relevé pris à une autre porte.</p>
     <td>Météo-France — données climatologiques de base</td>
     <td>Licence Ouverte 2.0 (Etalab)</td><td>2026-10-07</td></tr>
 </table></div>
-<p><strong>1 069 439 mesures horaires</strong> d'air, du 2013-01-01 au
+<p><strong>1 069 456 mesures horaires</strong> d'air, du 2013-01-01 au
 2026-10-07, dont 997 820 portent le statut « vérifié » du producteur — les
 plus récentes ne l'ont pas encore, et c'est normal : la vérification vient après.
 Côté températures, 3 066 539 relevés du 2020-01-02 au 2026-10-06.</p>
@@ -76,11 +76,59 @@ d'une année sont rapportées validées au 30 septembre de l'année suivante. Ic
 vérification s'arrête au <strong>2026-01-01</strong> — au-delà, ce sont les relevés
 transmis au fil de l'eau, et ils restent corrigeables.</p>
 <p>La conséquence pour qui lit ces figures tient en une phrase : deux visites espacées de
-quelques semaines peuvent ne pas donner exactement le même chiffre. Ce n'est pas une
-erreur, c'est le relevé qui s'affine. La date portée au pied de chaque figure dit sur quel
-état de la donnée elle a été construite.</p>
+quelques semaines peuvent ne pas donner exactement le même chiffre. Certains écarts entre
+deux visites proviennent de révisions des mesures par les producteurs. La date portée au
+pied de chaque figure dit sur quel état de la donnée elle a été construite.</p>
 
 <h2>Comment les chiffres sont calculés</h2>
+<p>Le 6 octobre 2026 vers 18 h 33 UTC, nous avons mis en ligne une correction des
+conventions horaires utilisées pour l'air. L'erreur était présente depuis la création de
+la page le 1er août et publiée sur la vitrine depuis le 6 août.</p>
+<p>Nous avions interprété les heures du flux LCSQA en UTC+1 au lieu d'UTC, et le champ
+« Start » de l'AEE comme la fin de la période de mesure au lieu de son début. Ces deux
+erreurs décalaient les heures dans le même sens : l'accord entre les deux sources ne
+permettait donc pas de les détecter.</p>
+<p>Du 6 août au 6 octobre 2026 inclus (UTC), le traitement automatique a été exécuté
+250 fois : 240 passages ont réussi et 10 ont échoué pour d'autres causes. Aucun test n'a
+signalé l'erreur d'heure. Ce total inclut le passage du 6 octobre au soir qui a publié la
+correction. Le contrôle du pic matinal de NO₂ acceptait un intervalle de 5 h à 10 h ; il
+ne vérifiait pas l'heure précise annoncée dans le texte.</p>
+<p>Un changement de convention horaire peut aussi déplacer certaines mesures d'une journée
+à l'autre et modifier les indicateurs calculés par jour. Pour isoler cet effet, le tableau
+ci-dessous compare les deux conventions sur des fichiers d'entrée identiques, collectés
+les 4 août et 12 septembre 2026. Cette comparaison mesure l'effet du changement de
+traitement sur ce jeu de données.</p>
+<div class="scroll"><table>
+<tr><th>Indicateur</th><th>Ancienne convention</th><th>Convention corrigée</th></tr>
+<tr><td>Heure du pic moyen d'été, dioxyde d'azote / ozone</td>
+    <td>7 h / 15 h</td><td>8 h / 16 h</td></tr>
+<tr><td>Créneau d'été le plus chargé en ozone (creux à 67 µg/m³ et maximum à 94 µg/m³
+    inchangés)</td><td>11 h à 18 h</td><td>12 h à 19 h</td></tr>
+<tr><td colspan="3">Journées d'été en dépassement de l'objectif de qualité, sur les
+    journées valides</td></tr>
+<tr><td>— Ajaccio Canetto</td><td>8 sur 532 (2 %)</td><td>11 sur 532 (2 %)</td></tr>
+<tr><td>— Ajaccio Confina 2</td><td>4 sur 180 (2 %)</td><td>5 sur 180 (3 %)</td></tr>
+<tr><td>— Bastia Giraud</td><td>25 sur 538 (5 %)</td><td>26 sur 537 (5 %)</td></tr>
+<tr><td>— Venaco</td><td>54 sur 520 (10 %)</td><td>54 sur 521 (10 %)</td></tr>
+<tr><td>— Bastia Montesoro</td><td>82 sur 544 (15 %)</td><td>83 sur 545 (15 %)</td></tr>
+<tr><td>Ozone moyen selon la température maximale de la journée : moins de 25 °C /
+    de 25 à 30 °C</td><td>90 / 95 µg/m³</td><td>91 / 96 µg/m³</td></tr>
+<tr><td>Ozone moyen selon la température maximale de la journée : de 30 à 35 °C /
+    35 °C et plus</td><td>99 / 95 µg/m³</td><td>99 / 95 µg/m³</td></tr>
+<tr><td>Journées valides retenues par cette note</td><td>24 103</td><td>24 119</td></tr>
+</table></div>
+<p>Les pourcentages sont arrondis à l'entier le plus proche.</p>
+<p>Les heures des pics décrivent les maxima des profils horaires moyens. L'heure du
+maximum peut varier d'une journée à l'autre.</p>
+<p>Le titre de la figure « Le dioxyde d'azote culmine avant l'ozone » et la définition du
+NO₂ ont été reformulés pour retirer l'affirmation selon laquelle il « suit la
+circulation ». La définition conserve le trafic et la météo
+parmi les facteurs dont dépend sa concentration.</p>
+<p>La convention corrigée s'appuie sur le guide de téléchargement de l'AEE (p. 18), la
+note LCSQA DRC-18-174316-08157A (p. 6) et la comparaison des horaires métropolitains et
+ultramarins dans le fichier LCSQA du 6 octobre.</p>
+<p>Cette correction répond à une erreur de notre traitement, distincte des révisions de
+mesures effectuées par les producteurs.</p>
 <p>Les heures affichées sont les heures locales en Corse. Les profils de juin à août
 sont donc en <strong>UTC+2</strong>. Chaque heure désigne le début de l'intervalle mesuré :
 8 h correspond à la moyenne de 8 h à 9 h. Les fichiers de l'AEE datent ce début en UTC+1
@@ -98,7 +146,7 @@ chose</strong> :</p>
 ici, en suivant à la lettre le guide du producteur (LCSQA/Ineris, guide de calcul des
 statistiques de qualité de l'air). Chaque moyenne exige au moins 6 mesures
 horaires valides sur huit ; une journée est retenue si elle compte au moins
-18 moyennes valides — <strong>24 264 journées</strong> le sont.
+18 moyennes valides — <strong>24 266 journées</strong> le sont.
 Un dépassement exige un maximum strictement supérieur au seuil, pas égal à celui-ci.
 Le calcul est vérifié contre l'exemple chiffré publié dans ce guide.</p>
 <p>Les heures signalées comme douteuses par les producteurs sont écartées avant tout calcul,
@@ -158,9 +206,13 @@ côté air comme côté température.</p>
 <p>Rien n'a été téléchargé ni saisi à la main. Chaque source est déclarée dans un fichier de
 configuration, avec sa licence et son producteur ; à la collecte, son empreinte numérique
 est enregistrée et re-vérifiée à chaque exécution : une donnée modifiée depuis sa collecte
-fait échouer la préparation au lieu de passer inaperçue. Chaque chiffre publié
-est par ailleurs verrouillé par un test : si l'un d'eux cessait d'être vrai, c'est la phrase
-qu'il faudrait réécrire, et le test le dirait avant la mise en ligne.</p>
+fait échouer la préparation au lieu de passer inaperçue.</p>
+<p>Les tests contrôlent certains résultats du calcul. Ils n'ont pas détecté l'erreur d'heure
+dans le texte publié. Selon le test, le contrôle porte sur une valeur précise ou sur un
+intervalle. La réussite des tests ne garantit pas l'exactitude de chaque chiffre ni la
+justesse des conventions de calcul : fuseau horaire, début ou fin de période, unité ou
+périmètre. Ces conventions doivent aussi être justifiées par les documents des producteurs
+et confrontées à des repères indépendants.</p>
 
 <h2>Citer</h2>
 <p>Mesures : Qualitair Corse, via l'Agence européenne pour l'environnement (CC-BY 4.0) et le

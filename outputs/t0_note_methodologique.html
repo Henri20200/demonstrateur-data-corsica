@@ -148,10 +148,17 @@ projet n'est nécessaire.</p>
 <p>Aucun fichier n'a été téléchargé ni saisi à la main. Chaque source est déclarée dans un
 fichier de configuration, avec sa licence et son producteur. À la collecte, son empreinte
 numérique est enregistrée, puis revérifiée à chaque exécution : une donnée modifiée depuis
-fait échouer la préparation. Les contrôles sont bloquants. Une valeur absente est
-examinée, jamais remplacée en silence ; une catégorie inconnue ou une année incomplète
-arrête tout. Enfin, chaque chiffre publié est protégé par un test. S'il cesse d'être vrai,
-le test le signale avant la mise en ligne.</p>
+fait échouer la préparation. Ces contrôles de données sont bloquants : leur échec empêche
+la publication. Une valeur absente est examinée, jamais remplacée en silence ; une catégorie inconnue ou une année incomplète
+arrête tout.</p>
+<p>Les tests vérifient des résultats attendus et la cohérence des calculs. Selon le test,
+le contrôle porte sur une valeur précise ou sur un intervalle. Les contrôles bloquants
+arrêtent la publication en cas d'échec. Le contrôle de fraîcheur s'exécute avant la
+publication, sans la bloquer. Son éventuel échec est signalé après la mise en ligne. La
+réussite des tests ne garantit pas l'exactitude de chaque chiffre ni la justesse des
+conventions de calcul : fuseau horaire, début ou fin de période, unité ou périmètre. Ces
+conventions doivent aussi être justifiées par les documents des producteurs et confrontées
+à des repères indépendants.</p>
 
 <h2>Le détail technique, pour qui veut vérifier</h2>
 <p>Cette section est le renvoi annoncé par la section « Définitions et limites » de
