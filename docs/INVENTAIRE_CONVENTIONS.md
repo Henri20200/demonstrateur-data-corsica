@@ -38,8 +38,10 @@ Chaque ligne relève de l'une de trois natures.
 
 Pour une définition de colonne (« la part est la filière divisée par le total »), une
 identité exacte vérifiée sur les fichiers du producteur est retenue comme référence
-extérieure : elle ne dépend pas de notre code. Elle ne confirme jamais un fuseau ni un
-niveau. Cette règle est une proposition de ce relevé, à valider au tri.
+extérieure : elle ne dépend pas de notre code. Sa portée est arithmétique : elle confirme
+une relation entre champs, sur les fichiers examinés. Elle ne confirme aucune
+interprétation physique supplémentaire, ni un fuseau, ni un niveau. Règle validée au tri
+du 8 octobre 2026.
 
 La colonne « Test » dit ce qui tient la convention dans la suite automatique : une valeur
 exacte, un intervalle, ou rien. Un test écrit à partir du même code fixe une convention ; il
@@ -185,6 +187,19 @@ Contradictions relevées :
   § 8 disent le contraire : trois de ces heures sont à zéro (2019, 2020, 2024) et trois
   portent 246, 253 et 200 MW (2021, 2022, 2023). L'étude (`docs/etude.md:675-676`) est
   exacte.
+- **C-4, texte publié, relevé le 8 octobre 2026.** L'avis de correction de la note air
+  (`note_air.py`, `CORRECTION_HEURES`) dit que les fichiers d'entrée du tableau ont été
+  « collectés les 4 août et 12 septembre 2026 ». Ces dates viennent de la lignée de build
+  du 06/10 (`date_collecte`). Le contenu les contredit : les douze fichiers du flux continu
+  de l'AEE contiennent des mesures jusqu'au 13/09/2026 à 11 h en UTC+1 (`ResultTime`
+  maximal : 13/09 à 13:15:13). Ils n'ont donc pas pu être collectés le 12/09. Sur le
+  disque, 24 des 25 fichiers ont été écrits le 13/09/2026 (15 h 13 pour le flux continu, le
+  flux LCSQA et la météo courante ; 18 h 40 pour les onze fichiers du jeu validé) et la
+  tranche météo 2020-2024 le 06/09/2026 à 7 h 11. Mécanisme plausible, non établi : une
+  re-certification garde la date de collecte d'origine et ne date la nouvelle empreinte
+  que dans `recertifie_le` (`fetch.py:358-361`), champ que la lignée ne recopie pas. Les
+  valeurs du tableau ne sont pas en cause : elles ont été calculées sur ces fichiers, que
+  leurs empreintes identifient.
 - **C-2, texte interne.** La docstring de `meteo_corse_to_parquet` (`prepare.py:1203-1206`)
   dit que « le flux LCSQA, lui, publie en heure légale » et qu'une erreur de fuseau
   « décalerait le pic de deux heures ». C'est l'état d'avant le 06/10 : le flux LCSQA est
@@ -243,7 +258,7 @@ qui sert à les valider. Chacune appelle une décision : chercher une référenc
 - définitions publiées : G-1, G-2, G-3. Le glossaire compte dans le plafond de 700 mots de
   la page air (`_mots_de_prose` ne retire que les scripts, les styles et la navigation),
   et la page en comptait 699 le 06/10 : tout mot ajouté se compense ;
-- contradiction dans un texte publié : C-1 ;
+- contradictions dans un texte publié : C-1, C-4 ;
 - choix sans motivation écrite dont dépend une figure ou un titre : AC-1 (« été = juin à
   août »), AC-4 (pondération), AC-5 (95 %), AC-6 (bornes des tranches), AC-7, EC-1,
   EC-4, EC-13 (écart de période).
@@ -265,10 +280,12 @@ le statut ne change qu'une fois la recherche faite.
 | G-2 | Borner la phrase du glossaire à la période étudiée | écart ouvert |
 | C-1 | Corriger séparément le texte publié : « Le fichier d'EDF contient néanmoins ces six heures ; seules trois portent une production nulle. » | correction engagée |
 | P-1 | La reformulation de la borne au 1er janvier 2026 attend le résultat d'A-1 | en attente |
+| C-4 | Relevée le 8 octobre 2026, après ce tri : décision à prendre | ouverte |
 
 Ajustements du relevé décidés au même tri : A-6 reçoit son porteur indirect, et la règle
 d'entrée au tri couvre désormais les preuves de validation ; E-8 est scindée en quatre
 lignes (E-8a à E-8d), parce que l'accord des totaux annuels avec Terna ne démontre pas
 séparément les règles de report, de sens et de pas de temps.
 
-La règle sur les identités exactes (§ « Comment lire ce document ») reste à valider.
+Le 8 octobre 2026, la règle sur les identités exactes (§ « Comment lire ce document ») a
+été validée, avec sa portée arithmétique.
