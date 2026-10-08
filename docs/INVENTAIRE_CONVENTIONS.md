@@ -195,11 +195,12 @@ Contradictions relevées :
   maximal : 13/09 à 13:15:13). Ils n'ont donc pas pu être collectés le 12/09. Sur le
   disque, 24 des 25 fichiers ont été écrits le 13/09/2026 (15 h 13 pour le flux continu, le
   flux LCSQA et la météo courante ; 18 h 40 pour les onze fichiers du jeu validé) et la
-  tranche météo 2020-2024 le 06/09/2026 à 7 h 11. Mécanisme plausible, non établi : une
+  tranche météo 2020-2024 le 06/09/2026 à 7 h 11. Explication possible, non établie : une
   re-certification garde la date de collecte d'origine et ne date la nouvelle empreinte
   que dans `recertifie_le` (`fetch.py:358-361`), champ que la lignée ne recopie pas. Les
   valeurs du tableau ne sont pas en cause : elles ont été calculées sur ces fichiers, que
-  leurs empreintes identifient.
+  leurs empreintes identifient. La liste des fichiers et leurs empreintes est donnée au
+  § « C-4 » ci-dessous.
 - **C-2, texte interne.** La docstring de `meteo_corse_to_parquet` (`prepare.py:1203-1206`)
   dit que « le flux LCSQA, lui, publie en heure légale » et qu'une erreur de fuseau
   « décalerait le pic de deux heures ». C'est l'état d'avant le 06/10 : le flux LCSQA est
@@ -223,6 +224,44 @@ Points d'attention :
 - **P-3, deux seuils de plateau.** 95 % pour A5, 97 % pour T2b.
 - **P-4, complétude de la température** (AC-7) : une journée partielle d'un poste peut
   fournir un maximum journalier à A2 sans que rien ne le signale.
+
+### C-4
+
+Les fichiers d'entrée du tableau de l'avis de correction de la note air (`note_air.py`,
+`CORRECTION_HEURES`). Chaque empreinte est le SHA-256 des octets bruts du fichier ; aucun
+de ces fichiers n'a d'empreinte canonique. Les empreintes ont été consignées dans la lignée
+de build locale écrite le 6 octobre 2026 à 10:45 UTC (`data/processed/_build.json`, commit
+`8736676`, arbre de travail modifié), puis reprises ici depuis la copie conservée de cette
+lignée. Cette date est celle de la lignée, pas celle de la collecte : les dates de collecte
+ne sont pas établies (C-4 ci-dessus). Cette liste rend l'identification des fichiers
+consultable ; elle ne constitue pas une nouvelle vérification des fichiers.
+| Identifiant | Fichier | SHA-256 |
+|---|---|---|
+| `aee_no2_ajaccio_canetto_continu` | `aee_no2_ajaccio_canetto_continu.parquet` | `1a6fa31f09468512f50fd3488d33e830a8da211d39abc610f7753cd41268ca10` |
+| `aee_no2_ajaccio_canetto_valide` | `aee_no2_ajaccio_canetto_valide.parquet` | `92e7b2844a1404c4d92f463bba7441d8705c1ccecdc48b84d7b9345de7d99369` |
+| `aee_no2_ajaccio_confina2_continu` | `aee_no2_ajaccio_confina2_continu.parquet` | `a34530b398c0ae582fa0601f3fcce4c77e3681500fa2b3707a9fe019887602e9` |
+| `aee_no2_ajaccio_confina2_valide` | `aee_no2_ajaccio_confina2_valide.parquet` | `6cb4003f8dc7a991df00a0a4e2eab70e383d1afcca89d4858d44e87a686b1ec2` |
+| `aee_no2_bastia_giraud_continu` | `aee_no2_bastia_giraud_continu.parquet` | `a98d9bc0d8cc7f2c0b5cd8eef48ddee78557a97554bd8396ec529abea6e3f4e5` |
+| `aee_no2_bastia_giraud_valide` | `aee_no2_bastia_giraud_valide.parquet` | `7012eca56309683af39e1f9dea4601cf2a0eab20ee6424e64943863583c50979` |
+| `aee_no2_bastia_marana_continu` | `aee_no2_bastia_marana_continu.parquet` | `1ae6c04b75e58e6f1414d39cc69da683f8b5cd38d8a3531c6806b5b865b6d505` |
+| `aee_no2_bastia_marana_valide` | `aee_no2_bastia_marana_valide.parquet` | `346b84c38ef24fbe53f60f4381f9bbf688cb3a2f3af086d3c83d2a4ad25155d3` |
+| `aee_no2_bastia_montesoro_continu` | `aee_no2_bastia_montesoro_continu.parquet` | `a6b8e0460b1819403ccec925d55b2d92bfb795e7578574e2f1793654ed8491f1` |
+| `aee_no2_bastia_montesoro_valide` | `aee_no2_bastia_montesoro_valide.parquet` | `30918ea81da6f84648a8bf63da0ff17f50ae98cf9e37cdb17aa866b50d6c527d` |
+| `aee_o3_ajaccio_canetto_continu` | `aee_o3_ajaccio_canetto_continu.parquet` | `468c2377f0e86b0e405debb98f508b8bba0dd1c1b57ee2a0e53107780b1b0b0e` |
+| `aee_o3_ajaccio_canetto_valide` | `aee_o3_ajaccio_canetto_valide.parquet` | `bc95475c3efaa7a5836ca4dfb7e6cd9f016b569090557a3bef29cbe6de327f0d` |
+| `aee_o3_ajaccio_confina2_continu` | `aee_o3_ajaccio_confina2_continu.parquet` | `fa10d2a977cafeedb18a08e04cd6f5976a37aee880d9fe3e36a72adcbefaeca3` |
+| `aee_o3_ajaccio_confina2_valide` | `aee_o3_ajaccio_confina2_valide.parquet` | `8af0d3889b8e5e5d426977795352ae2e4bdc120b72899e12ef71d247857ec695` |
+| `aee_o3_bastia_giraud_continu` | `aee_o3_bastia_giraud_continu.parquet` | `481ff9281026b4d5b56abc939e657e2439c261b4ed6775d5fbfb0adb5444e4dc` |
+| `aee_o3_bastia_giraud_valide` | `aee_o3_bastia_giraud_valide.parquet` | `95856a727aa6fe540468479dc593c3ff39f3fb68d6bebd85630b3e3be821c45c` |
+| `aee_o3_bastia_marana_continu` | `aee_o3_bastia_marana_continu.parquet` | `7a66af54d4ef5f7027dd27f24eeb0eb1ce1e11f225f941892a38121d4ad5bdfe` |
+| `aee_o3_bastia_marana_valide` | `aee_o3_bastia_marana_valide.parquet` | `816d2f2e961abadfb0335fa84e27fb8dd3639042c1b90e398b763eeb4bd114d1` |
+| `aee_o3_bastia_montesoro_continu` | `aee_o3_bastia_montesoro_continu.parquet` | `aa2a47c998143e6c31b394633784056cbf444e556751b72853d645f15f944b1d` |
+| `aee_o3_bastia_montesoro_valide` | `aee_o3_bastia_montesoro_valide.parquet` | `04824971e1714c3ac89e554c4202961cd3483c03b0cda9d614c2e2abb2565259` |
+| `aee_o3_venaco_continu` | `aee_o3_venaco_continu.parquet` | `42e019ef0f51b58277f3d0c0215f4cc44592a5a46611fe0b3dc167c9adad3c14` |
+| `aee_o3_venaco_valide` | `aee_o3_venaco_valide.parquet` | `6cadb18e2e3876af760a7328dd1a1d21f53e8c9f3baaf5a4e60362eefcb4113c` |
+| `lcsqa_temps_reel` | `lcsqa_temps_reel.csv` | `34ea7e8924914efcb685436c199a60d3ab49bb870141a72b4ed65956c1a98892` |
+| `meteo_horaire_corse` | `meteo_horaire_corse.csv.gz` | `6a4b01e775117e8f6c602075e748c4ab6b865509b41f8a920b1545227fe8caba` |
+| `meteo_horaire_corse_2020_2024` | `meteo_horaire_corse_2020_2024.csv.gz` | `09e73e1b18f05fda64bc22336556bcd949190df92ca21c596ff01265ba312920` |
 
 ## 8. Reste à couvrir
 
@@ -272,7 +311,7 @@ le statut ne change qu'une fois la recherche faite.
 
 | Ligne | Décision | Statut à ce jour |
 |---|---|---|
-| A-1 | Chercher une confirmation extérieure propre au jeu validé E1a, qui départage les deux lectures de l'heure (début d'heure en UTC+1, ou fin d'heure). Les journées de 2026 du flux continu et les bornes annuelles seules ne suffisent pas. Traitée en premier | documentée |
+| A-1 | Chercher une confirmation extérieure propre au jeu validé E1a, qui départage les deux lectures de l'heure (début d'heure en UTC+1, ou fin d'heure). Les journées de 2026 du flux continu et les bornes annuelles seules ne suffisent pas. Traitée en premier. Le 8 octobre 2026 : lecture du catalogue `data/archive/_versions.json` (commit `8f79488`), restreinte aux sources `aee_*_continu` et `lcsqa_temps_reel` et aux versions apparues du 30/08 au 12/09/2026 inclus, en UTC : 677 versions, dont 643 indiquées déposées. Candidates à examiner ; ni leur disponibilité dans le stockage ni la présence de mesures de 2025 ne sont établies | documentée |
 | A-12 | Chercher la référence qui définit le rattachement journalier officiel, en distinguant le fuseau du jour et l'étiquetage de la dernière heure de la fenêtre. Le choix de la « journée vécue » reste distinct de toute affirmation de conformité réglementaire | non vérifiée |
 | A-3 | Retrouver la définition officielle des codes `Validity`, applicable aux deux jeux. Distinguer valeur absente et valeur égale à zéro dans la règle « valeur non nulle » | non vérifiée |
 | A-4 | Retrouver la définition officielle des codes `Verification` et sa portée sur E1a et E2a. Une documentation retrouvée donnera le statut « documentée », sans valoir confirmation indépendante | non vérifiée |
@@ -280,7 +319,7 @@ le statut ne change qu'une fois la recherche faite.
 | G-2 | Borner la phrase du glossaire à la période étudiée | écart ouvert |
 | C-1 | Corriger séparément le texte publié : « Le fichier d'EDF contient néanmoins ces six heures ; seules trois portent une production nulle. » | correction engagée |
 | P-1 | La reformulation de la borne au 1er janvier 2026 attend le résultat d'A-1 | en attente |
-| C-4 | Relevée le 8 octobre 2026, après ce tri : décision à prendre | ouverte |
+| C-4 | Décidé le 8 octobre 2026 : retirer de l'avis les dates erronées, sans leur substituer les dates d'écriture sur disque ; publier la liste des fichiers et leurs empreintes (§ « C-4 »), avec un lien depuis l'avis. La re-certification reste une explication possible, non établie | correction engagée |
 
 Ajustements du relevé décidés au même tri : A-6 reçoit son porteur indirect, et la règle
 d'entrée au tri couvre désormais les preuves de validation ; E-8 est scindée en quatre
