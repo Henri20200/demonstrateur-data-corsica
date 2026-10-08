@@ -29,12 +29,14 @@ SERIE = (DATA_PROCESSED / "air_serie.parquet").as_posix()
 METEO = (DATA_PROCESSED / "meteo_corse.parquet").as_posix()
 MDA8 = (DATA_PROCESSED / "air_o3_mda8.parquet").as_posix()
 
-# Avis de correction des heures de l'air, FIGÉ à dessein. Son tableau compare l'ancienne
-# et la nouvelle convention horaire sur les mêmes fichiers d'entrée, collectés les 04/08
-# et 12/09/2026, recalculés le 07/10/2026 avec le même code de figures. Recalculer la
-# colonne « corrigée » sur des données plus récentes mêlerait de nouveau la correction et
-# les révisions des producteurs ; l'ancienne convention, elle, n'existe plus dans le code
-# (`prepare` jusqu'à 8736676). Ces valeurs se citent, elles ne se relisent pas.
+# Tableau historique figé : comparaison des deux conventions sur un même
+# jeu de fichiers identifié par ses empreintes. Les dates de collecte
+# ne sont pas établies : la lignée de build et les dates d'écriture
+# sur disque ne permettent pas de les déterminer ici.
+# Recalculé le 07/10/2026 avec le même code de figures. Recalculer la colonne « corrigée »
+# sur des données plus récentes mêlerait de nouveau la correction et les révisions des
+# producteurs ; l'ancienne convention, elle, n'existe plus dans le code (`prepare` jusqu'à
+# 8736676). Ces valeurs se citent, elles ne se relisent pas.
 CORRECTION_HEURES = """\
 <p>Le 6 octobre 2026 vers 18 h 33 UTC, nous avons mis en ligne une correction des
 conventions horaires utilisées pour l'air. L'erreur était présente depuis la création de
@@ -50,9 +52,12 @@ correction. Le contrôle du pic matinal de NO₂ acceptait un intervalle de 5 h 
 ne vérifiait pas l'heure précise annoncée dans le texte.</p>
 <p>Un changement de convention horaire peut aussi déplacer certaines mesures d'une journée
 à l'autre et modifier les indicateurs calculés par jour. Pour isoler cet effet, le tableau
-ci-dessous compare les deux conventions sur des fichiers d'entrée identiques, collectés
-les 4 août et 12 septembre 2026. Cette comparaison mesure l'effet du changement de
-traitement sur ce jeu de données.</p>
+ci-dessous compare les deux conventions sur un même jeu de fichiers d'entrée, dont la liste
+et les empreintes sont publiées dans <a href="https://github.com/Henri20200/demonstrateur-data-corsica/blob/master/docs/INVENTAIRE_CONVENTIONS.md#c-4">l'inventaire
+des conventions (C-4)</a>. La mention « collectés les 4 août et 12 septembre 2026 » était
+erronée ; les dates exactes de collecte ne sont pas établies. Les valeurs du tableau
+restent inchangées. Cette comparaison mesure l'effet du changement de traitement sur ce
+jeu de données.</p>
 <div class="scroll"><table>
 <tr><th>Indicateur</th><th>Ancienne convention</th><th>Convention corrigée</th></tr>
 <tr><td>Heure du pic moyen d'été, dioxyde d'azote / ozone</td>
