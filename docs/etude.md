@@ -79,9 +79,10 @@ instant, il faut donc maintenir l'équilibre entre l'électricité disponible et
 qui est consommée.
 
 Une grande partie de l'électricité est encore produite par des centrales thermiques
-qui brûlent du combustible. Le solaire, l'hydroélectricité et l'éolien occupent une
-place importante, mais leur développement et leur utilisation dépendent aussi des
-capacités d'un réseau électrique de petite taille.
+qui brûlent du combustible. L'hydroélectricité et le solaire occupent une place
+importante ; l'éolien reste marginal, autour de 2 % de la production locale en 2024.
+Le développement et l'utilisation de ces énergies dépendent aussi des capacités d'un
+réseau électrique de petite taille.
 
 Les données montrent également qu'une part importante de l'électricité consommée en
 Corse dépend de l'extérieur. Plus du quart arrive par des câbles sous-marins reliés à
