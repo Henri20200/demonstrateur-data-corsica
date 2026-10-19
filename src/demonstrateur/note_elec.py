@@ -187,9 +187,12 @@ permettent pas de le recalculer.</p>
 
 <h2>Comment les chiffres sont calculés</h2>
 <p>Une part de mix se calcule toujours pareil : les mégawatts d'une filière, divisés par
-la production totale, <strong>sur les mêmes heures</strong>. Les producteurs datent leurs
-mesures en temps universel. Elles sont converties en heure locale avant d'être regroupées
-par heure, par mois ou par année.</p>
+la production totale, <strong>sur les mêmes heures</strong>. Ces heures sont des heures
+légales, celles qu'affiche une horloge sur place. Le temps réel d'EDF et les données
+sardes d'ENTSO-E sont datés en temps universel : ils sont convertis avant d'être regroupés
+par heure, par mois ou par année. L'historique d'EDF fait exception. Son étiquette
+annonce le temps universel, mais il porte déjà l'heure légale corse : il est lu tel quel,
+sans conversion (voir « Le fuseau horaire » plus bas).</p>
 <p>Deux définitions comptent. Elles sont écrites sur les figures.</p>
 <ul>
 <li><span class="cle">Renouvelable décentralisé</span> : solaire, éolien, bioénergies et
@@ -291,7 +294,8 @@ l'étude. Elle n'ajoute aucun résultat : elle décrit les mécanismes qui les p
     donnée non certifiée.</li>
 <li><strong>Le fuseau horaire, établi contre trois repères extérieurs.</strong> La courbe
     horaire d'EDF est étiquetée en temps universel et ne l'est pas : elle porte l'heure
-    légale de l'île. Nous l'avons d'abord lue au mot, et le chapitre de midi a annoncé
+    légale de l'île. Nous l'avons d'abord lue au mot, ce qui plaçait chaque mesure une
+    heure trop tard l'hiver et deux heures trop tard l'été : le chapitre de midi a annoncé
     « 14 heures » pendant plusieurs semaines. La convention retenue a été confirmée par
     le rayonnement mesuré aux pyranomètres de Météo-France, par le comportement de la
     série aux dix changements d'heure de 2020-2024, et par la structure du fichier

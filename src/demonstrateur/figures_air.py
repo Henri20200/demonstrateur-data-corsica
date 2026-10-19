@@ -292,9 +292,12 @@ def actualite_air() -> dict | None:
     nombres diffèrent d'un facteur deux : « l'été compte N journées » ne peut pas
     désigner un cumul sur plusieurs stations sans se lire comme une erreur.
 
-    Rend l'année, le décompte, la dernière journée mesurée et le nombre de journées
-    d'été mesurées — jamais un jugement : ce millésime est incomplet et révisable, et il
-    ne sert pas de point de comparaison aux six étés de l'étude.
+    Rend l'année, le décompte, la dernière journée mesurée, le nombre de journées d'été
+    mesurées et celui que l'été compte au calendrier — jamais un jugement : ce millésime
+    est provisoire et révisable, incomplet tant que l'été court, et il ne sert pas de
+    point de comparaison aux six étés de l'étude. Complet ou non se LIT en comparant les
+    deux derniers nombres : le 19/10/2026, la note disait encore l'été 2026 « pas
+    encore » complet à côté d'un encart qui le comptait sur ses 92 journées.
     """
     con = _con()
     an = con.execute(f"""
@@ -312,7 +315,16 @@ def actualite_air() -> dict | None:
         WHERE valide AND {ETES} AND influence = 'Fond'
           AND extract('year' FROM date_locale) = {int(an)}
     """).fetchone()
-    return dict(annee=int(an), jours=int(jours), mesurees=int(mesurees), arret=arret)
+    # Les journées que l'été compte au calendrier, filtrées par `ETES` et non écrites
+    # (92) : la définition de l'été vit à un seul endroit.
+    calendrier = con.execute(f"""
+        SELECT count(*) FROM (
+            SELECT CAST(range AS DATE) AS date_locale
+            FROM range(DATE '{int(an)}-01-01', DATE '{int(an) + 1}-01-01', INTERVAL 1 DAY))
+        WHERE {ETES}
+    """).fetchone()[0]
+    return dict(annee=int(an), jours=int(jours), mesurees=int(mesurees), arret=arret,
+                calendrier=int(calendrier))
 
 
 # Noms de mois écrits ici et non tirés de `strftime("%B")` : celui-ci suit la locale du

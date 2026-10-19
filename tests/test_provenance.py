@@ -441,6 +441,28 @@ def test_la_note_electricite_publie_la_fenetre_que_t2b_mesure():
     )
 
 
+@besoin_note_elec_et_courbe
+def test_la_note_electricite_dit_une_seule_convention_horaire_pour_edf():
+    """Le fuseau de la courbe EDF se dit d'une seule façon dans toute la note.
+
+    Jusqu'au 19/10/2026, « Comment les chiffres sont calculés » affirmait que les
+    producteurs datent leurs mesures en temps universel, converties ensuite en heure
+    locale : pour l'historique d'EDF, c'est la lecture que la section technique de la
+    même note décrit comme l'erreur corrigée le 23/08/2026. Le verrou tient les deux
+    bouts : la généralisation ne revient pas, et l'exception est dite là où le calcul
+    est décrit. Il exige la courbe, donc une note régénérée dans le même run (cf.
+    `besoin_note_a_jour`) : la note versionnée précède la correction.
+    """
+    h = _texte_note_elec()
+    assert "Les producteurs datent leurs mesures en temps universel" not in h, (
+        "la note prête de nouveau le temps universel à tous les producteurs — "
+        "l'historique d'EDF porte l'heure légale corse"
+    )
+    assert "il porte déjà l'heure légale corse : il est lu tel quel" in h, (
+        "la section du calcul doit dire que l'historique d'EDF n'est pas converti"
+    )
+
+
 @besoin_note_elec
 def test_les_chiffres_de_la_note_electricite_sortent_bien_des_donnees():
     """La propriété qui fait tenir la note : ses chiffres sont LUS, pas recopiés.
@@ -634,6 +656,50 @@ def test_l_encart_d_actualite_dit_la_meme_chose_sur_la_page_et_dans_la_note():
         f"le périmètre écrit sur les figures ne mentionne plus {AN_FIN} — la fenêtre a "
         "bougé sans que le texte suive, et l'encart peut désormais la recouvrir"
     )
+
+
+@pytest.mark.parametrize("mesurees, attendu, interdit", [
+    (61, "n'est mesuré que sur 61 de ses 92 journées", "l'est aussi"),
+    (92, "ses 92 journées sont mesurées", "été partiel"),
+])
+def test_la_note_de_l_air_tient_l_ete_recent_a_part_pour_la_bonne_raison(
+    monkeypatch, mesurees, attendu, interdit
+):
+    """Partiel ou complet, l'été hors fenêtre reste à part, mais pas pour la même raison.
+
+    Le 19/10/2026, la note disait encore l'été 2026 « pas encore » complet, à côté d'un
+    encart qui le comptait sur ses 92 journées. La raison se choisit désormais sur la
+    donnée ; ce test rejoue les deux cas sans elle, avec un encart factice.
+    """
+    from datetime import date
+
+    from demonstrateur import note_air
+
+    monkeypatch.setattr(note_air, "actualite_air", lambda: dict(
+        annee=2026, jours=33, mesurees=mesurees, arret=date(2026, 8, 31), calendrier=92))
+    monkeypatch.setattr(note_air, "phrase_actualite", lambda: "Encart.")
+    texte = note_air._ete_recent()
+    assert attendu in texte and interdit not in texte, texte
+    assert "« Encart. »" in texte, "la phrase de l'encart doit être citée telle quelle"
+
+
+@besoin_encart
+def test_la_note_de_l_air_ne_dit_pas_partiel_un_ete_mesure_en_entier():
+    """Le même défaut, sur la note publiée : sa raison suit la complétude mesurée."""
+    from demonstrateur.figures_air import actualite_air
+
+    a = actualite_air()
+    if a is None:
+        pytest.skip("aucun millésime hors de la fenêtre d'étude — rien à tenir à part")
+    h = _texte_note()
+    if a["mesurees"] < a["calendrier"]:
+        assert f"n'est mesuré que sur {a['mesurees']} de ses {a['calendrier']}" in h
+    else:
+        assert "ne l'est pas encore" not in h and "été partiel" not in h, (
+            f"la note dit partiel un été {a['annee']} mesuré sur ses "
+            f"{a['calendrier']} journées"
+        )
+        assert f"ses {a['calendrier']} journées sont mesurées" in h
 
 
 @besoin_note_elec
