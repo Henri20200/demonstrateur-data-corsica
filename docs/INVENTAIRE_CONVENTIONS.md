@@ -201,6 +201,22 @@ Contradictions relevées :
   valeurs du tableau ne sont pas en cause : elles ont été calculées sur ces fichiers, que
   leurs empreintes identifient. La liste des fichiers et leurs empreintes est donnée au
   § « C-4 » ci-dessous.
+- **C-5, texte publié, relevé le 19 octobre 2026.** La note électricité
+  (`note_elec.py`, « Comment les chiffres sont calculés ») disait que « les producteurs
+  datent leurs mesures en temps universel » et que ces mesures « sont converties en heure
+  locale ». La phrase vaut pour le temps réel d'EDF (E-1) et pour ENTSO-E (E-11), pas pour
+  la courbe historique d'EDF (E-3), qui porte l'heure légale corse et n'est pas convertie.
+  Appliquée à cette courbe, elle décrit la lecture que la section technique de la même
+  note présente comme l'erreur corrigée le 23/08.
+- **C-6, texte publié, relevé le 19 octobre 2026.** La note air disait de l'été le plus
+  récent qu'il « ne l'est pas encore » (complet), et qu'il fallait éviter de « comparer
+  un été partiel à des étés entiers ». Elle citait juste après l'encart qui compte l'été
+  2026 sur 92 journées mesurées. La phrase, écrite pendant l'été, n'avait pas suivi sa
+  fin. Sur le jeu local (lignée de build du 7 octobre 2026 à 15:44 UTC, commit `0a800c7`,
+  arbre de travail modifié), les étés 2020 à 2026 comptent chacun 92 journées mesurées
+  (journées valides d'au moins une station de fond). Ce qui distingue 2026 est le
+  statut : toutes les mesures d'été 2020-2025 portent le statut « vérifié », aucune de
+  2026.
 - **C-2, texte interne.** La docstring de `meteo_corse_to_parquet` (`prepare.py:1203-1206`)
   dit que « le flux LCSQA, lui, publie en heure légale » et qu'une erreur de fuseau
   « décalerait le pic de deux heures ». C'est l'état d'avant le 06/10 : le flux LCSQA est
@@ -297,7 +313,7 @@ qui sert à les valider. Chacune appelle une décision : chercher une référenc
 - définitions publiées : G-1, G-2, G-3. Le glossaire compte dans le plafond de 700 mots de
   la page air (`_mots_de_prose` ne retire que les scripts, les styles et la navigation),
   et la page en comptait 699 le 06/10 : tout mot ajouté se compense ;
-- contradictions dans un texte publié : C-1, C-4 ;
+- contradictions dans un texte publié : C-1, C-4, C-5, C-6 ;
 - choix sans motivation écrite dont dépend une figure ou un titre : AC-1 (« été = juin à
   août »), AC-4 (pondération), AC-5 (95 %), AC-6 (bornes des tranches), AC-7, EC-1,
   EC-4, EC-13 (écart de période).
@@ -320,6 +336,8 @@ le statut ne change qu'une fois la recherche faite.
 | C-1 | Corriger séparément le texte publié : « Le fichier d'EDF contient néanmoins ces six heures ; seules trois portent une production nulle. » | correction engagée |
 | P-1 | La reformulation de la borne au 1er janvier 2026 attend le résultat d'A-1 | en attente |
 | C-4 | Décidé le 8 octobre 2026 : retirer de l'avis les dates erronées, sans leur substituer les dates d'écriture sur disque ; publier la liste des fichiers et leurs empreintes (§ « C-4 »), avec un lien depuis l'avis. La re-certification reste une explication possible, non établie | correction engagée |
+| C-5 | Décidé le 19 octobre 2026 : la section du calcul distingue les jeux datés en temps universel et convertis (temps réel d'EDF, ENTSO-E) de l'historique d'EDF, lu tel quel ; la section technique donne l'ampleur de l'ancienne lecture (une heure trop tard l'hiver, deux l'été). Verrou : `test_la_note_electricite_dit_une_seule_convention_horaire_pour_edf` | correction engagée |
+| C-6 | Décidé le 19 octobre 2026 : la raison de tenir l'été à part se choisit d'après la donnée, en comparant ses journées mesurées à celles du calendrier (`actualite_air`, filtre `ETES`). Été en cours : été partiel. Été complet : mesures provisoires face à des mesures vérifiées. Verrous : `test_la_note_de_l_air_tient_l_ete_recent_a_part_pour_la_bonne_raison`, `test_la_note_de_l_air_ne_dit_pas_partiel_un_ete_mesure_en_entier` | correction engagée |
 
 Ajustements du relevé décidés au même tri : A-6 reçoit son porteur indirect, et la règle
 d'entrée au tri couvre désormais les preuves de validation ; E-8 est scindée en quatre

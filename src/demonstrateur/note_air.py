@@ -20,7 +20,7 @@ import sys
 import duckdb
 
 from .config import DATA_PROCESSED, OUTPUTS
-from .figures_air import AN_FIN, contraste_a4, phrase_actualite
+from .figures_air import AN_FIN, actualite_air, contraste_a4, phrase_actualite
 from .navigation import CSS as CSS_NAV, NOTE_AIR, pied as pied_navigation
 from .prepare import MIN_HEURES_8H, MIN_MOYENNES_MDA8, verifier_sorties
 from .viz import PALETTE, SANS, date_collecte
@@ -91,6 +91,37 @@ ultramarins dans le fichier LCSQA du 6 octobre.</p>
 mesures effectuées par les producteurs.</p>"""
 
 
+def _ete_recent() -> str:
+    """Pourquoi l'été le plus récent reste hors des figures — dit d'après la donnée.
+
+    La raison était figée : « l'été le plus récent ne l'est pas encore » (complet), puis
+    « comparer un été partiel à des étés entiers ». Vraie en juillet, la phrase a continué
+    de se publier après le 31/08/2026, à côté d'un encart qui comptait l'été 2026 sur ses
+    92 journées : la note se contredisait d'une phrase à l'autre. Partiel ou complet, cet
+    été reste hors de la fenêtre ; ce qui change, c'est la raison qu'on peut en donner.
+    Une fois l'été complet, il en reste une : ses mesures sont provisoires, celles des
+    étés retenus portent toutes le statut « vérifié ».
+    """
+    a = actualite_air()
+    if a is None:
+        return ""
+    if a["mesurees"] < a["calendrier"]:
+        raison = (
+            f"L'été {a['annee']}, lui, n'est mesuré que sur {a['mesurees']} de ses "
+            f"{a['calendrier']} journées, et ses mesures sont provisoires. Le porter dans "
+            "les mêmes figures reviendrait à comparer un été partiel à des étés entiers.")
+    else:
+        raison = (
+            f"L'été {a['annee']} l'est aussi : ses {a['calendrier']} journées sont "
+            "mesurées. Mais ses mesures restent provisoires : le statut « vérifié » ne "
+            "vient qu'avec la validation annuelle décrite plus haut. Porter cet été dans "
+            "les mêmes figures reviendrait à mêler des mesures provisoires à des mesures "
+            "vérifiées.")
+    # Même source que l'encart de la page, et non la même phrase recopiée : c'est
+    # exactement ce qui a manqué au contraste d'A4 en août 2026.
+    return f"{raison} Il est donc tenu à part, daté, en tête de l'étude : « {phrase_actualite()} »"
+
+
 def _chiffres() -> dict:
     con = duckdb.connect()
     air = con.execute(f"""
@@ -128,9 +159,7 @@ def _chiffres() -> dict:
         # que la page, corrigée le 29/08/2026, publiait « la majorité ». Le superlatif
         # était faux, et c'est ici qu'il avait survécu — là où aucun verrou ne portait.
         a4=a4, a4_nom=a4["rurale"].title(),
-        # Même source que l'encart de la page, et non la même phrase recopiée : c'est
-        # exactement ce qui a manqué au contraste d'A4 en août 2026.
-        actu=phrase_actualite(),
+        ete_recent=_ete_recent(),
     )
 
 
@@ -284,11 +313,8 @@ côté air comme côté température.</p>
     puissent se lire l'un à côté de l'autre. Celle qui en sort le dit sous son titre : c'est
     le cas du décompte en nombre de journées, pour la raison ci-dessus.</li>
 <li><strong>La période d'analyse s'arrête à {AN_FIN}.</strong> Les étés retenus sont
-    complets, de juin à août ; l'été le plus récent ne l'est pas encore, et ses mesures sont
-    provisoires. Le porter dans les mêmes figures reviendrait à comparer un été partiel à
-    des étés entiers. Il est donc tenu à part, daté, en
-    tête de l'étude : « {c["actu"]} » Étendre la fenêtre d'analyse serait une décision à
-    prendre et à revalider, jamais un effet du calendrier.</li>
+    complets, de juin à août. {c["ete_recent"]} Étendre la fenêtre d'analyse serait une
+    décision à prendre et à revalider, jamais un effet du calendrier.</li>
 </ul>
 
 <h2>Refaire ces chiffres</h2>
