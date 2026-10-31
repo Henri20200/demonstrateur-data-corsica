@@ -507,9 +507,10 @@ sources:
     # le CONTENU qui a changé : ré-exprimée par le cron le 31/10/2026, elle donne
     # 8210e4c1… là où les deux suivantes donnent ec1b32d1…. Écart non mesuré : les octets
     # d'août ne sont plus que dans le cache du cron et dans l'archive. Cette règle n'absout
-    # donc que la recompression ; adopter le contenu révisé est une décision, qui passe par
-    # `fetch-data --recertifier`. À SAVOIR : un fichier évincé du cache serait aujourd'hui
-    # retéléchargé et adopté sans comparaison au manifeste — suite ouverte de la PR #78.
+    # donc que la recompression ; adopter le contenu révisé est une décision (retirer
+    # l'entrée du manifeste). À SAVOIR : évincé du cache, le fichier serait retéléchargé
+    # puis REFUSÉ, faute de porter le contenu certifié ; la météo manquerait alors à la
+    # chaîne, qui s'arrêterait avant publication jusqu'à cette décision.
     empreinte_decompressee: true
     notes: >
       Tranche close 2020-2024, pendant figé du fichier glissant. Mêmes colonnes, même

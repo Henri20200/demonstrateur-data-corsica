@@ -70,7 +70,7 @@ from defusedxml.common import EntitiesForbidden
 
 from . import archive
 from .config import DATA_RAW, MANIFEST_FILE, SOURCES_FILE
-from .provenance import empreinte, regle
+from .provenance import EmpreinteDivergente, empreinte, regle
 
 _HTML_TYPES = {"text/html", "application/xhtml+xml"}
 _VAR_ENV_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
@@ -118,14 +118,13 @@ def _save_manifest(manifest: dict) -> None:
     Cette protection ne coordonne pas le brut et le manifeste. Une interruption après
     remplacement du brut peut laisser le nouveau fichier associé à l'ancienne empreinte.
     Une source glissante retrouve sa cohérence au prochain téléchargement réussi. Une
-    source figée ayant une entrée au manifeste mais aucun fichier local est également
-    téléchargée : `certifie` vaut False. Si son contenu a changé chez le producteur et
-    qu'une interruption survient avant la sauvegarde du manifeste, le contrôle suivant
-    refuse le fichier, avec un code 1 et sans retéléchargement. Il faut alors supprimer
-    le brut puis relancer, ou utiliser `fetch-data --recertifier` si le changement est
-    voulu. Écrire le manifeste en premier laisserait le risque inverse : une nouvelle
-    empreinte associée à un ancien fichier. La coordination des deux remplacements
-    nécessiterait un mécanisme de récupération supplémentaire, hors de ce correctif.
+    source figée ayant une entrée au manifeste mais aucun fichier local n'est réinstallée
+    que si le téléchargement porte le contenu certifié (cf. `a_restaurer` dans `main`) :
+    le fichier posé passe alors l'ancienne entrée, et une interruption avant la sauvegarde
+    ne laisse rien d'incohérent. Écrire le manifeste en premier laisserait le risque
+    inverse : une nouvelle empreinte associée à un ancien fichier. La coordination des deux
+    remplacements nécessiterait un mécanisme de récupération supplémentaire, hors de ce
+    correctif.
 
     Le format du manifeste versionné est conservé : ordre d'insertion du dictionnaire,
     pas de saut de ligne final, fins de ligne LF explicites pour produire les mêmes octets
@@ -586,6 +585,14 @@ def main(argv: list[str] | None = None) -> int:
         already = manifest.get(source_id, {})
         glissant = bool(meta.get("glissant"))
         certifie = dest.exists() and bool(already.get("sha256"))
+        # Figée et certifiée, mais sans fichier local : cache d'Actions évincé, poste neuf.
+        # Elle se retélécharge pour RESTAURER le contenu certifié, jamais pour en adopter un
+        # autre (31/10/2026). Jusque-là elle passait pour une source neuve : le contenu du
+        # jour était adopté sans comparaison — quatre années ENTSO-E le 22/07/2026, la
+        # tranche météo 2020-2024 le 04/08 — et un téléchargement raté retirait son entrée
+        # du manifeste, ce qui ouvrait la même porte au run suivant (les six sources
+        # ENTSO-E sorties puis revenues avec d'autres empreintes le 20/07).
+        a_restaurer = not glissant and not certifie and bool(already.get("sha256"))
 
         # --- Re-certification (hors-ligne) : le fichier LOCAL fait foi ---------------
         if recertifier:
@@ -629,7 +636,8 @@ def main(argv: list[str] | None = None) -> int:
                     f"[!] {source_id} : ÉCHEC — l'empreinte du fichier local ne correspond "
                     f"plus au manifeste (attendu {already['sha256'][:12]}…, obtenu "
                     f"{obtenue[:12]}…). Restaurer la donnée certifiée (supprimer "
-                    f"data/raw/{dest.name} puis relancer) ou, si le changement est voulu, "
+                    f"data/raw/{dest.name} puis relancer : il n'est réinstallé que si le "
+                    "producteur sert encore ce contenu) ou, si le changement est voulu, "
                     "fetch-data --recertifier."
                 )
                 failures.append(source_id)
@@ -669,8 +677,13 @@ def main(argv: list[str] | None = None) -> int:
                   f"{_suffixe_millesime(millesime)}.")
             continue
 
-        # --- Téléchargement (source neuve, ou rafraîchissement d'un jeu glissant) ----
-        verbe = "rafraîchissement (jeu glissant)" if certifie else "téléchargement"
+        # --- Téléchargement (source neuve, jeu glissant, ou source figée à restaurer) --
+        if certifie:
+            verbe = "rafraîchissement (jeu glissant)"
+        elif a_restaurer:
+            verbe = "restauration (absent de data/raw)"
+        else:
+            verbe = "téléchargement"
         print(f"[>] {source_id} : {verbe}…")
         # Téléchargement en .part puis remplacement atomique : un échec ne doit jamais
         # détruire une donnée déjà certifiée (cas du rafraîchissement).
@@ -683,10 +696,25 @@ def main(argv: list[str] | None = None) -> int:
             content_type = _download(url_reelle, part, entetes_reels)
             _valider(part, meta, content_type)
             sha = empreinte(part, meta)  # canonique si empreinte_ignore_xml, sinon octets bruts
+            if a_restaurer:
+                # Sous la règle de l'ENTRÉE, comme une source présente : une règle changée
+                # depuis dans sources.yaml n'est pas plus une porte d'entrée ici.
+                obtenue = sha if regle(meta) == regle(already) else empreinte(part, already)
+                if obtenue != already["sha256"]:
+                    raise EmpreinteDivergente(
+                        "absent de data/raw, et le producteur ne sert plus le contenu "
+                        f"certifié (attendu {already['sha256'][:12]}…, obtenu "
+                        f"{obtenue[:12]}…). Rien n'est adopté, l'entrée du manifeste est "
+                        "conservée. Restaurer ces octets (data/archive/_versions.json dit "
+                        "s'ils sont déposés), ou adopter ce contenu par décision : retirer "
+                        f"l'entrée {source_id} du manifeste, puis relancer."
+                    )
         except Exception as exc:  # noqa: BLE001 — on continue avec les autres sources
             part.unlink(missing_ok=True)
-            if not certifie:
-                # Premier téléchargement raté : aucune entrée trompeuse ne subsiste.
+            if not certifie and not a_restaurer:
+                # Premier téléchargement raté : aucune entrée trompeuse ne subsiste. Celle
+                # d'une source figée à restaurer, elle, est la seule mémoire de ce qui a
+                # été certifié : la retirer laisserait le run suivant adopter n'importe quoi.
                 manifest.pop(source_id, None)
             print(f"[!] {source_id} : ÉCHEC — {_masquer(str(exc), secrets)}")
             failures.append(source_id)

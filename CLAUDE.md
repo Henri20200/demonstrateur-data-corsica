@@ -65,7 +65,13 @@ re-téléchargée à **chaque** run ; une source figée déjà présente n'est p
 mais son empreinte est **re-vérifiée à chaque run** (le fichier local doit correspondre au
 manifeste, sinon échec bruyant : restaurer la donnée, ou `fetch-data --recertifier` pour
 adopter délibérément de nouveaux octets) ; ses métadonnées (licence, producteur, URL) sont
-resynchronisées depuis `sources.yaml`, et le manifeste est réécrit à chaque run. Un rafraîchissement qui
+resynchronisées depuis `sources.yaml`, et le manifeste est réécrit à chaque run. Une source
+figée certifiée mais **absente** (cache évincé, poste neuf) se retélécharge pour être
+**restaurée**, jamais réadoptée : posée seulement si elle porte encore le contenu certifié
+(sous la règle de son entrée), sinon échec et entrée intacte — même sur un téléchargement
+raté. Jusqu'au 31/10/2026 l'éviction adoptait en silence (ENTSO-E le 22/07, météo
+2020-2024 le 04/08). Adopter une révision est une décision : retirer l'entrée du
+manifeste, la source est alors collectée comme neuve. Un rafraîchissement qui
 échoue conserve la donnée précédente (téléchargement en `.part`, remplacement atomique) ;
 les échecs n'interrompent pas les autres sources (retour code 1 en fin de run).
 
