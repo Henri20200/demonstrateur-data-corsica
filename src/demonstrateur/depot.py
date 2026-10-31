@@ -10,8 +10,10 @@ plus personne ne peut produire le contenu.
 
 Trois propriétés voulues, et elles se lisent dans le code plutôt que dans une consigne :
 
-- **append-only** : rien que des PUT de clés neuves. Aucune synchronisation, aucun
-  `--delete`, aucun miroir. Le bucket n'a pas de notion de « refléter un dossier » — il
+- **append-only** : des PUT de clés neuves, et des GET pour RESTAURER une source figée
+  que le cache a perdue (31/10/2026) — jamais de DELETE, ni de listage : la politique du
+  bucket n'accorde à l'application d'archive que `PutObject` et `GetObject` sur
+  `archive/*`. Aucune synchronisation, aucun `--delete`, aucun miroir. Le bucket n'a pas de notion de « refléter un dossier » — il
   accumule. C'est exactement ce que la vitrine, elle, ne fait PAS : `aws s3 sync --delete`
   tient le bucket public comme reflet exact d'`outputs/`. Les deux régimes ne peuvent pas
   cohabiter dans un même bucket, d'où le garde-fou de `configurer()` ;
@@ -35,8 +37,8 @@ LE SEUIL NE SE RELÈVE PAS MÉCANIQUEMENT : un tarif peut changer plus vite qu'u
 et un seuil en octets ne protège un budget qu'au prix du jour. On recalcule le coût, puis
 on décide — jamais l'inverse.
 
-PAS DE BOTO3 : botocore pèse une trentaine de mégaoctets installés pour, ici, un unique
-PUT sans multipart. La signature SigV4 tient en quarante lignes de `hmac`/`hashlib`
+PAS DE BOTO3 : botocore pèse une trentaine de mégaoctets installés pour, ici, un PUT sans
+multipart et un GET. La signature SigV4 tient en quarante lignes de `hmac`/`hashlib`
 (stdlib) et le transport est `httpx`, déjà dépendance du projet.
 
 Configuration, par l'environnement — rien n'est écrit en dur, et le bucket n'a AUCUNE
@@ -108,6 +110,8 @@ _ERREURS_DETERMINISTES = (
     httpx.LocalProtocolError, httpx.UnsupportedProtocol, httpx.InvalidURL, UnicodeEncodeError,
 )
 _PAUSE = 2.0  # secondes, multipliées par le rang de la tentative
+# Charge d'un GET : aucun corps, dont l'empreinte entre pourtant dans la signature.
+_EMPREINTE_VIDE = hashlib.sha256(b"").hexdigest()
 
 
 class DepotIndisponible(RuntimeError):
@@ -221,13 +225,12 @@ class Depot:
         """Style « virtual-hosted » : le bucket vit dans le nom d'hôte, pas dans le chemin."""
         return f"{self.bucket}.{urlsplit(self.endpoint).netloc}"
 
-    def _envoyer(self, cle: str, chemin: Path, empreinte: str,
-                 client: httpx.Client) -> httpx.Response:
-        """Une tentative : signature SigV4 puis PUT streamé. Rouvre le fichier à chaque appel.
+    def _signer(self, methode: str, cle: str, empreinte: str,
+                autres: dict[str, str] | None = None) -> tuple[str, dict[str, str]]:
+        """URL et en-têtes signés SigV4 d'une requête sur `cle`, de charge `empreinte`.
 
-        Rouvrir n'est pas une précaution de style : un flux consommé par une tentative
-        ratée rejouerait un corps VIDE à la suivante, et le stockage accepterait poliment
-        un objet de zéro octet dont l'index jurerait qu'il porte la version.
+        `autres` entre dans la signature : un en-tête envoyé mais non signé (la `range` de
+        `sonder`) serait modifiable en route sans que le stockage le voie.
         """
         maintenant = datetime.now(timezone.utc)
         horodatage = maintenant.strftime("%Y%m%dT%H%M%SZ")
@@ -238,10 +241,11 @@ class Depot:
             "host": self.hote,
             "x-amz-content-sha256": empreinte,
             "x-amz-date": horodatage,
+            **{nom.lower(): valeur for nom, valeur in (autres or {}).items()},
         }
         noms_signes = ";".join(sorted(entetes_signes))
         requete_canonique = "\n".join([
-            "PUT",
+            methode,
             chemin_canonique,
             "",  # aucun paramètre de requête
             *(f"{nom}:{entetes_signes[nom]}" for nom in sorted(entetes_signes)),
@@ -257,13 +261,25 @@ class Depot:
             hashlib.sha256(requete_canonique.encode("utf-8")).hexdigest(),
         ])
         signature = _hmac(_cle_de_signature(self.cle_secrete, jour, self.region), a_signer).hex()
-
-        entetes = {
+        return f"https://{self.hote}{chemin_canonique}", {
             **entetes_signes,
             "authorization": (
                 f"{ALGORITHME} Credential={self.cle_acces}/{portee}, "
                 f"SignedHeaders={noms_signes}, Signature={signature}"
             ),
+        }
+
+    def _envoyer(self, cle: str, chemin: Path, empreinte: str,
+                 client: httpx.Client) -> httpx.Response:
+        """Une tentative : signature SigV4 puis PUT streamé. Rouvre le fichier à chaque appel.
+
+        Rouvrir n'est pas une précaution de style : un flux consommé par une tentative
+        ratée rejouerait un corps VIDE à la suivante, et le stockage accepterait poliment
+        un objet de zéro octet dont l'index jurerait qu'il porte la version.
+        """
+        url, entetes = self._signer("PUT", cle, empreinte)
+        entetes = {
+            **entetes,
             # Content-Length EXPLICITE, et ce n'est pas un détail de politesse : sans lui,
             # httpx envoie un fichier ouvert en `Transfer-Encoding: chunked`, que S3 refuse
             # pour une requête dont la charge est signée d'un bloc. httpx laisse la main dès
@@ -272,8 +288,7 @@ class Depot:
             "content-length": str(chemin.stat().st_size),
         }
         with chemin.open("rb") as flux:
-            return client.put(f"https://{self.hote}{chemin_canonique}",
-                              content=flux, headers=entetes)
+            return client.put(url, content=flux, headers=entetes)
 
     def deposer(self, cle: str, chemin: Path, *,
                 client: httpx.Client | None = None, essais: int = 3) -> str:
@@ -289,6 +304,49 @@ class Depot:
         définitivement manquante une version que l'index dit pourtant connaître.
         """
         empreinte = empreinte_octets(chemin)
+        self._executer(lambda session: self._envoyer(cle, chemin, empreinte, session),
+                       client, essais)
+        return cle
+
+    def _lire(self, cle: str, dest: Path, plage: str | None,
+              client: httpx.Client) -> httpx.Response:
+        """Une tentative : GET signé, corps streamé dans `dest`, RÉÉCRIT à chaque tentative.
+
+        Réécrit et non complété : une tentative coupée en plein transfert laisserait sinon
+        un début de fichier sous la suite d'une autre.
+        """
+        url, entetes = self._signer("GET", cle, _EMPREINTE_VIDE,
+                                    {"range": plage} if plage else None)
+        with client.stream("GET", url, headers=entetes) as reponse:
+            if reponse.status_code < 300:
+                with dest.open("wb") as flux:
+                    for bloc in reponse.iter_bytes(_TAILLE_BLOC):
+                        flux.write(bloc)
+            else:
+                reponse.read()  # le message du stockage, pour dire quoi corriger
+        return reponse
+
+    def recuperer(self, cle: str, dest: Path, *, plage: str | None = None,
+                  client: httpx.Client | None = None, essais: int = 3) -> None:
+        """Rapatrie l'objet `cle` dans `dest` (ses `plage` d'octets seulement, si donnée).
+
+        NE CERTIFIE RIEN, et c'est voulu : le stockage rend ce qu'il détient sous cette clé,
+        l'appelant le vérifie sous l'empreinte du MANIFESTE avant d'en faire quoi que ce
+        soit. Un `dest` partiel peut rester après une exception — à l'appelant de l'ôter.
+
+        Un 403 est ambigu en lecture : l'application d'archive n'a pas `s3:ListBucket`, à
+        dessein, et S3 répond alors 403 et non 404 à une clé INEXISTANTE. Les deux lèvent
+        `DepotMalConfigure` ; la sonde d'`archive.verifier_lecture`, qui lit une clé que
+        l'index dit déposée, tranche entre eux.
+        """
+        self._executer(lambda session: self._lire(cle, dest, plage, session), client, essais)
+
+    def _executer(self, tentative, client: httpx.Client | None, essais: int) -> None:
+        """Joue `tentative(session)` jusqu'à un 2xx, en classant chaque refus.
+
+        Panne passagère : retentée, puis `DepotIndisponible`. Refus déterministe (requête
+        impossible à former, 401/403) : `DepotMalConfigure` aussitôt, sans insister.
+        """
         try:
             session = client or httpx.Client(timeout=_DELAI)
         except Exception as exc:  # noqa: BLE001
@@ -308,9 +366,9 @@ class Depot:
                 f"client HTTP inconstructible — {type(exc).__name__} : {exc}"
             ) from exc
         try:
-            for tentative in range(1, essais + 1):
+            for rang in range(1, essais + 1):
                 try:
-                    reponse = self._envoyer(cle, chemin, empreinte, session)
+                    reponse = tentative(session)
                 except _ERREURS_DETERMINISTES as exc:
                     # AVANT `httpx.HTTPError`, dont `LocalProtocolError` descend : sans
                     # cet ordre, une clé malformée était retentée trois fois avec pauses
@@ -326,7 +384,7 @@ class Depot:
                     echec = DepotIndisponible(f"{type(exc).__name__} : {exc}")
                 else:
                     if reponse.status_code < 300:
-                        return cle
+                        return
                     if reponse.status_code in _STATUTS_MAL_CONFIGURE:
                         raise DepotMalConfigure(
                             f"HTTP {reponse.status_code} — identifiants ou politique du "
@@ -337,8 +395,8 @@ class Depot:
                     )
                     if reponse.status_code not in _STATUTS_RETENTABLES:
                         raise echec
-                if tentative < essais:
-                    time.sleep(_PAUSE * tentative)
+                if rang < essais:
+                    time.sleep(_PAUSE * rang)
             raise echec
         finally:
             if client is None:

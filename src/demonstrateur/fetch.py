@@ -627,6 +627,25 @@ def main(argv: list[str] | None = None) -> int:
                   f"le {manifest[source_id]['recertifie_le']}.")
             continue
 
+        # --- Source figée à restaurer : l'archive d'abord, qui détient les octets mêmes --
+        if a_restaurer:
+            # Rendus par l'archive, les octets certifiés laissent l'entrée du manifeste
+            # vraie telle quelle (date de collecte, taille), et la source repasse par le
+            # contrôle ordinaire ci-dessous. Sinon — archive absente en local, illisible,
+            # version jamais déposée —, le producteur, sous comparaison (plus bas).
+            part = dest.with_name(dest.name + ".part")
+            cle = archive.recuperer_certifie(source_id, already, part)
+            if cle:
+                try:
+                    _valider(part, meta, already.get("content_type", ""))
+                except Exception as exc:  # noqa: BLE001
+                    part.unlink(missing_ok=True)
+                    print(f"[!] {source_id} : copie d'archive {cle} invalide — {exc}")
+                else:
+                    part.replace(dest)
+                    print(f"[<] {source_id} : restauré depuis l'archive ({cle}).")
+                    certifie, a_restaurer = True, False
+
         # --- Source figée certifiée : on VÉRIFIE (AUD-01), plus de confiance aveugle --
         if certifie and not glissant and not a_adopter:
             # Une empreinte n'est probante que RE-VÉRIFIÉE : la seule présence du fichier
@@ -716,9 +735,10 @@ def main(argv: list[str] | None = None) -> int:
                         "absent de data/raw, et le producteur ne sert plus le contenu "
                         f"certifié (attendu {already['sha256'][:12]}…, obtenu "
                         f"{obtenue[:12]}…). Rien n'est adopté, l'entrée du manifeste est "
-                        "conservée. Restaurer ces octets (data/archive/_versions.json dit "
-                        "s'ils sont déposés), ou, l'écart mesuré, adopter ce contenu en "
-                        f"déclarant dans sources.yaml : contenu_adopte: \"{sha}\"."
+                        "conservée. L'archive ne les a pas rendus (cf. plus haut ; hors CI "
+                        "elle n'est pas configurée) : restaurer ces octets, ou, l'écart "
+                        "mesuré, adopter ce contenu en déclarant dans sources.yaml : "
+                        f"contenu_adopte: \"{sha}\"."
                     )
             if a_adopter and sha != adopte:
                 raise EmpreinteDivergente(
@@ -793,13 +813,20 @@ def main(argv: list[str] | None = None) -> int:
         print("[!] Ce n'est PAS une panne : aucun run suivant ne le corrigera de lui-même. "
               "La collecte, elle, est allée à son terme et l'index est à jour.")
 
+    # Le filet de restauration ne vaut que s'il marche, et il ne sert qu'au jour d'une
+    # éviction : un octet de l'archive lu à chaque run le prouve. Même arbitrage que
+    # ci-dessus — un refus de lecture rougit le run, il ne retient rien de la collecte.
+    lecture = None if recertifier else archive.verifier_lecture()
+    if lecture:
+        print(f"[!] ARCHIVE ILLISIBLE — {lecture}")
+
     if failures:
         print(f"\n{len(failures)} source(s) en échec : {', '.join(failures)}")
         if not recertifier:
             print("Vérifier les URL / formats dans sources.yaml (ils peuvent avoir changé), "
                   "ou une empreinte divergente signalée ci-dessus.")
         return 1
-    if suspension or mauvaise_conf:
+    if suspension or mauvaise_conf or lecture:
         return 1
 
     action = "Re-certification" if recertifier else "Collecte"

@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import tempfile
 from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
@@ -576,6 +577,74 @@ def retenter_depots_en_attente() -> list[str]:
             if _retenter_depot(source_id, version, copie, index):
                 deposees.append(version["payload_key"])
     return deposees
+
+
+def recuperer_certifie(source_id: str, entree: dict, dest: Path) -> str | None:
+    """Pose dans `dest` des octets archivés qui portent le contenu certifié par `entree`.
+
+    Le filet d'une source figée que le cache a perdue (31/10/2026) : le producteur peut ne
+    plus servir ce contenu — la tranche météo 2020-2024 a changé entre août et septembre
+    2026 —, l'archive, elle, détient les octets mêmes. Retourne la clé lue, ou None : rien
+    de déposé, archive non configurée (le cas normal en local), ou illisible.
+
+    Chaque candidat est vérifié sous la règle de l'ENTRÉE avant d'être rendu, jamais
+    supposé : la version de même empreinte d'abord, puis les autres de la plus récente à
+    la plus ancienne — une règle changée depuis le dépôt (`empreinte_decompressee`, même
+    tranche, 31/10/2026) laisse l'index sous l'ancienne empreinte pour les mêmes octets.
+    """
+    distant = _depot_durable()
+    if distant is None:
+        return None
+    attendue = entree.get("sha256")
+    deposees = [v for v in _charger(VERSIONS_FILE).get(source_id, [])
+                if v.get("payload_archived") and v.get("payload_key")]
+    for version in sorted(reversed(deposees), key=lambda v: v.get("sha256") != attendue):
+        cle = version["payload_key"]
+        try:
+            distant.recuperer(cle, dest)
+        except depot.DepotIndisponible as exc:
+            # Une lecture refusée l'est pour toutes les clés : inutile d'insister.
+            dest.unlink(missing_ok=True)
+            print(f"[!] {source_id} : archive illisible ({cle}) — {exc}")
+            return None
+        try:
+            conforme = empreinte(dest, entree) == attendue
+        except Exception:  # noqa: BLE001 — gzip tronqué, XML cassé : non conforme
+            conforme = False
+        if conforme:
+            return cle
+        dest.unlink(missing_ok=True)
+        print(f"[=] {source_id} : {cle} ne porte pas le contenu certifié.")
+    return None
+
+
+def verifier_lecture() -> str | None:
+    """Sonde la lecture de l'archive sur son dernier dépôt. La raison d'un refus, ou None.
+
+    `recuperer_certifie` ne sert qu'au jour d'une éviction : trop tard pour découvrir une
+    signature fausse ou un droit retiré de la politique du bucket. Un octet lu à chaque run
+    le prouve à moindre coût. Ne rend une raison que pour un refus DÉTERMINISTE — une panne
+    passagère se dit et passe, comme pour les dépôts.
+    """
+    distant = _depot_durable()
+    if distant is None:
+        return None
+    deposees = [v for versions in _charger(VERSIONS_FILE).values() for v in versions
+                if v.get("payload_archived") and v.get("payload_key")]
+    if not deposees:
+        return None
+    cle = max(deposees, key=lambda v: v.get("first_observed_at") or "")["payload_key"]
+    with tempfile.TemporaryDirectory() as dossier:
+        try:
+            distant.recuperer(cle, Path(dossier) / "sonde", plage="bytes=0-0")
+        except depot.DepotMalConfigure as exc:
+            return (f"lecture de {cle} refusée — {exc}. Sans elle, une source figée que le "
+                    "cache perd ne se restaure plus depuis l'archive : vérifier `s3:GetObject` "
+                    "dans la politique du bucket.")
+        except depot.DepotIndisponible as exc:
+            print(f"[i] Sonde de lecture de l'archive sans réponse ({exc}) — à revoir au "
+                  "run suivant.")
+    return None
 
 
 def _redeposable(source_id: str, version: dict) -> bool:
