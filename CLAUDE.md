@@ -66,9 +66,11 @@ mais son empreinte est **re-vérifiée à chaque run** (le fichier local doit co
 manifeste, sinon échec bruyant : restaurer la donnée, ou `fetch-data --recertifier` pour
 adopter délibérément de nouveaux octets) ; ses métadonnées (licence, producteur, URL) sont
 resynchronisées depuis `sources.yaml`, et le manifeste est réécrit à chaque run. Une source
-figée certifiée mais **absente** (cache évincé, poste neuf) se retélécharge pour être
-**restaurée**, jamais réadoptée : posée seulement si elle porte encore le contenu certifié
-(sous la règle de son entrée), sinon échec et entrée intacte — même sur un téléchargement
+figée certifiée mais **absente** (cache évincé, poste neuf) est **restaurée**, jamais
+réadoptée : depuis l'**archive** d'abord, qui détient les octets mêmes (vérifiés sous
+l'empreinte de l'entrée, qui reste alors intacte), sinon retéléchargée et posée seulement si
+elle porte encore le contenu certifié (sous la règle de son entrée), sinon échec et entrée
+intacte — même sur un téléchargement
 raté. Jusqu'au 31/10/2026 l'éviction adoptait en silence (ENTSO-E le 22/07, météo
 2020-2024 le 04/08). **Adopter une révision est une décision, déclarée et mesurée** :
 `contenu_adopte: <sha256>` dans `sources.yaml` nomme le SEUL contenu admis (empreinte sous
@@ -183,7 +185,11 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   `ARCHIVE_ACCESS_KEY`/`ARCHIVE_SECRET_KEY`, qui priment sur `SCW_ACCESS_KEY`/`SCW_SECRET_KEY`
   — ces dernières servent aussi à `aws s3 sync --delete` pour la vitrine, donc une clé propre
   à l'archive est préférable : restreinte à son seul bucket, elle ne peut pas effacer la
-  vitrine, et la clé de la vitrine ne peut pas atteindre l'archive. Configuration absente,
+  vitrine, et la clé de la vitrine ne peut pas atteindre l'archive. Depuis le 31/10/2026, la
+  politique du bucket accorde à l'application d'archive `PutObject` **et `GetObject`** sur
+  `archive/*` — ni listage ni effacement : la lecture sert la restauration ci-dessus, et
+  `fetch` la prouve à chaque run en lisant un octet du dernier dépôt ; refusée, elle rougit
+  le run. Configuration absente,
   la collecte continue et marque les versions `payload_archived: false`, reprises au run
   suivant. Configuration PRÉSENTE MAIS REFUSÉE, c'est autre chose et cela ne se confond
   plus depuis le 30/08/2026 : une erreur déterministe (requête impossible à former,

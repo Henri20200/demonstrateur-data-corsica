@@ -354,3 +354,82 @@ def test_un_seuil_franchi_ne_se_confond_pas_avec_une_panne():
     limite posée exprès, et le refus se lirait comme une panne réseau de plus.
     """
     assert not issubclass(depot.SeuilArchiveAtteint, depot.DepotIndisponible)
+
+
+# --- Lecture : restaurer une source figée que le cache a perdue (31/10/2026) -----------
+
+CLE_VECTEUR = "archive/mix/2026/08/20260819T060011Z_ab12cd34.csv.gz"
+
+
+@pytest.mark.parametrize(
+    "plage, autorisation",
+    [
+        (None, "SignedHeaders=host;x-amz-content-sha256;x-amz-date, "
+               "Signature=2ee20c330c27a2e9d2cbb4f0a9b85d653b4d0d2f4a4ac5a1601b3665bb0557e7"),
+        ("bytes=0-0", "SignedHeaders=host;range;x-amz-content-sha256;x-amz-date, "
+                      "Signature=58f9f2cc2155bcf5d484acc0803a926b374de975e8b6e8f6d7d1ddb4d7fe42ca"),
+    ],
+    ids=["objet", "plage"],
+)
+def test_la_lecture_est_signee_conforme_a_sigv4(tmp_path, monkeypatch, plage, autorisation):
+    """Vecteurs figés, obtenus de botocore 1.43.123 le 31/10/2026 — le même oracle
+    reproduit à l'octet le vecteur PUT ci-dessus. La plage de la sonde est SIGNÉE : non
+    signée, elle serait modifiable en route sans que le stockage le voie."""
+    class Horloge:
+        @staticmethod
+        def now(_tz=None):
+            return datetime(2026, 8, 19, 6, 0, 11, tzinfo=timezone.utc)
+
+    monkeypatch.setattr(depot, "datetime", Horloge)
+    vues = []
+
+    def repondre(requete):
+        vues.append(requete)
+        return httpx.Response(206 if plage else 200, content=b"a,b\n1,2\n"[: 1 if plage else None])
+
+    dest = tmp_path / "lu.csv.gz"
+    with _client(repondre) as client:
+        _depot().recuperer(CLE_VECTEUR, dest, plage=plage, client=client)
+
+    (requete,) = vues
+    assert requete.method == "GET"
+    assert requete.headers["x-amz-content-sha256"] == (
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    )
+    assert requete.headers["authorization"] == (
+        "AWS4-HMAC-SHA256 Credential=SCWAAAAAAAAAAAAAAAAA/20260819/fr-par/s3/aws4_request, "
+        + autorisation
+    )
+    assert requete.headers.get("range") == plage
+    assert dest.read_bytes() == (b"a" if plage else b"a,b\n1,2\n")
+
+
+def test_une_lecture_reprise_ne_garde_rien_de_la_tentative_ratee(tmp_path, monkeypatch):
+    """Le fichier est RÉÉCRIT à chaque tentative : une reprise qui complèterait la
+    précédente poserait un début d'erreur sous des octets valides."""
+    monkeypatch.setattr(depot, "_PAUSE", 0.0)
+    reponses = [httpx.Response(503, text="SlowDown"), httpx.Response(200, content=b"octets\n")]
+
+    dest = tmp_path / "lu.csv.gz"
+    dest.write_bytes(b"reste d'un essai precedent, plus long que la bonne reponse\n")
+    with _client(lambda _requete: reponses.pop(0)) as client:
+        _depot().recuperer("archive/mix/x.csv.gz", dest, client=client)
+
+    assert not reponses, "un 503 doit être retenté"
+    assert dest.read_bytes() == b"octets\n"
+
+
+def test_une_lecture_refusee_n_est_pas_retentee(tmp_path, monkeypatch):
+    """403 en lecture : politique sans `GetObject`, ou clé inexistante (sans `ListBucket`,
+    S3 ne dit pas 404). Déterministe dans les deux cas — dit, pas retenté."""
+    monkeypatch.setattr(depot, "_PAUSE", 0.0)
+    appels = []
+
+    def repondre(requete):
+        appels.append(requete)
+        return httpx.Response(403, text="AccessDenied")
+
+    with _client(repondre) as client, pytest.raises(depot.DepotMalConfigure, match="403"):
+        _depot().recuperer("archive/mix/x.csv.gz", tmp_path / "lu.csv.gz", client=client)
+
+    assert len(appels) == 1

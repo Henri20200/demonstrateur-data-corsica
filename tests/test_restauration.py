@@ -15,7 +15,7 @@ import json
 import pytest
 import yaml
 
-from demonstrateur import archive, fetch
+from demonstrateur import archive, depot, fetch
 from demonstrateur.provenance import empreinte
 
 CONTENU = b"NUM_POSTE;NOM_USUEL;AAAAMMJJHH;T;QT\n" + b"20004002;AJACCIO;2024123123;9.1;1\n" * 500
@@ -191,3 +191,118 @@ def test_un_contenu_autre_que_celui_adopte_est_refuse(chaine):
 def _ecrire(chemin, octets):
     chemin.write_bytes(octets)
     return chemin
+
+
+# --- L'archive d'abord : elle détient les octets certifiés eux-mêmes (31/10/2026) -----
+
+CLE = "archive/tranche/2026/08/20260829T123345Z_x.csv.gz"
+
+
+class DepotSimule:
+    """Un stockage qui rend `objets[cle]`, ou lève `refus` ; il note chaque lecture."""
+
+    def __init__(self, objets: dict, refus: Exception | None = None):
+        self.objets, self.refus, self.lectures = objets, refus, []
+
+    def recuperer(self, cle, dest, *, plage=None):
+        self.lectures.append((cle, plage))
+        if self.refus:
+            raise self.refus
+        octets = self.objets[cle]
+        dest.write_bytes(octets[:1] if plage else octets)
+
+    def deposer(self, cle, chemin):
+        self.objets[cle] = chemin.read_bytes()
+        return cle
+
+
+def _archiver(sha: str, octets: bytes, monkeypatch, refus=None) -> DepotSimule:
+    """Indexe une version déposée de `tranche` et branche un stockage qui la détient."""
+    archive.VERSIONS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    archive.VERSIONS_FILE.write_text(json.dumps({"tranche": [{
+        "sha256": sha, "payload_key": CLE, "payload_archived": True,
+        "first_observed_at": "2026-08-29T12:33:45Z", "superseded_at": None,
+        "taille_octets": len(octets),
+    }]}), encoding="utf-8")
+    simule = DepotSimule({CLE: octets}, refus)
+    monkeypatch.setattr(archive, "_depot_durable", lambda: simule)
+    return simule
+
+
+def _producteur_interdit(monkeypatch):
+    def _interdit(*_args, **_kwargs):
+        raise AssertionError("l'archive suffisait : le producteur n'avait pas à servir")
+
+    monkeypatch.setattr(fetch, "_download", _interdit)
+
+
+def test_l_archive_restaure_les_octets_certifies(chaine, monkeypatch):
+    """Le producteur ne sert plus ce contenu ; l'archive le rend à l'octet. L'entrée du
+    manifeste reste vraie telle quelle : mêmes octets, même date de collecte."""
+    certifier, _, brut, manifeste, entree, _ = chaine
+    certifies = _gz(CONTENU, SEPTEMBRE)
+    certifier(certifies, {"empreinte_decompressee": True})
+    avant = manifeste.read_bytes()
+    simule = _archiver(entree()["sha256"], certifies, monkeypatch)
+    _producteur_interdit(monkeypatch)
+
+    assert fetch.main([]) == 0
+    assert brut.read_bytes() == certifies
+    assert manifeste.read_bytes() == avant
+    assert (CLE, None) in simule.lectures
+
+
+def test_l_archive_sous_une_autre_empreinte_est_verifiee_sous_celle_de_l_entree(
+    chaine, monkeypatch
+):
+    """L'index peut tenir les mêmes octets sous l'ANCIENNE règle (empreinte brute),
+    comme la tranche météo le 31/10/2026 : le candidat est essayé et vérifié quand même."""
+    certifier, _, brut, _, _, _ = chaine
+    certifies = _gz(CONTENU, SEPTEMBRE)
+    certifier(certifies, {"empreinte_decompressee": True})
+    _archiver(empreinte(_ecrire(brut.with_name("brut.gz"), certifies), {}), certifies,
+              monkeypatch)
+    _producteur_interdit(monkeypatch)
+
+    assert fetch.main([]) == 0
+    assert brut.read_bytes() == certifies
+
+
+def test_une_copie_d_archive_non_conforme_n_est_pas_posee(chaine, monkeypatch):
+    """L'objet archivé ne porte pas le contenu certifié : il n'est pas posé, et le
+    producteur, qui ne le sert pas non plus, est refusé à son tour."""
+    certifier, servi, brut, manifeste, entree, _ = chaine
+    certifier(_gz(CONTENU, SEPTEMBRE), {"empreinte_decompressee": True})
+    avant = manifeste.read_bytes()
+    _archiver(entree()["sha256"], _gz(REVISE, SEPTEMBRE), monkeypatch)
+    servi["octets"] = _gz(REVISE, OCTOBRE)
+
+    assert fetch.main([]) == 1
+    assert manifeste.read_bytes() == avant
+    assert not brut.exists()
+
+
+def test_une_archive_refusee_retombe_sur_le_producteur(chaine, monkeypatch):
+    """Lecture refusée : la restauration passe au producteur, sous comparaison — et la
+    sonde de fin de run rougit le run, puisque le filet ne tient plus."""
+    certifier, servi, brut, _, entree, _ = chaine
+    certifier(_gz(CONTENU, SEPTEMBRE), {"empreinte_decompressee": True})
+    _archiver(entree()["sha256"], b"", monkeypatch,
+              refus=depot.DepotMalConfigure("HTTP 403 — AccessDenied"))
+    servi["octets"] = _gz(CONTENU, OCTOBRE)
+
+    assert fetch.main([]) == 1, "le filet ne tient plus : le run doit le dire"
+    assert brut.read_bytes() == servi["octets"], "la restauration, elle, a eu lieu"
+
+
+def test_la_lecture_de_l_archive_est_sondee_a_chaque_run(chaine, monkeypatch):
+    """Un octet du dernier dépôt, lu à chaque run : le filet est prouvé avant l'éviction
+    qui le rendrait nécessaire, pas le jour même."""
+    certifier, _, _, _, entree, _ = chaine
+    certifies = _gz(CONTENU, SEPTEMBRE)
+    certifier(certifies, {"empreinte_decompressee": True}, garder=True)
+    simule = _archiver(entree()["sha256"], certifies, monkeypatch)
+    _producteur_interdit(monkeypatch)
+
+    assert fetch.main([]) == 0
+    assert simule.lectures == [(CLE, "bytes=0-0")]
