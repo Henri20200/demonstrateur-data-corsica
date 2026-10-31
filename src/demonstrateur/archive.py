@@ -638,9 +638,13 @@ def verifier_lecture() -> str | None:
         try:
             distant.recuperer(cle, Path(dossier) / "sonde", plage="bytes=0-0")
         except depot.DepotMalConfigure as exc:
+            # Les DEUX côtés, et c'est ce que le message disait mal au premier refus
+            # (31/10/2026) : la politique du bucket accordait `GetObject`, l'IAM de
+            # l'application non, et un 403 ne dit pas lequel des deux manque.
             return (f"lecture de {cle} refusée — {exc}. Sans elle, une source figée que le "
-                    "cache perd ne se restaure plus depuis l'archive : vérifier `s3:GetObject` "
-                    "dans la politique du bucket.")
+                    "cache perd ne se restaure plus depuis l'archive. Il faut les deux : "
+                    "`s3:GetObject` dans la politique du bucket, ET `ObjectStorageObjectsRead` "
+                    "dans l'IAM de l'application d'archive.")
         except depot.DepotIndisponible as exc:
             print(f"[i] Sonde de lecture de l'archive sans réponse ({exc}) — à revoir au "
                   "run suivant.")

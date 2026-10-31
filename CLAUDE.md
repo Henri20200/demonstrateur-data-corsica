@@ -185,11 +185,13 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   `ARCHIVE_ACCESS_KEY`/`ARCHIVE_SECRET_KEY`, qui priment sur `SCW_ACCESS_KEY`/`SCW_SECRET_KEY`
   — ces dernières servent aussi à `aws s3 sync --delete` pour la vitrine, donc une clé propre
   à l'archive est préférable : restreinte à son seul bucket, elle ne peut pas effacer la
-  vitrine, et la clé de la vitrine ne peut pas atteindre l'archive. Depuis le 31/10/2026, la
-  politique du bucket accorde à l'application d'archive `PutObject` **et `GetObject`** sur
-  `archive/*` — ni listage ni effacement : la lecture sert la restauration ci-dessus, et
-  `fetch` la prouve à chaque run en lisant un octet du dernier dépôt ; refusée, elle rougit
-  le run. Configuration absente,
+  vitrine, et la clé de la vitrine ne peut pas atteindre l'archive. Depuis le 31/10/2026,
+  l'application d'archive peut LIRE, et il a fallu l'accorder **des deux côtés** — la
+  politique du bucket (`PutObject` et `GetObject` sur `archive/*`, ni listage ni effacement)
+  ET son IAM (`ObjectStorageObjectsWrite` et `…Read`, sur le seul projet) : en version
+  `2023-04-17`, une action refusée par l'un l'est tout court, et la politique seule a d'abord
+  rendu un 403. La lecture sert la restauration ci-dessus, et `fetch` la prouve à chaque run
+  en lisant un octet du dernier dépôt ; refusée, elle rougit le run. Configuration absente,
   la collecte continue et marque les versions `payload_archived: false`, reprises au run
   suivant. Configuration PRÉSENTE MAIS REFUSÉE, c'est autre chose et cela ne se confond
   plus depuis le 30/08/2026 : une erreur déterministe (requête impossible à former,
