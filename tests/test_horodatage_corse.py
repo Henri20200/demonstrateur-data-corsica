@@ -133,6 +133,13 @@ def _bascules(an1: int, an2: int) -> list[tuple[str, int, pd.Timestamp]]:
     return out
 
 
+def _decalage_legal(an: int, mois: int, jour: int) -> float:
+    """Décalage de l'heure légale sur UTC ce jour-là, en heures — donnée de calendrier."""
+    return dt.datetime(an, mois, jour, 12, tzinfo=dt.timezone.utc).astimezone(
+        PARIS
+    ).utcoffset().total_seconds() / 3600.0
+
+
 def _midi_solaire_legal(an: int, mois: int, jour: int, lon: float) -> float:
     """Midi solaire vrai, en heure légale décimale — ASTRONOMIE PURE.
 
@@ -149,10 +156,7 @@ def _midi_solaire_legal(an: int, mois: int, jour: int, lon: float) -> float:
         - 0.014615 * math.cos(2 * g) - 0.040849 * math.sin(2 * g)
     )  # minutes
     utc = 12.0 - lon / 15.0 - eqtime / 60.0
-    offset = dt.datetime(an, mois, jour, 12, tzinfo=dt.timezone.utc).astimezone(
-        PARIS
-    ).utcoffset().total_seconds() / 3600.0
-    return utc + offset
+    return utc + _decalage_legal(an, mois, jour)
 
 
 # ------------------------------------------------------- V1 : bascules d'heure légale
@@ -332,13 +336,26 @@ def test_v4_le_pyranometre_tombe_sur_le_midi_solaire(glo):
     Si ce test échoue, ce n'est pas la courbe EDF qui est en cause mais le repère lui-même
     — fuseau du fichier Météo-France, convention de datation de ses cumuls, ou l'équation
     du temps écrite ici. Le faire échouer en premier évite d'accuser la bonne série sur la
-    foi d'une mauvaise règle. Mesuré à 0,13 h au maximum sur les douze mois le 23/08/2026.
+    foi d'une mauvaise règle. Mesuré à 0,13 h au maximum sur les douze mois le 23/08/2026,
+    à 0,15 h le 31/10/2026.
+
+    Le repère est le midi légal du 15 : chaque mois ne garde donc que les instants à
+    l'heure légale de ce jour-là. Octobre et mars portent les deux, et un jour passé de
+    l'autre côté de la bascule a son midi une heure plus loin — mêlé à la moyenne par
+    heure locale, il tire le mois vers lui, au prorata d'un nombre de jours qui change
+    d'une année à l'autre et croît pendant que le fichier glissant se remplit. Le
+    30/10/2026, les jours d'heure d'hiver de 2026 ont ainsi poussé octobre de −0,24 à
+    −0,26 h, hors tolérance, sans que la donnée ni la chaîne aient bougé ; à l'heure
+    légale de son 15, octobre tient à −0,12 h, mars de même, qu'un biais opposé ramenait
+    à −0,01 h.
     """
     ecarts = {}
     for m in range(1, 13):
         sous = glo[glo.index.month == m]
         loc = sous.index.tz_localize("UTC").tz_convert(PARIS)
-        moyenne = sous.groupby(loc.hour).mean()
+        decalage = (loc.tz_localize(None) - sous.index).total_seconds() / 3600.0
+        garde = decalage == _decalage_legal(2022, m, 15)
+        moyenne = sous[garde].groupby(loc[garde].hour).mean()
         milieu = _mi_hauteur(moyenne.index.values.astype(float) - 0.5, moyenne.values)
         ecarts[m] = round(milieu - _midi_solaire_legal(2022, m, 15, LON_AJACCIO), 2)
 
@@ -360,14 +377,22 @@ def test_v4_le_profil_solaire_corse_tombe_sur_le_midi_solaire():
 
     Tolérance 0,4 h : les douze mois tenaient dans 0,20 h le 23/08/2026, et une erreur
     d'une heure les déplace tous du même montant, donc les fait tous sortir. Avec
-    l'ancienne lecture, l'écart valait +1 h l'hiver et +2 h l'été.
+    l'ancienne lecture, l'écart valait +1 h l'hiver et +2 h l'été. Ces 0,20 h étaient
+    octobre, tiré par ses jours d'heure d'hiver : comme pour l'ancre, chaque mois ne garde
+    que les instants à l'heure légale de son 15, et les douze tiennent dans 0,12 h
+    (31/10/2026). La sélection lit le décalage que porte la courbe elle-même : elle choisit
+    des lignes sans rien corriger, et une conversion fausse resterait visible dans l'écart.
     """
     con = duckdb.connect()
+    reperes = ", ".join(f"({m}, {_decalage_legal(2022, m, 15):.0f})" for m in range(1, 13))
     profil = _profil_mensuel(
         con,
         f"""SELECT mois_local AS m, heure_locale AS h,
                    avg(greatest(photovoltaique_mw, 0)) AS v
-            FROM '{COURBE.as_posix()}' GROUP BY 1, 2""",
+            FROM '{COURBE.as_posix()}'
+            JOIN (VALUES {reperes}) AS r(mois, decalage) ON mois_local = r.mois
+            WHERE date_diff('hour', date_heure_utc, date_heure_locale) = r.decalage
+            GROUP BY 1, 2""",
         milieu=+0.5,
     )
     ecarts = {m: round(v - _midi_solaire_legal(2022, m, 15, LON_AJACCIO), 2)

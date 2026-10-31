@@ -313,8 +313,8 @@ par producteur — c'est le corollaire de tout ce document.
 celle de la chaîne : le comportement aux bascules d'heure légale ; la stabilité sous un fuseau
 de session hostile (UTC, Kiritimati, Niue) ; la cohérence au pyranomètre, témoin sarde
 compris ; le midi solaire calculé en astronomie pure. Le premier test du fichier juge
-l'**ancre** et non la courbe — le pyranomètre doit tomber sur le midi solaire, mesuré à 0,13 h
-près sur douze mois — pour qu'un repère faux n'accuse jamais une série juste.
+l'**ancre** et non la courbe — le pyranomètre doit tomber sur le midi solaire, mesuré à 0,15 h
+près sur douze mois (31/10/2026) — pour qu'un repère faux n'accuse jamais une série juste.
 
 **Ce que cela déplace.** T6 n'est pas concernée : elle somme des années entières. T2b, T3 et
 T4, si. Le zénith solaire d'été passe de 15 h à 13 h — le midi solaire corse en heure d'été
