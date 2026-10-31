@@ -334,10 +334,14 @@ class Depot:
         l'appelant le vérifie sous l'empreinte du MANIFESTE avant d'en faire quoi que ce
         soit. Un `dest` partiel peut rester après une exception — à l'appelant de l'ôter.
 
-        Un 403 est ambigu en lecture : l'application d'archive n'a pas `s3:ListBucket`, à
-        dessein, et S3 répond alors 403 et non 404 à une clé INEXISTANTE. Les deux lèvent
-        `DepotMalConfigure` ; la sonde d'`archive.verifier_lecture`, qui lit une clé que
-        l'index dit déposée, tranche entre eux.
+        Un 403 est ambigu en lecture. Droit manquant, de l'un OU l'autre côté : depuis la
+        version `2023-04-17` des politiques de bucket, une action doit être accordée par la
+        politique du bucket ET par l'IAM de l'application — le 31/10/2026, `GetObject` était
+        accordé par la première seulement, d'où un premier refus. Ou clé INEXISTANTE :
+        l'application n'a pas `s3:ListBucket`, à dessein, et S3 répond alors 403 et non 404.
+        Tous lèvent `DepotMalConfigure` ; la sonde d'`archive.verifier_lecture`, qui lit une
+        clé que l'index dit déposée, écarte le dernier cas. Un `SignatureDoesNotMatch`, lui,
+        accuserait la signature.
         """
         self._executer(lambda session: self._lire(cle, dest, plage, session), client, essais)
 
