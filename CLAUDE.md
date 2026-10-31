@@ -70,8 +70,13 @@ figée certifiée mais **absente** (cache évincé, poste neuf) se retélécharg
 **restaurée**, jamais réadoptée : posée seulement si elle porte encore le contenu certifié
 (sous la règle de son entrée), sinon échec et entrée intacte — même sur un téléchargement
 raté. Jusqu'au 31/10/2026 l'éviction adoptait en silence (ENTSO-E le 22/07, météo
-2020-2024 le 04/08). Adopter une révision est une décision : retirer l'entrée du
-manifeste, la source est alors collectée comme neuve. Un rafraîchissement qui
+2020-2024 le 04/08). **Adopter une révision est une décision, déclarée et mesurée** :
+`contenu_adopte: <sha256>` dans `sources.yaml` nomme le SEUL contenu admis (empreinte sous
+la règle de la source), après mesure de l'écart avec le certifié. Le cron le collecte au
+run suivant ; s'il sert autre chose, rien n'est adopté. L'adoption fait un millésime dans
+`_versions.json` (`enregistrer_version(adoptee=True)`), sans quoi l'index dirait encore
+détenu le contenu remplacé. Précédent : la tranche météo 2020-2024 le 31/10/2026 (deux
+cellules de pluie, aucune colonne lue). Un rafraîchissement qui
 échoue conserve la donnée précédente (téléchargement en `.part`, remplacement atomique) ;
 les échecs n'interrompent pas les autres sources (retour code 1 en fin de run).
 

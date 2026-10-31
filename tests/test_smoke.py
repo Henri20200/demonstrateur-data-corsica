@@ -35,6 +35,16 @@ def test_sources_yaml_est_valide():
                 f"{source_id} : déclare des en-têtes (donc un jeton) sur une url qui "
                 "n'est pas en https — le jeton partirait en clair"
             )
+        # Une adoption nomme UN contenu, en entier : une empreinte tronquée ou mal copiée
+        # ferait échouer la collecte au lieu d'adopter, et `fetch` l'ignore sur une source
+        # glissante, qui change de contenu à chaque run par définition.
+        if "contenu_adopte" in meta:
+            assert re.fullmatch(r"[0-9a-f]{64}", str(meta["contenu_adopte"])), (
+                f"{source_id} : contenu_adopte doit être un SHA-256 complet, en minuscules"
+            )
+            assert not meta.get("glissant"), (
+                f"{source_id} : contenu_adopte n'a pas de sens sur une source glissante"
+            )
 
 
 class _LoaderSansDoublon(yaml.SafeLoader):

@@ -124,7 +124,8 @@ def archive_demandee(meta: dict) -> bool:
     `archive_versions` tranche s'il est déclaré. Sinon :
 
     - une source NON glissante n'est téléchargée qu'une fois et jamais re-confrontée à son
-      producteur : elle ne peut pas produire de deuxième version ;
+      producteur : elle ne produit de deuxième version que par ADOPTION, décision qui
+      passe par `enregistrer_version(..., adoptee=True)` et non par cette fonction ;
     - une source glissante conserve ses versions, sauf politique `immutable` (le contenu
       ne bouge pas) ou `append_only` (l'état passé se reconstitue par troncature à la date
       voulue).
@@ -133,7 +134,7 @@ def archive_demandee(meta: dict) -> bool:
     est possible.
 
     CONSÉQUENCE À CONNAÎTRE : hors de ce périmètre, l'entrée d'index reste ouverte
-    indéfiniment (`superseded_at` nul) et ne suit pas les changements de contenu. Elle dit
+    jusqu'à la prochaine adoption et ne suit pas ce que publie le producteur. Elle dit
     vrai sur ce que nous DÉTENONS — la copie déposée — pas sur ce que la source publie
     aujourd'hui, qui est l'affaire du manifeste.
     """
@@ -459,12 +460,18 @@ def _retenter_depot(source_id: str, version: dict, fichier: Path, index: dict) -
     return True
 
 
-def enregistrer_version(source_id: str, meta: dict, fichier: Path, sha: str) -> dict | None:
+def enregistrer_version(source_id: str, meta: dict, fichier: Path, sha: str, *,
+                        adoptee: bool = False) -> dict | None:
     """Enregistre `fichier` comme millésime s'il porte une empreinte encore jamais observée.
 
     Retourne l'entrée d'index créée, ou None si la version était déjà connue (cas ordinaire
     d'un run qui ne trouve rien de neuf) ou si la source ne conserve pas ses versions
-    successives.
+    successives — sauf `adoptee` : une source figée dont le contenu vient d'être ADOPTÉ
+    par décision (`contenu_adopte` de sources.yaml, 31/10/2026) en enregistre une nouvelle,
+    sans quoi l'index continuerait de dire détenue la version que la chaîne a remplacée.
+    Un indicateur plutôt qu'une comparaison d'empreintes : une règle d'empreinte changée
+    (`empreinte_decompressee`) ré-exprime les MÊMES octets sous une autre empreinte, et ce
+    n'est pas un millésime.
 
     L'ORDRE DES ÉCRITURES EST LE POINT DÉLICAT, et il est celui-ci : octets d'abord, index
     ensuite. Un index écrit avant le dépôt annoncerait une version dont les octets ne sont
@@ -498,7 +505,7 @@ def enregistrer_version(source_id: str, meta: dict, fichier: Path, sha: str) -> 
         _retenter_depot(source_id, version, candidat, index)
         return None
 
-    if versions and not archive_demandee(meta):
+    if versions and not archive_demandee(meta) and not adoptee:
         # Contenu nouveau, mais cette source ne conserve pas ses millésimes : sa copie
         # initiale suffit (cf. `archive_demandee`).
         return None

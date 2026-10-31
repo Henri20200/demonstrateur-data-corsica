@@ -592,7 +592,16 @@ def main(argv: list[str] | None = None) -> int:
         # tranche météo 2020-2024 le 04/08 — et un téléchargement raté retirait son entrée
         # du manifeste, ce qui ouvrait la même porte au run suivant (les six sources
         # ENTSO-E sorties puis revenues avec d'autres empreintes le 20/07).
-        a_restaurer = not glissant and not certifie and bool(already.get("sha256"))
+        # Seule exception, et elle est DÉCLARÉE : `contenu_adopte` de sources.yaml nomme le
+        # contenu qu'une source figée a le droit de prendre à la place du certifié — celui
+        # dont l'écart a été mesuré, et lui seul. Tant que le manifeste ne le porte pas, la
+        # source se retélécharge ; un autre contenu servi est refusé comme à la restauration.
+        adopte = None if glissant else meta.get("contenu_adopte")
+        a_adopter = bool(adopte) and not (
+            already.get("sha256") == adopte and regle(already) == regle(meta)
+        )
+        a_restaurer = (not glissant and not certifie and bool(already.get("sha256"))
+                       and not a_adopter)
 
         # --- Re-certification (hors-ligne) : le fichier LOCAL fait foi ---------------
         if recertifier:
@@ -619,7 +628,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
 
         # --- Source figée certifiée : on VÉRIFIE (AUD-01), plus de confiance aveugle --
-        if certifie and not glissant:
+        if certifie and not glissant and not a_adopter:
             # Une empreinte n'est probante que RE-VÉRIFIÉE : la seule présence du fichier
             # ne suffit plus. On recalcule (forme canonique si déclarée) et on compare —
             # une donnée qui aurait dérivé sous le manifeste est ainsi attrapée, pas subie.
@@ -677,8 +686,10 @@ def main(argv: list[str] | None = None) -> int:
                   f"{_suffixe_millesime(millesime)}.")
             continue
 
-        # --- Téléchargement (source neuve, jeu glissant, ou source figée à restaurer) --
-        if certifie:
+        # --- Téléchargement (source neuve, jeu glissant, figée à restaurer ou à adopter) -
+        if a_adopter:
+            verbe = "adoption du contenu déclaré dans sources.yaml"
+        elif certifie:
             verbe = "rafraîchissement (jeu glissant)"
         elif a_restaurer:
             verbe = "restauration (absent de data/raw)"
@@ -706,15 +717,22 @@ def main(argv: list[str] | None = None) -> int:
                         f"certifié (attendu {already['sha256'][:12]}…, obtenu "
                         f"{obtenue[:12]}…). Rien n'est adopté, l'entrée du manifeste est "
                         "conservée. Restaurer ces octets (data/archive/_versions.json dit "
-                        "s'ils sont déposés), ou adopter ce contenu par décision : retirer "
-                        f"l'entrée {source_id} du manifeste, puis relancer."
+                        "s'ils sont déposés), ou, l'écart mesuré, adopter ce contenu en "
+                        f"déclarant dans sources.yaml : contenu_adopte: \"{sha}\"."
                     )
+            if a_adopter and sha != adopte:
+                raise EmpreinteDivergente(
+                    f"adoption déclarée de {adopte[:12]}…, mais le producteur sert "
+                    f"{sha[:12]}… : rien n'est adopté, le contenu certifié reste en place. "
+                    "Mesurer ce nouvel écart avant de mettre à jour contenu_adopte."
+                )
         except Exception as exc:  # noqa: BLE001 — on continue avec les autres sources
             part.unlink(missing_ok=True)
-            if not certifie and not a_restaurer:
+            if not certifie and not a_restaurer and not a_adopter:
                 # Premier téléchargement raté : aucune entrée trompeuse ne subsiste. Celle
-                # d'une source figée à restaurer, elle, est la seule mémoire de ce qui a
-                # été certifié : la retirer laisserait le run suivant adopter n'importe quoi.
+                # d'une source figée à restaurer ou à adopter, elle, est la seule mémoire
+                # de ce qui a été certifié : la retirer laisserait le run suivant adopter
+                # n'importe quoi.
                 manifest.pop(source_id, None)
             print(f"[!] {source_id} : ÉCHEC — {_masquer(str(exc), secrets)}")
             failures.append(source_id)
@@ -734,7 +752,16 @@ def main(argv: list[str] | None = None) -> int:
         # chaîne l'a observé pour la première fois. N'écrit rien si l'empreinte est déjà
         # connue : le cron passe toutes les 6 h, archiver à chaque passage ferait quatre
         # copies identiques par jour. Purement additif — `dest` est intouché.
-        millesime = archive.enregistrer_version(source_id, meta, dest, sha)
+        # Une source figée n'arrive ici qu'à sa première collecte, à une adoption ou à
+        # une restauration : les deux premières font un millésime, la dernière rend le
+        # contenu déjà certifié, que l'index peut tenir sous une autre règle d'empreinte.
+        if a_adopter:
+            ancienne = (already.get("sha256") or "—")[:12]
+            print(f"[±] {source_id} : contenu adopté ({ancienne}… -> {sha[:12]}…), "
+                  "comme déclaré dans sources.yaml.")
+        millesime = archive.enregistrer_version(
+            source_id, meta, dest, sha, adoptee=not glissant and not a_restaurer
+        )
         print(f"[ok] {source_id} : {dest.name} ({dest.stat().st_size:,} octets, "
               f"{content_type}){_suffixe_millesime(millesime)}")
 
