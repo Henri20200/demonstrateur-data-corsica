@@ -246,7 +246,10 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   jobs n'est donc plus cette exclusion, mais ce qu'ils en font — `verrous` les ignore, le
   cron s'en sert pour rougir APRÈS avoir publié (cf. le contrat de publication ci-dessus).
   Depuis le lot de stabilisation du 21/09, le cron et un parcours `verrous` installent
-  exactement `uv.lock`. Un deuxième parcours `verrous` teste les dernières dépendances
+  exactement `uv.lock` ; depuis le 31/10/2026, tous les jobs tournent aussi sur la même
+  image figée (`ubuntu-24.04`, plus `ubuntu-latest` que GitHub fait basculer sans commit) —
+  changer d'image est une PR, `tests/test_publication.py` le tient. Un deuxième parcours
+  `verrous` teste les dernières dépendances
   autorisées : il conserve l'alerte qui avait manqué lors de la panne pandas du 28/08.
   Un échec limité à ce canari signale une incompatibilité à résoudre avant adoption.
   Et ne PAS y recopier le
