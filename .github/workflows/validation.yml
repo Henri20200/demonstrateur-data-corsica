@@ -25,7 +25,8 @@ concurrency:
 
 jobs:
   valider:
-    runs-on: ubuntu-latest
+    # Image du cron, figée comme lui — cf. pipeline.yml.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -80,7 +81,8 @@ jobs:
   verrous:
     # Conserver le nom du contrôle de production pour les éventuelles protections de branche.
     name: ${{ matrix.dependances == 'verrouillees' && 'verrous' || 'verrous (dernieres)' }}
-    runs-on: ubuntu-latest
+    # Image du cron, figée comme lui — cf. pipeline.yml.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false

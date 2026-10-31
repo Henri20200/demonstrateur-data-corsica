@@ -36,6 +36,27 @@ def test_le_cron_et_la_validation_installent_le_meme_verrou():
     )
 
 
+def test_les_verrous_eprouvent_l_environnement_du_cron():
+    """Même image et même Python que le cron : sinon `verrous` atteste un autre environnement.
+
+    `ubuntu-latest` est refusé : GitHub le fait changer d'image sans un commit (Ubuntu 26
+    à partir du 19/10/2026), ce qu'uv.lock interdit précisément aux dépendances.
+    """
+    cron = _workflow("pipeline.yml")["jobs"]["rafraichir"]
+    validation = _workflow("validation.yml")["jobs"]
+    images = {job["runs-on"] for job in (cron, validation["valider"], validation["verrous"])}
+    assert len(images) == 1, f"images divergentes : {images}"
+    assert "latest" not in images.pop()
+
+    def versions(job):
+        commandes = " ".join(e.get("run", "") for e in job["steps"])
+        return set(re.findall(r"--python (\d+\.\d+)\b", commandes))
+
+    assert len(versions(cron)) == 1
+    assert versions(validation["verrous"]) == versions(cron)
+    assert versions(cron) <= set(validation["valider"]["strategy"]["matrix"]["python"])
+
+
 def test_un_ancien_bundle_ne_survit_pas_dans_les_nouvelles_pages(tmp_path, monkeypatch):
     """D2 : jouer le vrai export avec le fichier stable déjà présent, comme en CI."""
     ancien = tmp_path / "plotly.min.js"

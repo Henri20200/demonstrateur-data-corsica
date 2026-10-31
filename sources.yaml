@@ -490,7 +490,8 @@ sources:
   # même format ». Vérifiée sur pièce le 01/08/2026 : 81,9 Mo, 206 colonnes, première ligne
   # AJACCIO au 01/01/2020 à 00 h. Elle se raccorde sans trou au fichier glissant, qui
   # reprend au 01/01/2025 — le producteur découpe exactement là où la profondeur a été
-  # tranchée. FIGÉE : tranche close, jamais réécrite, donc jamais retéléchargée.
+  # tranchée. FIGÉE : jamais retéléchargée. Close ne veut pas dire immuable chez son
+  # producteur, cf. empreinte_decompressee ci-dessous.
   meteo_horaire_corse_2020_2024:
     url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_previous-2020-2024.csv.gz"
     filename: "meteo_horaire_corse_2020_2024.csv.gz"
@@ -499,15 +500,23 @@ sources:
     format: csv.gz
     delimiter: ";"
     colonnes_attendues: [NUM_POSTE, NOM_USUEL, AAAAMMJJHH, T, QT]
-    # Météo-France recompresse ce fichier chaque mois sans en changer le contenu : la
-    # copie du 01/09/2026 et celle du 01/10/2026 ne diffèrent que par l'instant de
-    # compression de l'en-tête gzip (3 octets sur 82 Mo, constaté le 31/10/2026).
+    # Météo-France régénère ce fichier chaque mois. La copie du 01/09/2026 et celle du
+    # 01/10/2026 ne diffèrent que par l'instant de compression de l'en-tête gzip (3 octets
+    # sur 82 Mo, constaté le 31/10/2026) : d'où l'empreinte du contenu décompressé.
+    # Mais de la copie d'août — celle que détient la chaîne — à celle de septembre, c'est
+    # le CONTENU qui a changé : ré-exprimée par le cron le 31/10/2026, elle donne
+    # 8210e4c1… là où les deux suivantes donnent ec1b32d1…. Écart non mesuré : les octets
+    # d'août ne sont plus que dans le cache du cron et dans l'archive. Cette règle n'absout
+    # donc que la recompression ; adopter le contenu révisé est une décision, qui passe par
+    # `fetch-data --recertifier`. À SAVOIR : un fichier évincé du cache serait aujourd'hui
+    # retéléchargé et adopté sans comparaison au manifeste — suite ouverte de la PR #78.
     empreinte_decompressee: true
     notes: >
       Tranche close 2020-2024, pendant figé du fichier glissant. Mêmes colonnes, même
       fuseau UTC, mêmes codes qualité QT. Sa dernière journée n'est PAS tronquée
-      (contrairement au glissant) : son contenu ne sera plus jamais réécrit — son
-      enveloppe gzip, si (cf. empreinte_decompressee).
+      (contrairement au glissant). Close ne veut pas dire immuable : son producteur la
+      régénère chaque mois, et son contenu a changé au moins une fois (copies d'août et
+      de septembre 2026, cf. empreinte_decompressee).
 
   meteo_horaire_corse:
     url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz"
