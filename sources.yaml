@@ -491,7 +491,7 @@ sources:
   # AJACCIO au 01/01/2020 à 00 h. Elle se raccorde sans trou au fichier glissant, qui
   # reprend au 01/01/2025 — le producteur découpe exactement là où la profondeur a été
   # tranchée. FIGÉE : jamais retéléchargée. Close ne veut pas dire immuable chez son
-  # producteur, cf. empreinte_decompressee ci-dessous.
+  # producteur, cf. contenu_adopte ci-dessous.
   meteo_horaire_corse_2020_2024:
     url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_previous-2020-2024.csv.gz"
     filename: "meteo_horaire_corse_2020_2024.csv.gz"
@@ -503,21 +503,26 @@ sources:
     # Météo-France régénère ce fichier chaque mois. La copie du 01/09/2026 et celle du
     # 01/10/2026 ne diffèrent que par l'instant de compression de l'en-tête gzip (3 octets
     # sur 82 Mo, constaté le 31/10/2026) : d'où l'empreinte du contenu décompressé.
-    # Mais de la copie d'août — celle que détient la chaîne — à celle de septembre, c'est
-    # le CONTENU qui a changé : ré-exprimée par le cron le 31/10/2026, elle donne
-    # 8210e4c1… là où les deux suivantes donnent ec1b32d1…. Écart non mesuré : les octets
-    # d'août ne sont plus que dans le cache du cron et dans l'archive. Cette règle n'absout
-    # donc que la recompression ; adopter le contenu révisé est une décision (retirer
-    # l'entrée du manifeste). À SAVOIR : évincé du cache, le fichier serait retéléchargé
-    # puis REFUSÉ, faute de porter le contenu certifié ; la météo manquerait alors à la
-    # chaîne, qui s'arrêterait avant publication jusqu'à cette décision.
+    # Mais de la copie d'août à celle de septembre, c'est le CONTENU qui a changé
+    # (8210e4c1… -> ec1b32d1…). Cette règle n'absout que la recompression.
     empreinte_decompressee: true
+    # ADOPTÉ le 31/10/2026, après mesure. La copie d'août, détenue jusque-là (rapatriée
+    # de l'archive, octets e30ef59b…), et celle servie depuis septembre ne diffèrent que
+    # par deux cellules de pluie horaire, vides puis 0.0 avec la qualité 1 (RR1, QRR1 :
+    # SAMPOLO le 06/07/2020 à 14 h UTC, FIGARI le 03/06/2021 à 9 h UTC), sur 2 237 787
+    # lignes. Aucune colonne lue par prepare ne bouge, et ses 2 225 985 mesures de
+    # température retenues sont identiques : aucune sortie publiée ne change. Adopter
+    # ôte en revanche un risque : évincé du cache, le fichier d'août n'aurait plus été
+    # servi par personne, donc refusé à la restauration, et la chaîne arrêtée.
+    # Une révision ULTÉRIEURE ne s'adopte pas d'elle-même : contenu servi différent de
+    # celui-ci = échec, jusqu'à une nouvelle mesure et une nouvelle déclaration.
+    contenu_adopte: "ec1b32d149c7952241ad4f4696fa37a90b58eeaecd55d433be8379e8e721c7b4"
     notes: >
       Tranche close 2020-2024, pendant figé du fichier glissant. Mêmes colonnes, même
       fuseau UTC, mêmes codes qualité QT. Sa dernière journée n'est PAS tronquée
       (contrairement au glissant). Close ne veut pas dire immuable : son producteur la
       régénère chaque mois, et son contenu a changé au moins une fois (copies d'août et
-      de septembre 2026, cf. empreinte_decompressee).
+      de septembre 2026, cf. contenu_adopte).
 
   meteo_horaire_corse:
     url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz"
