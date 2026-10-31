@@ -229,6 +229,14 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   stabilisation du 21/09, chaque nouvelle version porte aussi `payload_sha256`, calculé
   sur les octets bruts : toutes les reprises le revérifient avant envoi. Une ancienne
   entrée à empreinte uniquement canonique ne suffit pas à certifier son enveloppe.
+  Même principe pour un `.gz` que son producteur recompresse : `empreinte_decompressee`
+  empreinte le contenu (`zcat | sha256sum`), pas l'en-tête gzip qui date la compression —
+  Météo-France régénère ainsi chaque mois sa tranche 2020-2024 figée (constaté le
+  31/10/2026). **Une règle d'empreinte se vérifie sous celle de l'entrée de manifeste**,
+  pas sous celle de `sources.yaml` : quand une source figée en change, `fetch` contrôle
+  ses octets sous l'ancienne avant de ré-exprimer l'empreinte sous la nouvelle, sans
+  rien télécharger. Des octets que l'ancienne empreinte ne couvre pas échouent, même au
+  contenu identique — le changement de règle n'est jamais une porte d'entrée.
 - **Un verrou s'éprouve sur des données AVANT d'être fusionné.** Depuis le 28/08/2026 la
   CI de PR a deux jobs : `valider` (environnement d'`uv.lock`, sans données) et `verrous`,
   qui restaure le cache `data/raw` du pipeline en lecture seule, rejoue `prepare` → figures

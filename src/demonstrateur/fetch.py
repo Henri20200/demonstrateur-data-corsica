@@ -14,7 +14,8 @@ signifier « données anciennes ignorées ») :
    jeu périssable ;
  - source figée déjà présente avec empreinte : pas de re-téléchargement,
    mais ses champs déclaratifs (url, licence, producteur, format) sont
-   resynchronisés depuis sources.yaml ;
+   resynchronisés depuis sources.yaml ; si sa règle d'empreinte y a changé,
+   l'empreinte est vérifiée sous l'ancienne puis ré-exprimée sous la nouvelle ;
  - le manifeste est réécrit à chaque run, cache valide compris ;
  - téléchargement en `.part` puis remplacement atomique : un
    rafraîchissement qui échoue CONSERVE le fichier et l'entrée de
@@ -69,7 +70,7 @@ from defusedxml.common import EntitiesForbidden
 
 from . import archive
 from .config import DATA_RAW, MANIFEST_FILE, SOURCES_FILE
-from .provenance import empreinte
+from .provenance import empreinte, regle
 
 _HTML_TYPES = {"text/html", "application/xhtml+xml"}
 _VAR_ENV_RE = re.compile(r"\$\{([A-Z][A-Z0-9_]*)\}")
@@ -359,8 +360,8 @@ def _entree_certifiee(already: dict, meta: dict, dest: Path, sha: str,
     re-téléchargée, seule l'empreinte est ré-exprimée) et pose `recertifie_le` = aujourd'hui
     (QUAND l'empreinte a été ré-adoptée, distinct de QUAND la donnée a été recueillie) ; un
     téléchargement pose une date de collecte neuve et efface toute `recertifie_le`. Enregistre
-    `empreinte_ignore_xml` quand l'empreinte est canonique : le manifeste documente ainsi
-    lui-même que son SHA-256 ne porte pas sur les octets bruts.
+    la règle (`empreinte_ignore_xml`, `empreinte_decompressee`) quand l'empreinte ne porte
+    pas sur les octets bruts : le manifeste le documente ainsi lui-même.
     """
     entree = {
         "url": meta["url"],
@@ -379,6 +380,8 @@ def _entree_certifiee(already: dict, meta: dict, dest: Path, sha: str,
     ignore = meta.get("empreinte_ignore_xml")
     if ignore:
         entree["empreinte_ignore_xml"] = list(ignore)
+    if meta.get("empreinte_decompressee"):
+        entree["empreinte_decompressee"] = True
     entree["date_collecte"] = (
         date_collecte or already.get("date_collecte") or date.today().isoformat()
     )
@@ -613,8 +616,10 @@ def main(argv: list[str] | None = None) -> int:
             # Une empreinte n'est probante que RE-VÉRIFIÉE : la seule présence du fichier
             # ne suffit plus. On recalcule (forme canonique si déclarée) et on compare —
             # une donnée qui aurait dérivé sous le manifeste est ainsi attrapée, pas subie.
+            # Sous la règle que porte l'ENTRÉE, celle sous laquelle ce sha256 a été
+            # certifié : sources.yaml peut en déclarer une nouvelle (traitée plus bas).
             try:
-                obtenue = empreinte(dest, meta)
+                obtenue = empreinte(dest, already)
             except Exception as exc:  # noqa: BLE001
                 print(f"[!] {source_id} : ÉCHEC vérification — fichier illisible : {exc}")
                 failures.append(source_id)
@@ -629,6 +634,26 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 failures.append(source_id)
                 continue
+            if regle(meta) != regle(already):
+                # Changement de règle déclaré (ex. `empreinte_decompressee` ajouté le
+                # 31/10/2026 à la tranche météo 2020-2024, que Météo-France recompresse
+                # chaque mois). Les octets viennent d'être vérifiés sous l'ancienne règle :
+                # les ré-empreinter sous la nouvelle ne certifie rien qui ne l'était déjà.
+                # Un fichier qui ne passe pas l'ancienne règle a échoué plus haut — il ne
+                # profite jamais du changement pour se faire certifier.
+                try:
+                    obtenue = empreinte(dest, meta)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"[!] {source_id} : ÉCHEC — nouvelle règle d'empreinte "
+                          f"inapplicable : {exc}")
+                    failures.append(source_id)
+                    continue
+                ancienne = already["sha256"]
+                already = manifest[source_id] = _entree_certifiee(
+                    already, meta, dest, obtenue, recertifie=True
+                )
+                print(f"[±] {source_id} : empreinte ré-exprimée selon la règle de "
+                      f"sources.yaml ({ancienne[:12]}… vérifiée -> {obtenue[:12]}…).")
             modifies = _sync_declaratif(already, meta)
             suffixe = f" — métadonnées resynchronisées ({', '.join(modifies)})" if modifies else ""
             # Vérifiée sans être re-téléchargée : rien de neuf à conserver, mais la

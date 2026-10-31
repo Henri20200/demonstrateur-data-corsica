@@ -72,6 +72,11 @@
 #                        (donnée stable). Sans ça, l'empreinte porterait sur l'enveloppe de transport
 #                        et ne serait pas reproductible ; avec, elle certifie la donnée. La
 #                        vérification à chaque run et prepare l'appliquent aussi (cf. provenance.py).
+#   empreinte_decompressee : true -> SHA-256 du contenu DÉCOMPRESSÉ d'un .gz (= zcat | sha256sum).
+#                        Même raison qu'au-dessus : un producteur qui recompresse un contenu
+#                        inchangé réécrit l'instant de compression dans l'en-tête gzip. Ajoutée
+#                        à une source figée déjà certifiée, la règle ne s'applique qu'après
+#                        vérification des octets sous l'ancienne (fetch ré-exprime l'empreinte).
 # ============================================================
 
 sources:
@@ -494,10 +499,15 @@ sources:
     format: csv.gz
     delimiter: ";"
     colonnes_attendues: [NUM_POSTE, NOM_USUEL, AAAAMMJJHH, T, QT]
+    # Météo-France recompresse ce fichier chaque mois sans en changer le contenu : la
+    # copie du 01/09/2026 et celle du 01/10/2026 ne diffèrent que par l'instant de
+    # compression de l'en-tête gzip (3 octets sur 82 Mo, constaté le 31/10/2026).
+    empreinte_decompressee: true
     notes: >
       Tranche close 2020-2024, pendant figé du fichier glissant. Mêmes colonnes, même
       fuseau UTC, mêmes codes qualité QT. Sa dernière journée n'est PAS tronquée
-      (contrairement au glissant) : le fichier ne sera plus jamais réécrit.
+      (contrairement au glissant) : son contenu ne sera plus jamais réécrit — son
+      enveloppe gzip, si (cf. empreinte_decompressee).
 
   meteo_horaire_corse:
     url: "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz"
