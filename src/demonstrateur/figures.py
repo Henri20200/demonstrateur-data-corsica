@@ -15,6 +15,7 @@ présent en aucun cas.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -23,7 +24,10 @@ import plotly.graph_objects as go
 
 from .config import DATA_PROCESSED
 from .prepare import verifier_sorties
-from .viz import NEUTRE_ZERO, PALETTE, RAMPE_SOLAIRE, SANS, date_collecte, export_html
+from .viz import (CADRE_ETROIT_MIN_PX, GARDE_BASSE_PX, INTERLIGNE, MARGE_PAGE_PX,
+                  NEUTRE_ZERO, PALETTE, RAMPE_SOLAIRE, RETRAIT_TITRE_PX, SANS,
+                  SEUIL_ETROIT_PX, TAILLE_SOUS_TITRE, TAILLE_TITRE, date_collecte,
+                  export_html, largeur_px, replier_equilibre, template, texte_pied)
 
 MIX = (DATA_PROCESSED / "edf_mix_corse.parquet").as_posix()
 COURBE = (DATA_PROCESSED / "edf_courbe_corse.parquet").as_posix()
@@ -81,44 +85,428 @@ def _con():
     return duckdb.connect()
 
 
-# --- Titre 1 : « au dernier relevé, X % de soleil » --------------------------
-def fig_t1_soleil() -> tuple[go.Figure, str, str, float, str]:
-    con = _con()
-    r = con.execute(
-        f"""SELECT part_soleil, strftime(timezone('Europe/Paris',"date"),'%d/%m/%Y à %Hh%M'),
-                   statut, extract(epoch FROM (now() - "date"))/3600.0,
+# --- Titre 1 : la place du solaire sur les six dernières heures de relevés -------
+# Fenêtre : les 24 relevés de 15 min qui se terminent au dernier relevé publié par EDF.
+T1_PAS_MIN = 15
+T1_RELEVES = 24                 # six heures
+T1_INTERPOLABLES = 2            # relevés manquants qu'on accepte d'estimer (cf. fenetre_t1)
+T1_HAUTEUR_TRACE_PX = 370       # texte le plus long : trois lignes de quantités (364 px)
+T1_TITRE = ("Quelle place le solaire occupe-t-il<br>"
+            "dans l'électricité consommée en Corse ?")
+# Corps de texte et écarts verticaux (px, après chaque bloc du corps, filet compris) des
+# deux mises en page. L'étroite reste confortable : rien sous 16 px, plancher des pieds.
+T1_LARGE = dict(periode=21, part=72, phrase=21, texte=18, collecte=16,
+                ecarts=(0, -12, 16, 18, 16, 12, 0))
+T1_ETROIT = dict(titre=24, sous_titre=16, periode=18, part=64, phrase=18, texte=16,
+                 collecte=16, pied=16, ecarts=(0, -10, 14, 16, 14, 10, 0))
+T1_MARGE_ETROITE_PX = 8
+T1_TITRE_ETROIT_PX = 48         # haut du titre étroit : sous la barre d'outils (28 px)
+T1_HAUTEUR_ETROITE_PX = 1080    # pire cas inventé : 1 076 px (cf. tests/test_t1_mise_en_page.py)
+# Les mots de l'âge du relevé, écrits par le script chez le lecteur et mesurés ici.
+T1_MOTS_AGE = dict(remonte="Le dernier relevé remonte", panne="la collecte est en panne.",
+                   relancer="collecte à relancer.")
+MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+              "septembre", "octobre", "novembre", "décembre"]
+
+
+def _jour_fr(t) -> str:
+    return f"{'1er' if t.day == 1 else t.day} {MOIS_LONGS[t.month - 1]}"
+
+
+def _heure_fr(t) -> str:
+    return f"{t.hour}h{t.minute:02d}"
+
+
+def _mwh_fr(x: float) -> str:
+    """MWh arrondis à la dizaine (donnée estimée), milliers séparés à la française."""
+    return f"{round(x, -1):,.0f}".replace(",", " ")
+
+
+def fenetre_t1(con) -> dict:
+    """Les six heures de relevés qui précèdent le dernier, et ce qu'on peut en dire.
+
+    Règle des relevés manquants (tranchée le 31/10/2026) : sur 14 jours, 22 % des
+    fenêtres de six heures perdaient au moins un quart d'heure dans le brut d'EDF. Un ou
+    deux relevés manquants, ENCADRÉS par des relevés disponibles (le voisin d'avant peut
+    tomber juste hors fenêtre), s'estiment par interpolation linéaire, et la figure le
+    dit. Au-delà, les MWh sont masqués — ils seraient faux par défaut — et le pourcentage
+    est donné pour ce qu'il est : un rapport sur les seuls relevés disponibles, que les
+    trous peuvent aussi biaiser (un trou de midi n'enlève pas la même chose qu'un trou de
+    nuit).
+
+    Les instants voyagent en secondes : DuckDB ne rend un TIMESTAMPTZ en objet Python
+    qu'avec pytz, absent du runner (cf. test_t1_calcule_sa_fraicheur_chez_le_lecteur).
+    Les bornes affichées sont les ÉTIQUETTES des relevés, en heure légale corse : EDF ne
+    documente pas si l'étiquette marque le début ou la fin du quart d'heure, et la
+    donnée ne permet pas de trancher (vérifié le 31/10/2026). D'où « les 24 quarts d'heure
+    associés aux relevés de 1h00 à 6h45 », vrai dans les deux cas : « de 0h45 à 6h45 » ne
+    le serait que dans un, et « entre 1h00 et 6h45 » se lit comme 5 h 45 alors que les
+    quantités comptent six heures.
+    """
+    pas_s = T1_PAS_MIN * 60
+    fin_e, fin_loc, debut_loc, statut, age_h, instant_iso = con.execute(
+        f"""SELECT extract(epoch FROM max("date"))::BIGINT,
+                   timezone('Europe/Paris', max("date")),
+                   timezone('Europe/Paris', max("date") - INTERVAL {(T1_RELEVES - 1) * T1_PAS_MIN} MINUTE),
+                   arg_max(statut, "date"),
+                   extract(epoch FROM (now() - max("date")))/3600.0,
                    -- UTC suffixé Z : `%z` de DuckDB rend « +02 » sans minutes, que
                    -- Date() de JavaScript n'est pas tenu de savoir lire (et Safari
                    -- refuse). L'instant est le même, écrit dans la seule forme que
                    -- toutes les implémentations acceptent.
-                   strftime(timezone('UTC', "date"), '%Y-%m-%dT%H:%M:%SZ')
-            FROM '{MIX}' ORDER BY "date" DESC LIMIT 1"""
+                   strftime(timezone('UTC', max("date")), '%Y-%m-%dT%H:%M:%SZ')
+            FROM '{MIX}'"""
     ).fetchone()
-    val, quand, statut, age_h, instant_iso = r
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number", value=val,
-        number=dict(suffix=" %", font=dict(family=SANS, size=64, color=PALETTE["solaire"])),
-        gauge=dict(
-            axis=dict(range=[0, 100], tickwidth=1, tickcolor=PALETTE["rule"],
-                      tickfont=dict(family=SANS, size=16, color=PALETTE["ink_soft"])),
-            bar=dict(color=PALETTE["solaire"], thickness=0.32),
-            bgcolor=PALETTE["rule_soft"], borderwidth=0,
+    lignes = con.execute(
+        f"""SELECT extract(epoch FROM "date")::BIGINT, photovoltaique, total FROM '{MIX}'
+            WHERE "date" >= (SELECT max("date") FROM '{MIX}') - INTERVAL {T1_RELEVES * T1_PAS_MIN} MINUTE"""
+    ).fetchall()
+    releves = {e: (pv, tot) for e, pv, tot in lignes}
+    grille = [fin_e - k * pas_s for k in range(T1_RELEVES - 1, -1, -1)]   # 24 instants
+    manquants = [e for e in grille if e not in releves]
+
+    def encadre(e: int) -> bool:
+        avant, apres = e - pas_s, e + pas_s
+        while avant in manquants:
+            avant -= pas_s
+        while apres in manquants:
+            apres += pas_s
+        return avant in releves and apres in releves
+
+    estimes = 0
+    if manquants and len(manquants) <= T1_INTERPOLABLES and all(map(encadre, manquants)):
+        for e in manquants:
+            avant = max(k for k in releves if k < e)
+            apres = min(k for k in releves if k > e)
+            w = (e - avant) / (apres - avant)
+            releves[e] = tuple((1 - w) * a + w * b for a, b in zip(releves[avant], releves[apres]))
+        estimes = len(manquants)
+    complet = estimes == len(manquants)
+    presents = [releves[e] for e in grille if e in releves]
+    pv = sum(p for p, _ in presents)
+    tot = sum(t for _, t in presents)
+    heures = T1_PAS_MIN / 60
+    return dict(
+        part=100.0 * pv / tot, mwh_solaire=pv * heures if complet else None,
+        mwh_total=tot * heures if complet else None,
+        disponibles=len(presents) - estimes, estimes=estimes,
+        debut=debut_loc, fin=fin_loc, statut=statut, age_h=float(age_h),
+        instant_iso=instant_iso,
+    )
+
+
+def repere_annuel_t1(con) -> tuple[int, int]:
+    """Part du solaire dans l'électricité consommée, année par année : (min, max) arrondis.
+
+    Même rapport que la fenêtre de six heures (solaire / consommation, câbles compris),
+    calculé sur l'historique horaire — c'est l'ordre de grandeur qui empêche de lire un
+    midi ensoleillé comme la place du solaire dans l'électricité corse.
+    """
+    parts = [p for (p,) in con.execute(
+        f"""SELECT 100*sum(photovoltaique_mw)/sum(production_totale_mw)
+            FROM '{COURBE}' GROUP BY annee_locale"""
+    ).fetchall()]
+    return round(min(parts)), round(max(parts))
+
+
+def sous_titre_t1(quand: str, statut: str, age_h: float) -> str:
+    """Sous-titre de T1 tel que la génération le pose ; le script y ajoute, chez le
+    lecteur, l'âge du relevé (cf. script_fraicheur).
+
+    Il sépare l'heure de consultation de la période mesurée : il date les dernières
+    données. Au-delà des seuils, l'avertissement passe DEVANT, sur sa propre ligne : un
+    titre Plotly se fait rogner plutôt que replier, et le message d'alerte disparaîtrait
+    précisément quand il est le plus utile.
+    """
+    st = f"Dernières données disponibles : {quand} (statut EDF : {statut.lower()})."
+    if age_h > FRAICHEUR_BLOQUER_H:
+        return (f"⚠ Relevé de plus de {FRAICHEUR_BLOQUER_H} h : donnée trop ancienne pour "
+                "représenter la situation actuelle.<br>" + st)
+    if age_h > FRAICHEUR_AVERTIR_H:
+        return (f"⚠ Relevé de plus de {FRAICHEUR_AVERTIR_H} h — collecte à relancer.<br>"
+                + st)
+    return st
+
+
+def note_t1(d_hist: str) -> str:
+    """Seconde source de T1, citée en note avec SA date : l'historique du repère annuel."""
+    return (f"Repère annuel : {SRC_HIST}, courbe horaire 2019-2024, données collectées "
+            f"le {d_hist}.")
+
+
+def textes_t1(f: dict, bas: int, haut: int) -> dict:
+    """Les textes du corps de T1, mis en lignes pour la largeur de référence.
+
+    Convention de repli : un `<br>` qui suit un point ou un deux-points finit une phrase
+    et se garde partout ; les autres ne servent qu'à la largeur, et la mise en page
+    étroite les dissout avant de replier (cf. _replier_etroit).
+    """
+    fin, debut = f["fin"], f["debut"]
+    # La durée se dit en quarts d'heure, pas par deux heures : « de 7h45 à 13h30 » seul se
+    # lit comme 5 h 45, alors que les quantités en comptent 24 (cf. fenetre_t1).
+    if f["mwh_total"] is not None:
+        quarts = f"Sur les {T1_RELEVES} quarts d'heure"
+    else:
+        quarts = f"Sur {f['disponibles']} des {T1_RELEVES} quarts d'heure"
+    if debut.date() == fin.date():
+        periode = (f"{quarts} associés aux relevés du {_jour_fr(fin)}, "
+                   f"de {_heure_fr(debut)} à {_heure_fr(fin)},<br>le solaire a fourni")
+    else:
+        periode = (f"{quarts} associés aux relevés allant du {_jour_fr(debut)} à "
+                   f"{_heure_fr(debut)}<br>au {_jour_fr(fin)} à {_heure_fr(fin)}, "
+                   "le solaire a fourni")
+    if f["mwh_total"] is not None:
+        # L'unité est expliquée : le public visé connaît le kWh de sa facture, pas le MWh.
+        quantites = (f"Sur cette période : {_mwh_fr(f['mwh_solaire'])} MWh d'origine "
+                     f"solaire, sur {_mwh_fr(f['mwh_total'])} MWh consommés.<br>"
+                     "1 MWh = 1 000 kWh, l'unité de votre facture d'électricité.")
+        if f["estimes"]:
+            s = "s" if f["estimes"] > 1 else ""
+            quantites += (f"<br>{f['estimes']} relevé{s} manquant{s} sur {T1_RELEVES}, "
+                          f"estimé{s} à partir des relevés voisins.")
+    else:
+        quantites = (f"Seuls {f['disponibles']} relevés sur {T1_RELEVES} sont disponibles : "
+                     "le pourcentage porte sur ces relevés,<br>et les quantités ne sont pas "
+                     "affichées.")
+    return dict(
+        periode=periode,
+        part=f"<b>{f['part']:.0f} %</b>",
+        phrase="de l'électricité consommée en Corse.",
+        quantites=quantites,
+        repere=(f"Repère : sur une année entière, le solaire fournit {bas} à {haut} %<br>"
+                "de l'électricité consommée en Corse (2019-2024)."),
+        collecte="La collecte est programmée toutes les six heures.",
+    )
+
+
+def _insecables(t: str) -> str:
+    """Espaces où la mise en page étroite ne coupe pas : avant %, : et ?, dans une date
+    (« 30 octobre »), entre « à » et une heure, et dans « (statut EDF : estimé) »."""
+    nb = " "
+    t = t.replace(" %", nb + "%").replace(" :", nb + ":").replace(" ?", nb + "?")
+    t = re.sub(rf"(\d+(?:er)?) ({'|'.join(MOIS_LONGS)})", rf"\1{nb}\2", t)
+    t = re.sub(r" à (\d+h\d\d)", rf" à{nb}\1", t)
+    return t.replace(f"(statut EDF{nb}: ", f"(statut{nb}EDF{nb}:{nb}")
+
+
+def _replier_etroit(texte: str, taille: int, dispo: float) -> str:
+    """Repli de la mise en page étroite : fins de phrase gardées, le reste dissous puis
+    replié, équilibré et mesuré (viz.replier_equilibre)."""
+    return replier_equilibre(_insecables(re.sub(r"(?<![.:])<br>", " ", texte)), taille,
+                             dispo)
+
+
+def _lignes_age_t1(etroit: bool) -> list[str]:
+    """Les lignes que le script de fraîcheur peut ajouter au sous-titre, à leurs pires
+    durées : elles sont posées chez le lecteur, donc mesurées ici ou jamais."""
+    m = T1_MOTS_AGE
+    lignes = []
+    for d in ("59 min", "47 h 59", "365 jours"):
+        lignes.append(f"{m['remonte']} à {d}.")
+        for suite in (m["panne"], m["relancer"]):
+            if etroit:
+                lignes += [f"⚠ {m['remonte']}", f"à {d} : {suite}"]
+            else:
+                lignes.append(f"⚠ {m['remonte']} à {d} : {suite}")
+    return lignes
+
+
+def _filet_t1(y_px: int) -> dict:
+    """Le filet qui sépare le résultat du repère, à `y_px` sous le haut de la zone de tracé."""
+    return dict(type="line", xref="paper", x0=0, x1=1, yref="paper", ysizemode="pixel",
+                yanchor=1, y0=-y_px, y1=-y_px, line=dict(color=PALETTE["rule"], width=1))
+
+
+def _corps_t1(textes: dict, gabarit: dict, dispo: float,
+              replier=None) -> tuple[list[dict], int, int]:
+    """Annotations du corps, placées en PIXELS depuis le haut de la zone de tracé : le
+    bloc de quantités a de deux à trois phrases selon les relevés manquants, et une
+    fraction de hauteur ne dit pas où finit un texte. Chaque bloc pousse le suivant.
+
+    Une annotation ne se replie pas : chaque ligne est mesurée comme un titre
+    (viz.verifier_titres) et une ligne trop large lève. Rend (annotations, hauteur du
+    filet, hauteur occupée).
+    """
+    encre, doux = PALETTE["ink"], PALETTE["ink_soft"]
+    ecarts = iter(gabarit["ecarts"])
+    curseur, annotations = 0, []
+
+    def poser(texte: str, taille: int, couleur: str) -> None:
+        nonlocal curseur
+        if replier:
+            texte = replier(texte, taille)
+        for ligne in texte.split("<br>"):
+            largeur = largeur_px(ligne.replace(" ", " "), taille)
+            if largeur > dispo:
+                raise ValueError(f"t1 : ligne de {largeur:.0f} px (dispo {dispo:.0f}) : "
+                                 f"{ligne}")
+        annotations.append(dict(text=texte, xref="paper", yref="paper", x=0, y=1,
+                                xanchor="left", yanchor="top", yshift=-curseur,
+                                showarrow=False, align="left",
+                                font=dict(family=SANS, size=taille, color=couleur)))
+        curseur += round((texte.count("<br>") + 1) * taille * INTERLIGNE) + next(ecarts)
+
+    poser(textes["periode"], gabarit["periode"], encre)
+    poser(textes["part"], gabarit["part"], encre)
+    poser(textes["phrase"], gabarit["phrase"], encre)
+    poser(textes["quantites"], gabarit["texte"], doux)
+    # Le repère, séparé du résultat par un filet : il ne dépend pas des six heures.
+    filet = curseur
+    curseur += next(ecarts)
+    poser(textes["repere"], gabarit["texte"], encre)
+    poser(textes["collecte"], gabarit["collecte"], doux)
+    return annotations, filet, curseur
+
+
+def disposition_etroite_t1(textes: dict, sous_titre: str, pied: str) -> dict:
+    """La mise en page de T1 pour un cadre étroit (cf. viz.SEUIL_ETROIT_PX), au format
+    d'un `Plotly.relayout` : le script de la page l'applique sous le seuil, et l'étude
+    lit `hauteur` pour dimensionner le cadre.
+
+    Conçue pour le plus petit cadre (viz.CADRE_ETROIT_MIN_PX) et vérifiée ici : chaque
+    ligne y tient, ou la génération lève — un texte rogné sur téléphone ne laissait que
+    le pourcentage, sans la période ni le repère qui le bornent (constat du 31/10/2026).
+    Hauteur FIXE, celle du cas le plus long : le cadre de l'étude ne doit pas changer
+    d'un run à l'autre. Le pied suit le corps, si bien que l'espace libre d'un cas plus
+    court tombe sous la source, pas entre le texte et elle.
+    """
+    g = T1_ETROIT
+    marge = T1_MARGE_ETROITE_PX
+    # 6 px de garde à droite, comme RETRAIT_TITRE_PX pour les titres larges.
+    dispo = CADRE_ETROIT_MIN_PX - 2 * MARGE_PAGE_PX - 2 * marge - 6
+
+    def replier(texte: str, taille: int) -> str:
+        return _replier_etroit(texte, taille, dispo)
+
+    titre = replier(T1_TITRE, g["titre"])
+    st = replier(sous_titre.replace("disponibles :", "disponibles :<br>"), g["sous_titre"])
+    trop = [li for li in _lignes_age_t1(etroit=True)
+            if largeur_px(li, g["sous_titre"]) > dispo]
+    if trop:
+        raise ValueError(f"t1 étroit : âge du relevé plus large que {dispo} px : {trop}")
+    # Deux lignes réservées à l'âge du relevé : l'avertissement en prend deux.
+    haut = round(T1_TITRE_ETROIT_PX + (titre.count("<br>") + 1) * g["titre"] * 1.35
+                 + (st.count("<br>") + 3) * g["sous_titre"] * 1.3 + 16)
+    annotations, filet, corps = _corps_t1(textes, g, dispo, replier)
+    corps += 26
+    pied_e = replier_equilibre(_insecables(pied), g["pied"], dispo)
+    annotations.append(dict(text=pied_e, xref="paper", yref="paper", x=0, y=1,
+                            xanchor="left", yanchor="top", yshift=-corps, showarrow=False,
+                            align="left",
+                            font=dict(family=SANS, size=g["pied"], color=PALETTE["ink_soft"])))
+    bas = 8
+    besoin = round(haut + corps + (pied_e.count("<br>") + 1) * g["pied"] * INTERLIGNE
+                   + GARDE_BASSE_PX + bas)
+    if besoin > T1_HAUTEUR_ETROITE_PX:
+        raise ValueError(f"t1 étroit : {besoin} px de texte pour un cadre de "
+                         f"{T1_HAUTEUR_ETROITE_PX} px — augmenter T1_HAUTEUR_ETROITE_PX.")
+    hauteur = T1_HAUTEUR_ETROITE_PX
+    return dict(
+        seuil=SEUIL_ETROIT_PX, hauteur=hauteur, sous_titre=st,
+        disposition=dict(
+            annotations=annotations, shapes=[_filet_t1(filet)],
+            margin=dict(t=haut, b=bas, l=marge, r=marge), height=hauteur,
+            title=dict(text=titre, xref="container", x=0, xanchor="left", pad=dict(l=marge),
+                       yref="container", y=1 - T1_TITRE_ETROIT_PX / hauteur, yanchor="top",
+                       font=dict(size=g["titre"]),
+                       subtitle=dict(text=st, font=dict(size=g["sous_titre"]))),
         ),
-        domain=dict(x=[0, 1], y=[0, 0.82]),
-    ))
-    # Le titre nomme le RELEVÉ, jamais l'instant présent. La page est statique et
-    # republiée ~4 fois par jour : ce que lit le visiteur a de 0 à 7 h, et bien plus si un
-    # run échoue — 18,1 h observées du 18/08 21:03 au 19/08 15:07, 11,7 h le 24/08 quand un
-    # verrou du sujet air a bloqué la publication. Aucun seuil de fraîcheur ne peut voir ces
-    # gels-là : ils s'évaluent DANS le run, et un run qui échoue ne publie rien — la page
-    # que lit le visiteur n'a donc jamais été soumise au test. L'heure exacte du relevé est
-    # au sous-titre ; l'écart, c'est le lecteur qui le fait, et il le peut.
-    # Plus de variante dégradée au seuil haut : le titre ne promettant plus le présent, il n'y a
-    # plus rien à dégrader. Le garde-fou 7 garde ses dents ailleurs, et elles ne bougent
-    # pas — ⚠ en tête du sous-titre et `code = 1` (cf. main()).
-    titre = "Quelle part de l'électricité corse vient du <b>soleil</b> ?"
-    fig.update_layout(title=dict(text=titre), height=520)
-    return fig, quand, statut, float(age_h), instant_iso
+    )
+
+
+def figure_t1(f: dict, bas: int, haut: int, sous_titre: str, pied: str) -> go.Figure:
+    """La figure T1 à partir de sa fenêtre (fenetre_t1) et de son repère annuel, avec sa
+    mise en page étroite rangée dans `layout.meta.etroit`. Sans accès aux données : la
+    figure se construit, et se vérifie, sur n'importe quel cas inventé."""
+    textes = textes_t1(f, bas, haut)
+    # La mise en page large sert jusqu'au seuil étroit, pas seulement à 992 px : c'est à
+    # cette largeur-là qu'elle doit tenir.
+    figure_px = SEUIL_ETROIT_PX - 2 * MARGE_PAGE_PX
+    annotations, filet, corps = _corps_t1(textes, T1_LARGE, figure_px - 2 * 24 - RETRAIT_TITRE_PX)
+    if corps > T1_HAUTEUR_TRACE_PX:
+        raise ValueError(f"t1 : le texte ({corps} px) déborde de sa zone "
+                         f"({T1_HAUTEUR_TRACE_PX} px) — augmenter T1_HAUTEUR_TRACE_PX.")
+    larges = ([(li, TAILLE_TITRE) for li in T1_TITRE.split("<br>")]
+              + [(li, TAILLE_SOUS_TITRE) for li in sous_titre.split("<br>")]
+              + [(li, TAILLE_SOUS_TITRE) for li in _lignes_age_t1(etroit=False)])
+    trop = [li for li, taille in larges
+            if largeur_px(li, taille) > figure_px - RETRAIT_TITRE_PX]
+    if trop:
+        raise ValueError(f"t1 : titre ou sous-titre trop large au seuil étroit : {trop}")
+
+    fig = go.Figure()
+    fig.update_xaxes(visible=False, range=[0, 1])
+    fig.update_yaxes(visible=False, range=[0, 1])
+    for annotation in annotations:
+        fig.add_annotation(**annotation)
+    fig.add_shape(**_filet_t1(filet))
+    # Le titre pose la question ; la page ne promet jamais le présent — l'heure du dernier
+    # relevé est au sous-titre et son âge se calcule chez le lecteur (cf. main()). Les gels
+    # de publication observés (18,1 h le 19/08, 11,7 h le 24/08, 19 h le 30/10) ne rendent
+    # donc jamais la page fausse : elle date ce qu'elle mesure.
+    haut_px, bas_px = 200, 150
+    fig.update_layout(
+        # Corps, position et retrait EXPLICITES, valeurs du template comprises : le script
+        # rétablit la mise en page large depuis le layout de la page, où ce qui vient du
+        # seul template n'apparaît pas.
+        title=dict(text=T1_TITRE, yref="container", x=template().layout.title.x,
+                   xanchor="left", pad=dict(l=0), font=dict(size=TAILLE_TITRE),
+                   subtitle=dict(font=dict(size=TAILLE_SOUS_TITRE))),
+        hovermode=False,
+        # Marges latérales au bord du pied (20 px) : le texte se lit d'un seul alignement.
+        margin=dict(t=haut_px, b=bas_px, l=24, r=24),
+        # Hauteur FIXE, calée sur le cas le plus long (trois lignes de quantités) : elle
+        # dimensionne l'iframe de l'étude, qui ne doit pas changer d'un run à l'autre.
+        height=haut_px + T1_HAUTEUR_TRACE_PX + bas_px,
+        meta=dict(etroit=disposition_etroite_t1(textes, sous_titre, pied)),
+    )
+    return fig
+
+
+def fig_t1_soleil() -> tuple[go.Figure, str, str, float, str]:
+    """La part du solaire dans l'électricité consommée, sur les six dernières heures de
+    relevés, avec ses quantités et un repère annuel.
+
+    Cette figure a été une JAUGE jusqu'au 31/10/2026 : un cadran 0-100 affichant la part
+    du solaire au DERNIER QUART D'HEURE, sous « Quelle part de l'électricité corse vient du
+    soleil ? ». Ce jour-là, à 13h30, elle disait 50,1 % — exact pour ce quart d'heure,
+    faux comme réponse à la question : sur une année, le solaire fournit 9 à 12 % de
+    l'électricité consommée (2019-2024). Un lecteur un peu averti y voyait une aberration.
+    Et publiée toutes les six heures, la jauge était une horloge dont l'aiguille ne bouge
+    que par sauts, lue par un lecteur qui raisonne à l'instant où il ouvre la page.
+
+    D'où ce qui est affiché, et pourquoi :
+    - une PÉRIODE mesurée (six heures de relevés), distincte de l'heure de consultation,
+      et ses deux bornes écrites ;
+    - des QUANTITÉS (MWh consommés, dont d'origine solaire) plutôt que des puissances
+      moyennes : sur une période, le lecteur attend combien, pas une moyenne ;
+    - un REPÈRE ANNUEL à côté du résultat, sans lequel un midi ensoleillé se lit encore
+      comme la place du solaire en général.
+
+    « D'origine solaire » désigne la filière qu'EDF nomme photovoltaïque, et non une
+    production au soleil de l'instant : EDF y classe une vingtaine de MW de 19h15 à 21h15
+    environ, après le coucher du soleil. Cela POURRAIT correspondre à une restitution
+    d'énergie stockée — le profil ressemble à celui que rémunèrent les appels d'offres
+    CRE « PV + stockage » des zones non interconnectées (au moins 20 % de la puissance
+    crête injectés sur un créneau de deux heures à la pointe ; rapport de synthèse CRE,
+    3e période, 17/09/2020). Rien ne le prouve : EDF ne dit pas comment il classe ces
+    injections, et son registre des installations ne signale aucune centrale solaire
+    avec stockage (vérifié le 31/10/2026). Hypothèse plausible, à écrire au conditionnel.
+
+    Le dénominateur est `total` = thermique + renouvelables distribués + hydraulique +
+    câbles : l'électricité CONSOMMÉE, pas la seule production de l'île.
+    """
+    con = _con()
+    f = fenetre_t1(con)
+    bas, haut = repere_annuel_t1(con)
+    fin = f["fin"]
+    quand = f"{_jour_fr(fin)} {fin.year} à {_heure_fr(fin)}"
+    # Le sous-titre et le pied sont ceux que main() posera : la mise en page étroite les
+    # replie, elle ne les réécrit pas (cf. sous_titre_t1, note_t1).
+    pied = texte_pied(SRC_MIX, date_collecte("edf_mix_temps_reel"),
+                      note_t1(date_collecte("edf_courbe_charge_horaire")))
+    fig = figure_t1(f, bas, haut, sous_titre_t1(quand, f["statut"], f["age_h"]), pied)
+    return fig, quand, f["statut"], f["age_h"], f["instant_iso"]
 
 
 # --- Titre 2 : la demande grimpe l'été (le « combien », bond juin→juillet) -----
@@ -1193,12 +1581,17 @@ def fig_t10_pointes_estivales() -> tuple[go.Figure, float, float, float]:
 
 
 def script_fraicheur(instant_iso: str, sous_titre: str) -> str:
-    """JavaScript local : réécrit le sous-titre de T1 avec l'âge du relevé À L'OUVERTURE.
+    """JavaScript local de T1 : l'âge du relevé À L'OUVERTURE, et la mise en page selon
+    la largeur du cadre.
 
-    Aucune ressource tierce, aucun appel réseau — le script ne lit que deux valeurs
-    incrustées ici : l'instant du relevé et les seuils. Sans JavaScript, la page reste
-    juste : le sous-titre porte déjà la date et l'heure exactes du relevé, et c'est
-    l'affichage de repli. Rafraîchi toutes les cinq minutes pour l'onglet resté ouvert.
+    Aucune ressource tierce, aucun appel réseau — le script ne lit que des valeurs
+    incrustées dans la page : l'instant du relevé, les seuils, et la mise en page étroite
+    calculée à la génération (`layout.meta.etroit`, cf. disposition_etroite_t1). Il
+    choisit entre les deux mises en page, il ne compose aucun texte ; la large est
+    relevée dans la page avant toute bascule, pour pouvoir y revenir quand le cadre
+    s'élargit. Sans JavaScript, la page reste juste : le sous-titre porte déjà la date et
+    l'heure exactes du relevé, et c'est l'affichage de repli. Rafraîchi toutes les cinq
+    minutes pour l'onglet resté ouvert.
     """
     base = json.dumps(sous_titre)
     return f"""
@@ -1206,23 +1599,46 @@ def script_fraicheur(instant_iso: str, sous_titre: str) -> str:
   var instant = new Date({json.dumps(instant_iso)});
   var AVERTIR = {FRAICHEUR_AVERTIR_H}, BLOQUER = {FRAICHEUR_BLOQUER_H};
   var base = {base};
+  var MOTS = {json.dumps(T1_MOTS_AGE)};
   var cible = document.getElementById('t1_soleil_live');
   if (!cible || isNaN(instant.getTime())) return;
+  function copie(o) {{ return JSON.parse(JSON.stringify(o)); }}
+  var L = cible.layout, E = L.meta && L.meta.etroit, etroit = false;
+  var LARGE = E ? copie({{annotations: L.annotations, shapes: L.shapes, margin: L.margin,
+                         height: L.height, title: L.title}}) : null;
   function age() {{
     var h = (Date.now() - instant.getTime()) / 3600000;
     if (!isFinite(h) || h < 0) return '';
-    var d;
-    if (h < 1) d = "il y a moins d'une heure";
-    else if (h < 24) d = 'il y a ' + Math.round(h) + ' h';
-    else d = 'il y a ' + Math.round(h / 24) + ' j';
-    if (h > BLOQUER) return '<br>⚠ Relevé ' + d + ' : la collecte est en panne.';
-    if (h > AVERTIR) return '<br>⚠ Relevé ' + d + ' — collecte à relancer.';
-    return ' — ' + d + '.';
+    // À la minute près : « 1 h 35 » se compare à l'heure de la montre, « 2 h » non.
+    var m = Math.round(h * 60), d;
+    if (m < 60) d = m + ' min';
+    else if (h < 48) d = Math.floor(m / 60) + ' h ' + ('0' + (m % 60)).slice(-2);
+    else d = Math.round(h / 24) + ' jours';
+    // En cadre étroit, l'avertissement tient sur deux lignes (mesurées à la génération).
+    var a = etroit ? '<br>à ' : ' à ';
+    if (h > BLOQUER) return '<br>⚠ ' + MOTS.remonte + a + d + ' : ' + MOTS.panne;
+    if (h > AVERTIR) return '<br>⚠ ' + MOTS.remonte + a + d + ' : ' + MOTS.relancer;
+    return '<br>' + MOTS.remonte + ' à ' + d + '.';
   }}
   function poser() {{
-    Plotly.relayout(cible, {{'title.subtitle.text': base + age()}});
+    Plotly.relayout(cible, {{'title.subtitle.text': (etroit ? E.sous_titre : base) + age()}});
   }}
-  poser();
+  // Même seuil que la hauteur du cadre dans l'étude : sous lui, cadre et figure
+  // passent ensemble en étroit, sans quoi l'un couperait l'autre. La hauteur se pose
+  // aussi sur le div, que l'export fige à celle de la mise en page large : la boîte de
+  // la figure suit ainsi ce qu'elle dessine. Bascule vérifiée le 01/11/2026 dans un
+  // vrai Chrome, de 1 200 à 360 px d'écran et retour, cadre de l'étude compris.
+  function adapter() {{
+    var e = !!E && window.innerWidth < E.seuil;
+    if (e === etroit) return false;
+    etroit = e;
+    var d = copie(e ? E.disposition : LARGE);
+    cible.style.height = d.height + 'px';
+    Plotly.relayout(cible, d).then(poser);
+    return true;
+  }}
+  if (!adapter()) poser();
+  window.addEventListener('resize', adapter);
   setInterval(poser, 300000);
 }})();
 """
@@ -1240,20 +1656,12 @@ def main() -> int:
     code = 0
 
     fig1, quand, statut, age_h, instant_iso = fig_t1_soleil()
-    sous_titre_t1 = f"Dernier relevé du {quand} (statut : {statut.lower()})"
+    st_t1 = sous_titre_t1(quand, statut, age_h)
     if age_h > FRAICHEUR_BLOQUER_H:
-        # Repli explicite : l'avertissement rallonge le sous-titre au-delà de la largeur
-        # du visuel, et un titre Plotly se fait rogner plutôt que replier — le message
-        # d'alerte disparaîtrait précisément quand il est le plus utile.
-        sous_titre_t1 = (f"⚠ Relevé de plus de {FRAICHEUR_BLOQUER_H} h : donnée trop "
-                         "ancienne pour représenter la situation actuelle.<br>"
-                         + sous_titre_t1)
         print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_BLOQUER_H} h) — "
               "avertissement de panne affiché, publication autorisée, run signalé.")
         code = CODE_FRAICHEUR
     elif age_h > FRAICHEUR_AVERTIR_H:
-        sous_titre_t1 = (f"⚠ Relevé de plus de {FRAICHEUR_AVERTIR_H} h — collecte à "
-                         "relancer.<br>" + sous_titre_t1)
         print(f"[!] t1 : relevé vieux de {age_h:.0f} h (> {FRAICHEUR_AVERTIR_H} h) — "
               "avertissement affiché sur le visuel.")
     # L'ÂGE SE CALCULE CHEZ LE LECTEUR, pas à la génération. La page est statique et
@@ -1264,8 +1672,11 @@ def main() -> int:
     # échoué. Un âge recalculé à l'ouverture ne dépend d'aucun run : c'est la seule
     # mesure qui couvre ce cas. Les seuils restent ceux de la génération, ce qui garde
     # UNE définition de la péremption des deux côtés.
-    export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix, sous_titre=sous_titre_t1,
-                script_apres=script_fraicheur(instant_iso, sous_titre_t1))
+    # Deux sources sur ce visuel : le temps réel pour les six heures, l'historique pour le
+    # repère annuel. La seconde se cite en note, avec SA date de collecte.
+    export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix, sous_titre=st_t1,
+                note=note_t1(d_hist), pied_decalage_px=-20,
+                script_apres=script_fraicheur(instant_iso, st_t1))
     export_html(fig_t2_demande_mensuelle(), "t2_demande_mensuelle", SRC_HIST, d_hist,
                 sous_titre="Demande moyenne mois par mois — Corse, 2019-2024",
                 # Ce visuel est celui d'où sort « l'hiver reste la période la plus

@@ -214,7 +214,8 @@ sur la Corse, avec les sources, les calculs et leurs limites.</p>
 
 <div class="etudes">{_sujets()}</div>
 <p class="annexes">La date de compilation est celle des pages. Chaque étude précise
-la période de ses observations ; la jauge électrique indique l'âge de son dernier relevé.</p>
+la période de ses observations ; le visuel électrique des six dernières heures indique
+l'âge de son dernier relevé.</p>
 
 <section class="preuve">
 <h2>Du résultat aux données</h2>

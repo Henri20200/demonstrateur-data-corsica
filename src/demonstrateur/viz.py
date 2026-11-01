@@ -30,7 +30,7 @@ PALETTE = {
     "muted":     "#8A8781",  # axes / labels atténués
     "rule":      "#E4E2DB",  # filet / grille
     "rule_soft": "#EEECE6",  # grille douce
-    "solaire":   "#B07A2B",  # or — le solaire (jauge T1, ligne T3)
+    "solaire":   "#B07A2B",  # or — le solaire (ligne T3)
     "renouv":    "#3B6B57",  # vert forêt — renouvelable décentralisé
     "hydro":     "#7CA593",  # sauge — grande hydraulique
     "thermique": "#1B2238",  # bleu-nuit — thermique (fossile)
@@ -200,6 +200,67 @@ def lignes_de_titre(fig) -> list[tuple[str, int]]:
     if titre and titre.subtitle and titre.subtitle.text:
         lignes += [(li, TAILLE_SOUS_TITRE) for li in titre.subtitle.text.split("<br>")]
     return lignes
+
+
+# --- Petit écran : une seconde mise en page, choisie chez le lecteur ------------------
+# Une figure faite pour LARGEUR_VISUEL se fait rogner dans un cadre de téléphone : ses
+# textes ne se replient pas. Pour une figure dont le message EST le texte (T1), c'est le
+# message qui disparaît — le pourcentage reste, la période et le repère qui le bornent
+# tombent hors cadre. Une telle figure peut donc déclarer, dans `layout.meta.etroit`,
+# une seconde mise en page calculée et VÉRIFIÉE à la génération ; un script de la page la
+# choisit selon la largeur du cadre, et l'étude donne à ce cadre la hauteur qui lui
+# correspond (compile_etude). Le script choisit, il ne compose aucun texte.
+SEUIL_ETROIT_PX = 900
+"""Largeur de CADRE sous laquelle une figure qui en déclare une passe à sa mise en page
+étroite. Une seule valeur pour la figure, qui bascule, et pour l'étude, dont le cadre
+change de hauteur : deux seuils, et entre les deux le cadre couperait la figure."""
+
+CADRE_ETROIT_MIN_PX = 320
+"""Plus petit cadre pour lequel une mise en page étroite est conçue : l'étude sur un
+téléphone de 360 px de large (le cadre y perd 2,5rem)."""
+
+MARGE_PAGE_PX = 8
+"""Marge du `<body>` de la page d'un visuel (défaut des navigateurs, que Plotly garde) :
+la figure mesure la largeur du cadre moins deux fois cette marge."""
+
+
+def replier_equilibre(texte: str, taille: int, dispo: float) -> str:
+    """Replie chaque bloc (séparé par `<br>`) en lignes d'au plus `dispo` pixels,
+    mesurées au gabarit, et ÉQUILIBRÉES : à nombre de lignes égal, la largeur la plus
+    étroite, ce qui évite le mot orphelin en dernière ligne (« Corse ? » seul).
+
+    Les espaces insécables (U+00A0) ne coupent pas et se mesurent comme des espaces.
+    Lève si un mot seul dépasse : une ligne trop large serait rognée sans un mot.
+    """
+    def largeur(t: str) -> float:
+        return largeur_px(t.replace(" ", " "), taille)
+
+    def glouton(bloc: str, limite: float) -> list[str]:
+        lignes, courante = [], ""
+        for mot in bloc.split(" "):
+            essai = f"{courante} {mot}" if courante else mot
+            if not courante or largeur(essai) <= limite:
+                courante = essai
+            else:
+                lignes.append(courante)
+                courante = mot
+        return lignes + [courante]
+
+    lignes = []
+    for bloc in texte.split("<br>"):
+        n = len(glouton(bloc, dispo))
+        bas, haut = 1, int(dispo)
+        while bas < haut:
+            milieu = (bas + haut) // 2
+            if len(glouton(bloc, milieu)) <= n:
+                haut = milieu
+            else:
+                bas = milieu + 1
+        lignes += glouton(bloc, haut)
+    trop = [li for li in lignes if largeur(li) > dispo]
+    if trop:
+        raise ValueError(f"mot plus large que {dispo:.0f} px à {taille} px : {trop}")
+    return "<br>".join(lignes)
 
 
 # --- Légende : la zone que rien ne surveillait ---------------------------------
@@ -448,10 +509,15 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
                 l'est pas). Le défaut (-85) passe sous ticks + titre d'axe ; à creuser
                 quand une légende occupe la bande basse (cf. T6)
     script_apres : JavaScript LOCAL exécuté après le tracé. Réservé à ce qui ne peut
-                pas être calculé à la génération parce que la réponse dépend de
-                l'instant de LECTURE — la péremption d'un relevé, et rien d'autre.
-                Aucune ressource tierce, aucun appel réseau : le script ne lit que des
-                valeurs déjà écrites dans la page.
+                pas être calculé à la génération parce que la réponse dépend de la
+                LECTURE, et à deux choses seulement : l'instant (la péremption d'un
+                relevé) et la largeur du cadre (le choix entre deux mises en page,
+                l'étroite étant calculée et vérifiée à la génération — cf.
+                SEUIL_ETROIT_PX). Le script choisit ; il ne compose aucun texte.
+                Élargi le 01/11/2026 pour T1, dont le message est du texte : rogné sur
+                un téléphone, il ne gardait que le pourcentage, sans sa période ni son
+                repère. Aucune ressource tierce, aucun appel réseau : le script ne lit
+                que des valeurs déjà écrites dans la page.
     """
     preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px, nom=name)
     dest = OUTPUTS / f"{name}.html"
@@ -465,6 +531,22 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
                    post_script=script_apres)
     print(f"[ok] {dest}")
     return str(dest)
+
+
+def texte_pied(source: str, collecte: str, note: str = "") -> str:
+    """Le pied de figure AVANT repli : source, date de collecte, note.
+
+    Extrait de `preparer_figure` pour qu'une mise en page étroite (cf. SEUIL_ETROIT_PX)
+    replie le même texte à sa largeur, sans le réécrire.
+    """
+    # Coupure VOULUE avant la date quand la source est longue : elle tombe à un endroit
+    # qui a du sens, plutôt qu'au hasard du repli. Le repli automatique prend le relais
+    # pour tout ce qui dépasse encore, source ou note.
+    sep = "<br>" if len(source) > 45 else " "
+    pied = f"Source : {source}{sep}— données collectées le {collecte}"
+    if note:
+        pied += f"<br>{note}"
+    return pied
 
 
 def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
@@ -484,14 +566,7 @@ def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
     centrer_titre_ancre(fig)
     # Le titre est posé : on vérifie qu'il TIENT, avant de dessiner quoi que ce soit.
     verifier_titres(fig, nom)
-    # Coupure VOULUE avant la date quand la source est longue : elle tombe à un endroit
-    # qui a du sens, plutôt qu'au hasard du repli. Le repli automatique ci-dessous prend
-    # le relais pour tout ce qui dépasse encore, source ou note.
-    sep = "<br>" if len(source) > 45 else " "
-    pied = f"Source : {source}{sep}— données collectées le {collecte}"
-    if note:
-        pied += f"<br>{note}"
-    pied = replier_pied(pied)
+    pied = replier_pied(texte_pied(source, collecte, note))
     # Le pied s'aligne sur le bord GAUCHE DE LA FIGURE, pas sur celui de la zone de tracé.
     # `xref="paper"` place x=0 au début du tracé : une figure à large marge gauche (barres
     # horizontales, dont les libellés de stations occupent 300 px) poussait donc sa source
