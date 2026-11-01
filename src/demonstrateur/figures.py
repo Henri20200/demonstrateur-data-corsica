@@ -25,10 +25,13 @@ import plotly.graph_objects as go
 
 from .config import DATA_PROCESSED
 from .prepare import verifier_sorties
-from .viz import (CADRE_ETROIT_MIN_PX, GARDE_BASSE_PX, INTERLIGNE, MARGE_PAGE_PX,
+from .viz import (CADRE_ETROIT_MIN_PX, ETROIT_DISPO_PX, ETROIT_FIGURE_PX,
+                  ETROIT_MARGE_DROITE_PX, ETROIT_MARGE_GAUCHE_PX, ETROIT_MARGE_PX,
+                  ETROIT_TAILLES, GARDE_BASSE_PX, INTERLIGNE, MARGE_PAGE_PX, MOIS_LONGS,
                   NEUTRE_ZERO, PALETTE, RAMPE_SOLAIRE, RETRAIT_TITRE_PX, SANS,
                   SEUIL_ETROIT_PX, TAILLE_SOUS_TITRE, TAILLE_TITRE, date_collecte,
-                  export_html, largeur_px, replier_equilibre, template, texte_pied)
+                  dissoudre_br, export_html, insecables, largeur_px, replier_equilibre,
+                  template, texte_pied)
 
 MIX = (DATA_PROCESSED / "edf_mix_corse.parquet").as_posix()
 COURBE = (DATA_PROCESSED / "edf_courbe_corse.parquet").as_posix()
@@ -111,8 +114,6 @@ T1_CORPS_LARGE_PX = SEUIL_ETROIT_PX - 2 * MARGE_PAGE_PX - 2 * 24 - RETRAIT_TITRE
 # (constaté sur la page publiée le 01/11/2026).
 T1_MOTS_AGE = dict(age="Âge de ce relevé :", panne="la collecte est en panne.",
                    relancer="collecte à relancer.")
-MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
-              "septembre", "octobre", "novembre", "décembre"]
 
 
 def _jour_fr(t) -> str:
@@ -311,20 +312,10 @@ def textes_t1(f: dict, bas: int, haut: int) -> dict:
     )
 
 
-def _insecables(t: str) -> str:
-    """Espaces où la mise en page étroite ne coupe pas : avant %, : et ?, dans une date
-    (« 30 octobre »), entre « à » et une heure, et dans « (statut EDF : estimé) »."""
-    nb = " "
-    t = t.replace(" %", nb + "%").replace(" :", nb + ":").replace(" ?", nb + "?")
-    t = re.sub(rf"(\d+(?:er)?) ({'|'.join(MOIS_LONGS)})", rf"\1{nb}\2", t)
-    t = re.sub(r" à (\d+h\d\d)", rf" à{nb}\1", t)
-    return t.replace(f"(statut EDF{nb}: ", f"(statut{nb}EDF{nb}:{nb}")
-
-
 def _replier_etroit(texte: str, taille: int, dispo: float) -> str:
     """Repli de la mise en page étroite : fins de phrase gardées, le reste dissous puis
     replié, équilibré et mesuré (viz.replier_equilibre)."""
-    return replier_equilibre(_insecables(re.sub(r"(?<![.:])<br>", " ", texte)), taille,
+    return replier_equilibre(insecables(re.sub(r"(?<![.:])<br>", " ", texte)), taille,
                              dispo)
 
 
@@ -421,7 +412,7 @@ def disposition_etroite_t1(textes: dict, sous_titre: str, pied: str) -> dict:
                  + (st.count("<br>") + 3) * g["sous_titre"] * 1.3 + 16)
     annotations, filet, corps = _corps_t1(textes, g, dispo, replier)
     corps += 26
-    pied_e = replier_equilibre(_insecables(pied), g["pied"], dispo)
+    pied_e = replier_equilibre(insecables(pied), g["pied"], dispo)
     annotations.append(dict(text=pied_e, xref="paper", yref="paper", x=0, y=1,
                             xanchor="left", yanchor="top", yshift=-corps, showarrow=False,
                             align="left",
@@ -1684,6 +1675,128 @@ def script_fraicheur(instant_iso: str, sous_titre: str) -> str:
 """
 
 
+# --- Cadre étroit : ce qui ne se dérive pas (choix validés le 01/11/2026) ------------
+# viz.disposition_etroite dérive la mise en page étroite de chaque figure. Trois figures
+# ont en plus un élément qui ne tient pas dans un cadre de téléphone ; ces fonctions
+# en déclarent la version étroite, à partir de la figure elle-même (elles ne relisent
+# aucune donnée). Elles lèvent si leur propre agencement ne tient pas.
+
+
+def etroit_t7(fig) -> dict:
+    """t7 : les libellés des barres passent AU-DESSUS d'elles, suivis de « … vient de
+    l'extérieur ▾ » ; la grande barre ne garde que son pourcentage, et « dont … de
+    carburants des transports — zéro kilowattheure » passe sur une ligne juste en
+    dessous. Laissés à gauche, les libellés ne laissaient au tracé que 28 px."""
+    taille = ETROIT_TAILLES["annotation"]
+    ligne = taille * INTERLIGNE
+    marge_gauche = ETROIT_MARGE_PX + 4
+    bord = -(marge_gauche - ETROIT_MARGE_PX)
+    trace_px, ecart = 460, 0.75
+    bande = trace_px / 2
+    demi_barre = bande * (1 - ecart) / 2
+    largeur_trace = ETROIT_FIGURE_PX - marge_gauche - ETROIT_MARGE_DROITE_PX
+
+    barres = list(fig.data[0].y)
+    textes = [list(t.text) for t in fig.data]
+    valeur, detail = textes[0][0].split("<br>", 1)
+    textes[0][0] = valeur
+    detail = replier_equilibre(detail, taille, ETROIT_DISPO_PX)
+
+    reperes, ajouts = {}, []
+    for rang, (a, barre) in enumerate(zip(list(fig.layout.annotations)[:2], barres)):
+        nu = re.sub(r"</?b>", "", a.text)
+        lignes = nu.replace(" vient de ", " vient<br>de ").split("<br>")
+        # Ancré à droite sur la frontière : la ligne la plus large doit tenir à sa gauche.
+        if max(largeur_px(li, taille) * 1.06 for li in lignes) > a.x / 100 * largeur_trace - 4:
+            raise ValueError(f"t7 étroit : « {nu} » déborde à gauche de sa frontière")
+        reperes[rang] = dict(text="<br>".join(f"<b>{li}</b>" for li in lignes),
+                             yanchor="bottom", yshift=demi_barre + 4, font=dict(size=taille))
+        libelle = replier_equilibre(insecables(dissoudre_br(barre)), taille, ETROIT_DISPO_PX)
+        empile = 4 + len(lignes) * ligne + 4 + (libelle.count("<br>") + 1) * ligne
+        sous = 6 + (detail.count("<br>") + 1) * ligne if rang == 1 else 0
+        # Barre du haut : la demi-bande au-dessus d'elle ; barre du bas : l'espace entre
+        # les deux, qui loge aussi la ligne de détail de la barre du haut.
+        place = bande - 2 * demi_barre if rang else bande / 2 - demi_barre
+        if empile + sous > place:
+            raise ValueError("t7 étroit : libellés et repères ne tiennent pas entre les barres")
+        ajouts.append(dict(text=libelle, xref="paper", x=0, xanchor="left", xshift=bord,
+                           yref="y", y=barre, yanchor="bottom",
+                           yshift=demi_barre + 4 + len(lignes) * ligne + 4,
+                           showarrow=False, align="left",
+                           font=dict(family=SANS, size=taille, color=PALETTE["ink"])))
+    ajouts.append(dict(text=detail, xref="paper", x=0, xanchor="left", xshift=bord,
+                       yref="y", y=barres[0], yanchor="top", yshift=-(demi_barre + 6),
+                       showarrow=False, align="left",
+                       font=dict(family=SANS, size=taille, color=PALETTE["ink_soft"])))
+    # Les frontières ne dépassent la barre que de peu : plus longues, elles traversaient
+    # la ligne de détail.
+    frontieres = []
+    for s in fig.layout.shapes:
+        centre = (s.y0 + s.y1) / 2
+        frontieres.append(dict(s.to_plotly_json(), y0=centre - (1 - ecart) / 2 - 0.04,
+                               y1=centre + (1 - ecart) / 2 + 0.04))
+    return dict(l=marge_gauche, trace_px=trace_px, zone_axe_x=24, annotations=reperes,
+                ajouts=ajouts, traces={"text": textes},
+                disposition={"yaxis.showticklabels": False, "bargap": ecart,
+                             "shapes": frontieres})
+
+
+def etroit_t5(fig) -> dict:
+    """t5 : la barre de couleur passe à l'horizontale sous les mois (à droite, elle
+    sortait du cadre), et les valeurs des cases prennent le plus grand corps qui tient
+    dans une case du plus petit cadre (10 px le 01/11/2026), sans descendre sous 9 px."""
+    trace_px, zone_mois = 340, 58
+    largeur_trace = ETROIT_FIGURE_PX - ETROIT_MARGE_GAUCHE_PX - ETROIT_MARGE_DROITE_PX
+    case = largeur_trace / len(MOIS) - 2          # xgap=2 : la part visible de la case
+    valeurs = list(fig.layout.annotations)[:-1]
+    taille = next((t for t in range(14, 8, -1)
+                   if all(largeur_px(a.text, t) <= case for a in valeurs)), None)
+    if taille is None:
+        raise ValueError(f"t5 étroit : les valeurs ne tiennent pas dans une case de {case:.0f} px")
+    titre_barre = replier_equilibre(dissoudre_br(fig.data[0].colorbar.title.text),
+                                    ETROIT_TAILLES["annotation"], largeur_trace)
+    return dict(
+        trace_px=trace_px,
+        # Mois tournés, puis la barre : son titre, 10 px de couleur, ses graduations.
+        zone_axe_x=zone_mois + 80,
+        annotations={rang: dict(font=dict(size=taille)) for rang in range(len(valeurs))},
+        traces={"colorbar.orientation": ["h"], "colorbar.x": [0], "colorbar.xanchor": ["left"],
+                "colorbar.y": [-zone_mois / trace_px], "colorbar.yanchor": ["top"],
+                "colorbar.len": [1], "colorbar.thickness": [10],
+                "colorbar.title.text": [titre_barre], "colorbar.title.side": ["top"],
+                "colorbar.title.font.size": [ETROIT_TAILLES["annotation"]],
+                "colorbar.tickfont.size": [ETROIT_TAILLES["graduations"]]},
+    )
+
+
+def etroit_t10(fig) -> dict:
+    """t10 : la mention « hiver 2018/19 tronqué par la borne du jeu », qui recouvrait les
+    barres, passe sous le titre du panneau du bas ; les panneaux s'écartent pour loger ce
+    titre, puis le titre de l'axe du bas."""
+    taille = ETROIT_TAILLES["annotation"]
+    annotations = list(fig.layout.annotations)[:-1]
+    i_mention = next(i for i, a in enumerate(annotations) if "tronqué" in a.text)
+    i_panneau = next(i for i, a in enumerate(annotations) if a.xref == "paper")
+    titre = replier_equilibre(re.sub(r"</?b>", "", annotations[i_panneau].text), taille,
+                              ETROIT_DISPO_PX)
+    mention = dissoudre_br(annotations[i_mention].text)
+    mention = replier_equilibre(mention[0].upper() + mention[1:] + ".", taille, ETROIT_DISPO_PX)
+    texte = "<br>".join(f"<b>{li}</b>" for li in titre.split("<br>")) + "<br>" + mention
+    trace_px, haut_bas, bas_haut = 600, 0.30, 0.50
+    # Au-dessus du titre « MW » que viz pose au sommet de l'axe du bas.
+    decalage = 6 + ETROIT_TAILLES["axe"] * INTERLIGNE + 8
+    if decalage + (texte.count("<br>") + 1) * taille * INTERLIGNE > (bas_haut - haut_bas) * trace_px:
+        raise ValueError("t10 étroit : le titre du panneau du bas déborde sur celui du haut")
+    return dict(
+        trace_px=trace_px,
+        annotations={i_mention: None,
+                     i_panneau: dict(text=texte, y=haut_bas, yanchor="bottom", yshift=decalage,
+                                     xshift=-(ETROIT_MARGE_GAUCHE_PX - ETROIT_MARGE_PX),
+                                     align="left", font=dict(size=taille))},
+        disposition={"yaxis.domain": [0, haut_bas], "yaxis2.domain": [bas_haut, 1]},
+    )
+
+
 def main() -> int:
     # Garde de publication (AUD-01) : aucune figure ne se dessine depuis une sortie
     # altérée — chaque Parquet est re-vérifié contre la lignée de build AVANT tout
@@ -1756,7 +1869,7 @@ def main() -> int:
              "le haut de la "
              "distribution ; elles ne disent rien de sa médiane, qui varie peu. "
              + NOTE_ESTIME,
-        pied_decalage_px=-110)
+        pied_decalage_px=-110, etroit=etroit_t10)
     export_html(fig_t3_profil(), "t3_profil_horaire", SRC_HIST, d_hist,
                 sous_titre="Une journée d'été (juin-août) heure par heure — parts du mix, Corse "
                            "2019-2024.<br>Interconnexions = liaisons SACOI + SARCO.",
@@ -1775,7 +1888,8 @@ def main() -> int:
                            "mois<br>— Corse, 2016-2023.",
                 note="81 % des heures de bridage ont lieu de mars à juin. Même au pire mois "
                      "(mai 2020 : 141 h),<br>90,5 % de la production ENR intermittente a été "
-                     "acceptée — l'écrêtement borne une durée, pas l'énergie perdue du réseau.")
+                     "acceptée — l'écrêtement borne une durée, pas l'énergie perdue du réseau.",
+                etroit=etroit_t5)
     fig7, importe_elec = fig_t7_dependance_perimetres()
     export_html(
         fig7, "t7_dependance_perimetres",
@@ -1788,7 +1902,7 @@ def main() -> int:
         note="Les 86,1 % de l'OREGES couvrent toute l'énergie — carburants et chauffage "
              "compris.<br>Contrôle croisé 2020 : OREGES 36 % / 29,8 % (thermique / "
              "liaisons) ; nos données EDF, 36,0 % / 29,8 %.<br>" + NOTE_ESTIME,
-        pied_decalage_px=-130)
+        pied_decalage_px=-130, etroit=etroit_t7)
 
     fig8, an8, hausse8 = fig_t8_seuil_deconnexion()
     export_html(
@@ -1812,7 +1926,11 @@ def main() -> int:
                 note="La part hydraulique varie du simple à près du double selon les années ; le "
                      "thermique prend le relais (elles varient à l'opposé, corrélation −0,95)."
                      "<br>Le lien avec la sécheresse est une hypothèse extérieure, pas une mesure "
-                     "de ce graphique. " + NOTE_ESTIME)
+                     "de ce graphique. " + NOTE_ESTIME,
+                # En étroit, l'encadré de 2022 passe à 13 px, monte de 4 px et glisse de
+                # 10 px à droite : à sa place, son fond touchait l'étiquette « 48 % » et
+                # le titre de l'axe, posé au-dessus du tracé (mesuré à 320 px).
+                etroit=dict(annotations={0: dict(yshift=4, xshift=10, font=dict(size=13))}))
 
     if Path(SARD).exists():
         export_html(fig_t6_corse_sardaigne(), "t6_corse_sardaigne",

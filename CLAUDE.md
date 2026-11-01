@@ -103,6 +103,12 @@ n'est pas optionnel, il est câblé dans l'export. Récupère la date via
 `date_collecte(source_id)`, qui la lit dans la **lignée de build** (`data/processed/_build.json`,
 écrite par `prepare`), avec repli sur `_manifest.json` : la date affichée est celle de la donnée
 réellement présente dans le Parquet, pas du dernier `fetch`.
+Depuis le 01/11/2026, l'export pose aussi une **mise en page étroite** (`disposition_etroite`,
+sous `SEUIL_ETROIT_PX`) que la page choisit chez le lecteur et dont l'étude règle la hauteur
+du cadre. Chaque ligne y est mesurée au plus petit cadre de téléphone : une figure neuve dont
+un texte ne tient pas fait LEVER l'export. Ce qui ne se dérive pas (libellés de barres longs,
+barre de couleur, encadré) se déclare par `export_html(..., etroit=réglages)` — cf.
+`figures.etroit_t7`. Les figures air passent `etroit=False` : elles restent à traiter.
 
 **`config.py`** → tous les chemins (`DATA_RAW`, `DATA_PROCESSED`, `OUTPUTS`, `MANIFEST_FILE`,
 `BUILD_FILE`, `SOURCES_FILE`) sont dérivés de `ROOT`. **Aucun chemin en dur ailleurs** — importer depuis

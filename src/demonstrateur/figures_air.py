@@ -976,17 +976,20 @@ def main() -> int:
     d_air = date_collecte("aee_o3_venaco_continu")
     d_meteo = date_collecte("meteo_horaire_corse")
 
+    # Pas de mise en page étroite pour l'instant (`etroit=False`) : la refonte mobile du
+    # 01/11/2026 a porté sur les figures de l'étude électricité ; celles-ci demandent
+    # leurs propres choix (libellés de stations de 205 px, page air sans cadres).
     export_html(fig_a1_depassements_sans_alerte(), "a1_depassements_sans_alerte",
-                SRC_AIR, d_air, sous_titre=st_a1(), note=note_a1())
+                SRC_AIR, d_air, sous_titre=st_a1(), note=note_a1(), etroit=False)
     export_html(fig_a2_ozone_et_chaleur(), "a2_ozone_et_chaleur",
                 SRC_AIR_METEO, d_meteo, sous_titre=ST_A2, note=NOTE_A2,
-                pied_decalage_px=PIED_A2)
+                pied_decalage_px=PIED_A2, etroit=False)
     export_html(fig_a3_ozone_contre_azote(), "a3_ozone_contre_azote",
-                SRC_AIR, d_air, sous_titre=st_a3())
+                SRC_AIR, d_air, sous_titre=st_a3(), etroit=False)
     export_html(fig_a4_campagne_contre_ville(), "a4_campagne_contre_ville",
-                SRC_AIR, d_air, sous_titre=st_a4(), note=NOTE_A4)
+                SRC_AIR, d_air, sous_titre=st_a4(), note=NOTE_A4, etroit=False)
     export_html(fig_a5_creneau_a_eviter(), "a5_creneau_a_eviter",
-                SRC_AIR, d_air, sous_titre=ST_A5, note=NOTE_A5)
+                SRC_AIR, d_air, sous_titre=ST_A5, note=NOTE_A5, etroit=False)
     return 0
 
 

@@ -723,6 +723,48 @@ def test_t1_affiche_des_chiffres_qui_se_recalculent(con):
         f"la page affiche {part} %, le lecteur recalcule {attendu:.2f} %")
 
 
+@besoin_courbe
+def test_chaque_visuel_de_l_etude_a_sa_mise_en_page_etroite():
+    """Depuis le 01/11/2026, chaque visuel de l'étude bascule sous viz.SEUIL_ETROIT_PX
+    vers une mise en page étroite où chaque ligne tient dans le plus petit cadre. Avant,
+    sur un téléphone, titres, sous-titres et sources étaient coupés à droite.
+
+    Le verrou relit les pages GÉNÉRÉES (le job `verrous` les régénère), pas le code :
+    une figure qui sortirait sans sa mise en page étroite, ou avec une ligne trop large,
+    partirait rognée en ligne.
+    """
+    import json
+    import re
+
+    from demonstrateur.config import ETUDE_SOURCE
+    from demonstrateur.viz import ETROIT_DISPO_PX, SEUIL_ETROIT_PX, largeur_px
+
+    noms = re.findall(r"\{\{visuel:([a-z0-9_]+)\}\}", ETUDE_SOURCE.read_text(encoding="utf-8"))
+    noms = [n for n in noms if n != "nom" and n != "t1_soleil_live"]   # T1 : la sienne
+    assert len(noms) >= 10, noms
+    dec = json.JSONDecoder()
+    fautes = []
+    for nom in noms:
+        page = (OUTPUTS / f"{nom}.html").read_text(encoding="utf-8")
+        i = page.index("Plotly.newPlot(")
+        _, j = dec.raw_decode(page, page.index("[", i))
+        layout, _ = dec.raw_decode(page, page.index("{", j))
+        etroit = (layout.get("meta") or {}).get("etroit")
+        if not etroit:
+            fautes.append(f"{nom} : pas de mise en page étroite")
+            continue
+        d = etroit["disposition"]
+        assert etroit["seuil"] == SEUIL_ETROIT_PX and d["height"] == etroit["hauteur"], nom
+        lignes = [(li, d["title"]["font"]["size"]) for li in d["title"]["text"].split("<br>")]
+        lignes += [(li, d["title"]["subtitle"]["font"]["size"])
+                   for li in d["title"]["subtitle"]["text"].split("<br>") if li]
+        lignes += [(li, a["font"]["size"]) for a in d["annotations"]
+                   if a.get("xref") == "paper" for li in a["text"].split("<br>")]
+        fautes += [f"{nom} : « {li} »" for li, taille in lignes
+                   if largeur_px(li.replace(" ", " "), taille) > ETROIT_DISPO_PX]
+    assert not fautes, fautes
+
+
 @besoin_air
 def test_air_corse_ne_garde_que_des_mesures_valides(con):
     """Le Parquet air ne contient que des lignes portant une VRAIE mesure.
