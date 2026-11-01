@@ -493,7 +493,7 @@ def ecrire_bundle_plotly(dossier: Path) -> str:
 
 def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = "",
                 note: str = "", pied_decalage_px: int = -85,
-                script_apres: str | None = None) -> str:
+                script_apres: str | None = None, pied_largeur_px: int | None = None) -> str:
     """Écrit outputs/<name>.html avec un bundle Plotly local partagé, nommé par empreinte.
 
     Applique le template, incruste la mention de source obligatoire.
@@ -518,8 +518,12 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
                 un téléphone, il ne gardait que le pourcentage, sans sa période ni son
                 repère. Aucune ressource tierce, aucun appel réseau : le script ne lit
                 que des valeurs déjà écrites dans la page.
+    pied_largeur_px : largeur, en pixels, à laquelle replier le pied en lignes
+                équilibrées (cf. replier_equilibre). Par défaut, repli commun à
+                LARGEUR_PIED caractères.
     """
-    preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px, nom=name)
+    preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px, nom=name,
+                    pied_largeur_px=pied_largeur_px)
     dest = OUTPUTS / f"{name}.html"
     # Une URL par contenu : le cache immutable ne peut pas conserver un ancien bundle
     # sous le nom d'une version nouvelle. L'export "directory" conservait ce défaut.
@@ -550,7 +554,8 @@ def texte_pied(source: str, collecte: str, note: str = "") -> str:
 
 
 def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
-                    note: str = "", pied_decalage_px: int = -85, nom: str = "figure"):
+                    note: str = "", pied_decalage_px: int = -85, nom: str = "figure",
+                    pied_largeur_px: int | None = None):
     """Applique le template et incruste la mention de source obligatoire. Renvoie `fig`.
 
     Extraite d'`export_html` pour que la page d'assemblage obtienne EXACTEMENT les mêmes
@@ -566,7 +571,11 @@ def preparer_figure(fig, source: str, collecte: str, sous_titre: str = "",
     centrer_titre_ancre(fig)
     # Le titre est posé : on vérifie qu'il TIENT, avant de dessiner quoi que ce soit.
     verifier_titres(fig, nom)
-    pied = replier_pied(texte_pied(source, collecte, note))
+    pied = texte_pied(source, collecte, note)
+    # Repli commun au nombre de caractères ; une figure qui connaît la largeur de son
+    # texte peut demander le repli mesuré et équilibré, sans mot orphelin (T1 seule).
+    pied = (replier_equilibre(pied, TAILLE_PIED, pied_largeur_px) if pied_largeur_px
+            else replier_pied(pied))
     # Le pied s'aligne sur le bord GAUCHE DE LA FIGURE, pas sur celui de la zone de tracé.
     # `xref="paper"` place x=0 au début du tracé : une figure à large marge gauche (barres
     # horizontales, dont les libellés de stations occupent 300 px) poussait donc sa source

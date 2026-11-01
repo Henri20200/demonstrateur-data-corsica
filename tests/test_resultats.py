@@ -679,6 +679,50 @@ def test_t1_calcule_sa_fraicheur_chez_le_lecteur(con):
     assert not externes, f"ressource tierce dans la page de T1 : {externes}"
 
 
+@besoin_mix
+@pytest.mark.skipif(
+    not (OUTPUTS / "t1_soleil_live.html").exists(),
+    reason="t1_soleil_live.html absent — lancer python -m demonstrateur.figures",
+)
+def test_t1_affiche_des_chiffres_qui_se_recalculent(con):
+    """Le pourcentage publié se retrouve à partir des MWh publiés (convention du
+    01/11/2026), et ces MWh sont les valeurs non arrondies de la fenêtre, à l'unité.
+
+    Le 01/11/2026, la page affichait « 4 % » sous « 50 MWh sur 1 090 MWh », qui font
+    5 % : les MWh étaient arrondis à la dizaine, le pourcentage calculé avant arrondi.
+    """
+    import json
+    import math
+    import re
+    from decimal import ROUND_HALF_UP, Decimal
+
+    from demonstrateur.figures import fenetre_t1
+
+    page = (OUTPUTS / "t1_soleil_live.html").read_text(encoding="utf-8")
+    dec = json.JSONDecoder()
+    i = page.index('Plotly.newPlot(')
+    _, j = dec.raw_decode(page, page.index("[", i))
+    layout, _ = dec.raw_decode(page, page.index("{", j))
+    textes = " ".join(a["text"] for a in layout["annotations"])
+    part = int(re.search(r"<b>(\d+) %</b>", textes).group(1))
+
+    f = fenetre_t1(con)
+    quantites = re.search(r"(\d[\d\u202f]*) MWh d'origine solaire, sur (\d[\d\u202f]*) MWh",
+                          textes)
+    if f["mwh_total"] is None:
+        assert quantites is None, "quantités publiées alors que des relevés manquent"
+        attendu = Decimal(str(f["part"]))
+    else:
+        assert quantites, "quantités absentes de la page alors que la fenêtre est complète"
+        s, t = (int(g.replace("\u202f", "")) for g in quantites.groups())
+        # Demi vers le haut, comme l'affichage (figures._arrondi).
+        assert (s, t) == tuple(math.floor(f[k] + 0.5) for k in ("mwh_solaire", "mwh_total")), (
+            f"MWh publiés {s} / {t}, fenêtre {f['mwh_solaire']:.2f} / {f['mwh_total']:.2f}")
+        attendu = Decimal(100 * s) / Decimal(t)
+    assert part == int(attendu.quantize(Decimal(1), ROUND_HALF_UP)), (
+        f"la page affiche {part} %, le lecteur recalcule {attendu:.2f} %")
+
+
 @besoin_air
 def test_air_corse_ne_garde_que_des_mesures_valides(con):
     """Le Parquet air ne contient que des lignes portant une VRAIE mesure.

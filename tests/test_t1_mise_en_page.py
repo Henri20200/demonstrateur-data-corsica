@@ -11,7 +11,9 @@ qui casserait ici casserait le cron, donc la publication de tout le livrable.
 
 import itertools
 import json
+import re
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 import pytest
 
@@ -94,6 +96,53 @@ def test_textes_valides_le_31_10():
     assert "allant du 30 septembre à 20h15<br>au 1er octobre à 2h00" in deux_jours["periode"]
 
 
+# --- Le pourcentage se retrouve à partir des MWh affichés (convention du 01/11/2026) ---
+
+
+def _lu(f: dict) -> tuple[int, list[int]]:
+    """Ce que lit le lecteur : le pourcentage et les MWh, relus dans les textes posés."""
+    t = F.textes_t1(f, 9, 12)
+    part = int(re.search(r"<b>(\d+) %</b>", t["part"]).group(1))
+    ligne = t["quantites"].split("<br>")[0]
+    # Milliers séparés par une espace fine insécable (U+202F), comme à l'affichage.
+    return part, [int(n.replace("\u202f", ""))
+                  for n in re.findall(r"(\d[\d\u202f]*) MWh", ligne)]
+
+
+def _fenetre(solaire, total, part=None, disponibles=24):
+    debut, fin = PERIODES[0]
+    if part is None:
+        part = 100 * solaire / total
+    return dict(part=part, mwh_solaire=solaire, mwh_total=total, estimes=0,
+                disponibles=disponibles, debut=debut, fin=fin)
+
+
+def test_le_cas_publie_le_01_11_se_recalcule():
+    """Page publiée le 01/11/2026 : 47,96 MWh sur 1 085,88 font 4 %, mais les MWh à la
+    dizaine affichaient « 50 sur 1 090 », qui font 5 %."""
+    assert _lu(_fenetre(47.96, 1085.88)) == (4, [48, 1086])
+
+
+def test_le_pourcentage_se_retrouve_a_partir_des_mwh_affiches():
+    """Pour toute fenêtre complète, le pourcentage affiché est celui que le lecteur
+    calcule sur les MWh affichés, arrondi demi vers le haut ; et il ne s'écarte jamais
+    d'un point entier de la part exacte, qui reste celle de la fenêtre."""
+    for solaire in [x / 7 for x in range(0, 2100, 11)]:
+        for total in (180.4, 499.5, 1085.88, 1500.5, 2999.49):
+            f = _fenetre(solaire, total)
+            part, (s, t) = _lu(f)
+            attendu = (Decimal(100 * s) / Decimal(t)).quantize(Decimal(1), ROUND_HALF_UP)
+            assert part == int(attendu), (solaire, total)
+            assert abs(part - f["part"]) < 1, (solaire, total)
+    assert _lu(_fenetre(9, 200))[0] == 5          # 4,5 % : demi vers le haut
+
+
+def test_sans_mwh_le_pourcentage_porte_sur_les_valeurs_disponibles():
+    """Quantités masquées : pas d'arrondi intermédiaire, la part exacte s'arrondit seule."""
+    assert _lu(_fenetre(None, None, part=23.49, disponibles=21)) == (23, [])
+    assert _lu(_fenetre(None, None, part=23.5, disponibles=21)) == (24, [])
+
+
 def test_le_sous_titre_avertit_aux_seuils_du_code():
     """Le sous-titre est composé une fois (sous_titre_t1) pour les deux mises en page et
     pour main() : ses seuils sont ceux qui décident du code de sortie."""
@@ -112,7 +161,36 @@ def test_le_script_choisit_la_mise_en_page_sans_composer_de_texte():
     mots = json.dumps(F.T1_MOTS_AGE)
     assert mots in script
     # Les mots ne sont écrits qu'une fois, dans la table mesurée par le code.
-    assert script.count("dernier relev") == 1
+    assert script.count("ge de ce relev") == 1
+
+
+def test_l_age_se_lit_comme_une_duree():
+    """« Le dernier relevé remonte à 8 h 50 », sous « 1er novembre 2026 à 9h15 », se
+    lisait comme une heure (page publiée le 01/11/2026). Toute durée en heures porte donc
+    « min », dans le script comme dans les lignes qu'on mesure pour lui."""
+    script = F.script_fraicheur("2026-10-30T12:30:00Z", "Dernières données disponibles : x.")
+    assert "' h ' + ('0' + (m % 60)).slice(-2) + ' min'" in script
+    assert F.T1_MOTS_AGE["age"] == "Âge de ce relevé :"
+    for etroit in (False, True):
+        heures = [li for li in F._lignes_age_t1(etroit) if " h " in li]
+        assert heures and all(" min" in li for li in heures), heures
+
+
+def test_la_source_de_t1_ne_laisse_pas_de_mot_seul():
+    """Au repli commun (64 caractères), la source de T1 se coupait avant « réel) », seul
+    sur sa ligne. T1 replie son pied à la largeur de son corps, en lignes équilibrées."""
+    import inspect
+
+    from demonstrateur.viz import preparer_figure
+
+    fig, sous_titre = _figure(*PERIODES[0], QUANTITES[1])
+    preparer_figure(fig, F.SRC_MIX, "2026-11-01", sous_titre, F.note_t1("2026-07-22"),
+                    -20, nom="t1_soleil_live", pied_largeur_px=F.T1_CORPS_LARGE_PX)
+    lignes = fig.layout.annotations[-1].text.split("<br>")
+    assert lignes[0] == f"Source : {F.SRC_MIX}"
+    assert all(" " in li for li in lignes), lignes
+    # Et c'est bien ce repli que main() demande à l'export.
+    assert "pied_largeur_px=T1_CORPS_LARGE_PX" in inspect.getsource(F.main)
 
 
 # --- L'étude : le cadre prend la hauteur étroite au même seuil que la figure ----------

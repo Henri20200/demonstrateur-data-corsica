@@ -15,6 +15,7 @@ présent en aucun cas.
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -102,8 +103,13 @@ T1_ETROIT = dict(titre=24, sous_titre=16, periode=18, part=64, phrase=18, texte=
 T1_MARGE_ETROITE_PX = 8
 T1_TITRE_ETROIT_PX = 48         # haut du titre étroit : sous la barre d'outils (28 px)
 T1_HAUTEUR_ETROITE_PX = 1080    # pire cas inventé : 1 076 px (cf. tests/test_t1_mise_en_page.py)
+# Largeur du texte de la mise en page large, au seuil étroit : corps et pied s'y replient.
+T1_CORPS_LARGE_PX = SEUIL_ETROIT_PX - 2 * MARGE_PAGE_PX - 2 * 24 - RETRAIT_TITRE_PX
 # Les mots de l'âge du relevé, écrits par le script chez le lecteur et mesurés ici.
-T1_MOTS_AGE = dict(remonte="Le dernier relevé remonte", panne="la collecte est en panne.",
+# « Âge » et « min » disent une DURÉE : « Le dernier relevé remonte à 8 h 50 », sous
+# « 1er novembre 2026 à 9h15 », se lisait comme une heure antérieure au relevé
+# (constaté sur la page publiée le 01/11/2026).
+T1_MOTS_AGE = dict(age="Âge de ce relevé :", panne="la collecte est en panne.",
                    relancer="collecte à relancer.")
 MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
               "septembre", "octobre", "novembre", "décembre"]
@@ -117,9 +123,34 @@ def _heure_fr(t) -> str:
     return f"{t.hour}h{t.minute:02d}"
 
 
-def _mwh_fr(x: float) -> str:
-    """MWh arrondis à la dizaine (donnée estimée), milliers séparés à la française."""
-    return f"{round(x, -1):,.0f}".replace(",", " ")
+def _arrondi(x: float) -> int:
+    """Entier le plus proche, demi vers le haut : l'arrondi que fait le lecteur."""
+    return math.floor(x + 0.5)
+
+
+def _mwh_fr(mwh: int) -> str:
+    """Un nombre entier de MWh, milliers séparés à la française."""
+    return f"{mwh:,d}".replace(",", " ")
+
+
+def part_affichee_t1(f: dict) -> int:
+    """Le pourcentage entier qu'affiche T1 (convention validée le 01/11/2026).
+
+    - MWh affichés : arrondis à l'unité, puis pourcentage calculé sur CES quantités. Le
+      lecteur le retrouve à partir des chiffres affichés. Arrondis à la dizaine, les MWh
+      le contredisaient : 47,96 sur 1 085,88 MWh font 4 %, affichés « 50 sur 1 090 »,
+      qui font 5 % (page publiée le 01/11/2026 ; 13 % des fenêtres sur 14 jours).
+    - MWh masqués (relevés manquants) : pourcentage calculé sur les valeurs disponibles,
+      sans arrondi intermédiaire.
+
+    Les valeurs non arrondies restent dans la fenêtre (fenetre_t1), pour les calculs et
+    les vérifications ; seul l'affichage arrondit.
+    """
+    if f["mwh_total"] is None:
+        return _arrondi(f["part"])
+    solaire, total = _arrondi(f["mwh_solaire"]), _arrondi(f["mwh_total"])
+    # Demi vers le haut, en entiers exacts : 9 MWh sur 200 font 4,5 %, affichés 5 %.
+    return (200 * solaire + total) // (2 * total)
 
 
 def fenetre_t1(con) -> dict:
@@ -257,8 +288,9 @@ def textes_t1(f: dict, bas: int, haut: int) -> dict:
                    "le solaire a fourni")
     if f["mwh_total"] is not None:
         # L'unité est expliquée : le public visé connaît le kWh de sa facture, pas le MWh.
-        quantites = (f"Sur cette période : {_mwh_fr(f['mwh_solaire'])} MWh d'origine "
-                     f"solaire, sur {_mwh_fr(f['mwh_total'])} MWh consommés.<br>"
+        solaire, total = _arrondi(f["mwh_solaire"]), _arrondi(f["mwh_total"])
+        quantites = (f"Sur cette période : {_mwh_fr(solaire)} MWh d'origine "
+                     f"solaire, sur {_mwh_fr(total)} MWh consommés.<br>"
                      "1 MWh = 1 000 kWh, l'unité de votre facture d'électricité.")
         if f["estimes"]:
             s = "s" if f["estimes"] > 1 else ""
@@ -270,7 +302,7 @@ def textes_t1(f: dict, bas: int, haut: int) -> dict:
                      "affichées.")
     return dict(
         periode=periode,
-        part=f"<b>{f['part']:.0f} %</b>",
+        part=f"<b>{part_affichee_t1(f)} %</b>",
         phrase="de l'électricité consommée en Corse.",
         quantites=quantites,
         repere=(f"Repère : sur une année entière, le solaire fournit {bas} à {haut} %<br>"
@@ -301,13 +333,13 @@ def _lignes_age_t1(etroit: bool) -> list[str]:
     durées : elles sont posées chez le lecteur, donc mesurées ici ou jamais."""
     m = T1_MOTS_AGE
     lignes = []
-    for d in ("59 min", "47 h 59", "365 jours"):
-        lignes.append(f"{m['remonte']} à {d}.")
+    for d in ("59 min", "47 h 59 min", "365 jours"):
+        lignes.append(f"{m['age']} {d}.")
         for suite in (m["panne"], m["relancer"]):
             if etroit:
-                lignes += [f"⚠ {m['remonte']}", f"à {d} : {suite}"]
+                lignes += [f"⚠ {m['age']} {d},", suite]
             else:
-                lignes.append(f"⚠ {m['remonte']} à {d} : {suite}")
+                lignes.append(f"⚠ {m['age']} {d}, {suite}")
     return lignes
 
 
@@ -422,7 +454,7 @@ def figure_t1(f: dict, bas: int, haut: int, sous_titre: str, pied: str) -> go.Fi
     # La mise en page large sert jusqu'au seuil étroit, pas seulement à 992 px : c'est à
     # cette largeur-là qu'elle doit tenir.
     figure_px = SEUIL_ETROIT_PX - 2 * MARGE_PAGE_PX
-    annotations, filet, corps = _corps_t1(textes, T1_LARGE, figure_px - 2 * 24 - RETRAIT_TITRE_PX)
+    annotations, filet, corps = _corps_t1(textes, T1_LARGE, T1_CORPS_LARGE_PX)
     if corps > T1_HAUTEUR_TRACE_PX:
         raise ValueError(f"t1 : le texte ({corps} px) déborde de sa zone "
                          f"({T1_HAUTEUR_TRACE_PX} px) — augmenter T1_HAUTEUR_TRACE_PX.")
@@ -499,6 +531,13 @@ def fig_t1_soleil() -> tuple[go.Figure, str, str, float, str]:
     con = _con()
     f = fenetre_t1(con)
     bas, haut = repere_annuel_t1(con)
+    # Les valeurs non arrondies, au journal du run : ce qu'on vérifie derrière l'affiché.
+    if f["mwh_total"] is not None:
+        print(f"[i] t1 — {f['mwh_solaire']:.2f} MWh solaire sur {f['mwh_total']:.2f} MWh, "
+              f"part {f['part']:.2f} % (affichée {part_affichee_t1(f)} %).")
+    else:
+        print(f"[i] t1 — quantités masquées ({f['disponibles']} relevés sur {T1_RELEVES}), "
+              f"part {f['part']:.2f} % (affichée {part_affichee_t1(f)} %).")
     fin = f["fin"]
     quand = f"{_jour_fr(fin)} {fin.year} à {_heure_fr(fin)}"
     # Le sous-titre et le pied sont ceux que main() posera : la mise en page étroite les
@@ -1609,16 +1648,17 @@ def script_fraicheur(instant_iso: str, sous_titre: str) -> str:
   function age() {{
     var h = (Date.now() - instant.getTime()) / 3600000;
     if (!isFinite(h) || h < 0) return '';
-    // À la minute près : « 1 h 35 » se compare à l'heure de la montre, « 2 h » non.
+    // À la minute près : « 1 h 35 min » se compare à l'heure de la montre, « 2 h » non.
+    // « min » toujours écrit : sans lui, « 8 h 50 » se lit comme une heure.
     var m = Math.round(h * 60), d;
     if (m < 60) d = m + ' min';
-    else if (h < 48) d = Math.floor(m / 60) + ' h ' + ('0' + (m % 60)).slice(-2);
+    else if (h < 48) d = Math.floor(m / 60) + ' h ' + ('0' + (m % 60)).slice(-2) + ' min';
     else d = Math.round(h / 24) + ' jours';
     // En cadre étroit, l'avertissement tient sur deux lignes (mesurées à la génération).
-    var a = etroit ? '<br>à ' : ' à ';
-    if (h > BLOQUER) return '<br>⚠ ' + MOTS.remonte + a + d + ' : ' + MOTS.panne;
-    if (h > AVERTIR) return '<br>⚠ ' + MOTS.remonte + a + d + ' : ' + MOTS.relancer;
-    return '<br>' + MOTS.remonte + ' à ' + d + '.';
+    var a = etroit ? ',<br>' : ', ';
+    if (h > BLOQUER) return '<br>⚠ ' + MOTS.age + ' ' + d + a + MOTS.panne;
+    if (h > AVERTIR) return '<br>⚠ ' + MOTS.age + ' ' + d + a + MOTS.relancer;
+    return '<br>' + MOTS.age + ' ' + d + '.';
   }}
   function poser() {{
     Plotly.relayout(cible, {{'title.subtitle.text': (etroit ? E.sous_titre : base) + age()}});
@@ -1674,8 +1714,11 @@ def main() -> int:
     # UNE définition de la péremption des deux côtés.
     # Deux sources sur ce visuel : le temps réel pour les six heures, l'historique pour le
     # repère annuel. La seconde se cite en note, avec SA date de collecte.
+    # Pied replié à la largeur du corps, équilibré : au repli commun (64 caractères), la
+    # source de T1 laissait « réel) » seul sur une ligne (constaté le 01/11/2026).
     export_html(fig1, "t1_soleil_live", SRC_MIX, d_mix, sous_titre=st_t1,
                 note=note_t1(d_hist), pied_decalage_px=-20,
+                pied_largeur_px=T1_CORPS_LARGE_PX,
                 script_apres=script_fraicheur(instant_iso, st_t1))
     export_html(fig_t2_demande_mensuelle(), "t2_demande_mensuelle", SRC_HIST, d_hist,
                 sous_titre="Demande moyenne mois par mois — Corse, 2019-2024",
