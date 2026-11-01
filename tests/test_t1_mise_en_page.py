@@ -112,7 +112,36 @@ def test_le_script_choisit_la_mise_en_page_sans_composer_de_texte():
     mots = json.dumps(F.T1_MOTS_AGE)
     assert mots in script
     # Les mots ne sont écrits qu'une fois, dans la table mesurée par le code.
-    assert script.count("dernier relev") == 1
+    assert script.count("ge de ce relev") == 1
+
+
+def test_l_age_se_lit_comme_une_duree():
+    """« Le dernier relevé remonte à 8 h 50 », sous « 1er novembre 2026 à 9h15 », se
+    lisait comme une heure (page publiée le 01/11/2026). Toute durée en heures porte donc
+    « min », dans le script comme dans les lignes qu'on mesure pour lui."""
+    script = F.script_fraicheur("2026-10-30T12:30:00Z", "Dernières données disponibles : x.")
+    assert "' h ' + ('0' + (m % 60)).slice(-2) + ' min'" in script
+    assert F.T1_MOTS_AGE["age"] == "Âge de ce relevé :"
+    for etroit in (False, True):
+        heures = [li for li in F._lignes_age_t1(etroit) if " h " in li]
+        assert heures and all(" min" in li for li in heures), heures
+
+
+def test_la_source_de_t1_ne_laisse_pas_de_mot_seul():
+    """Au repli commun (64 caractères), la source de T1 se coupait avant « réel) », seul
+    sur sa ligne. T1 replie son pied à la largeur de son corps, en lignes équilibrées."""
+    import inspect
+
+    from demonstrateur.viz import preparer_figure
+
+    fig, sous_titre = _figure(*PERIODES[0], QUANTITES[1])
+    preparer_figure(fig, F.SRC_MIX, "2026-11-01", sous_titre, F.note_t1("2026-07-22"),
+                    -20, nom="t1_soleil_live", pied_largeur_px=F.T1_CORPS_LARGE_PX)
+    lignes = fig.layout.annotations[-1].text.split("<br>")
+    assert lignes[0] == f"Source : {F.SRC_MIX}"
+    assert all(" " in li for li in lignes), lignes
+    # Et c'est bien ce repli que main() demande à l'export.
+    assert "pied_largeur_px=T1_CORPS_LARGE_PX" in inspect.getsource(F.main)
 
 
 # --- L'étude : le cadre prend la hauteur étroite au même seuil que la figure ----------
