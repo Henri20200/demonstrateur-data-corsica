@@ -24,7 +24,7 @@ import unicodedata
 
 from . import navigation
 from .config import ETUDE_HTML, ETUDE_SOURCE, OUTPUTS
-from .viz import LARGEUR_VISUEL, PALETTE, SANS
+from .viz import LARGEUR_VISUEL, PALETTE, SANS, SEUIL_ETROIT_PX
 
 # --- Rendu inline : échappement, gras, italique et liens vers les pages HTML voisines ---
 
@@ -99,8 +99,20 @@ def _iframe(nom: str) -> str:
     hauteur = int(layout.get("height") or 560) + 16
     # Le titre s'échappe comme du texte, plus les guillemets : il vit dans un attribut.
     titre = _echapper(_titre_visuel(layout, nom)).replace('"', "&quot;")
+    # Un visuel à mise en page étroite (cf. viz.SEUIL_ETROIT_PX) en déclare la hauteur ;
+    # le cadre la prend sous le même seuil que la figure (_CSS_ETROIT). Un seuil qui
+    # différerait laisserait, entre les deux, une figure étroite dans un cadre large.
+    etroit = (layout.get("meta") or {}).get("etroit")
+    adaptable = ""
+    if etroit:
+        if etroit.get("seuil") != SEUIL_ETROIT_PX:
+            raise ValueError(
+                f"{nom} bascule en étroit sous {etroit.get('seuil')} px, l'étude sous "
+                f"{SEUIL_ETROIT_PX} px : le cadre couperait la figure entre les deux.")
+        adaptable = (f' class="adaptable" '
+                     f'style="--hauteur-etroite:{int(etroit["hauteur"]) + 16}px"')
     return (
-        f'<figure class="visuel"><iframe src="{nom}.html" height="{hauteur}" '
+        f'<figure class="visuel"><iframe src="{nom}.html" height="{hauteur}"{adaptable} '
         f'loading="lazy" scrolling="no" title="{titre}"></iframe></figure>'
     )
 
@@ -357,6 +369,20 @@ footer a{color:var(--accent)}
 .entre-pages{margin-top:.9rem}
 """
 
+# Cadre d'un visuel à mise en page étroite : sa hauteur suit la largeur, sans JavaScript
+# dans l'étude. La requête de CONTENEUR mesure le cadre lui-même, exactement ce que la
+# figure mesure pour basculer (sa fenêtre) ; la requête média la double pour les
+# navigateurs qui n'en connaissent pas (avant 2023), en supposant 2,5rem = 40 px — la
+# marge que `.visuel` retire à l'écran. Les deux ne peuvent qu'agrandir le cadre : au
+# pire, il reste de la place sous la figure, jamais une figure coupée.
+_CSS_ETROIT = (
+    ".visuel{container-type:inline-size}"
+    f"@media (max-width:{SEUIL_ETROIT_PX + 40 - 0.02:.2f}px)"
+    "{.visuel iframe.adaptable{height:var(--hauteur-etroite)}}"
+    f"@container (max-width:{SEUIL_ETROIT_PX - 0.02:.2f}px)"
+    "{.visuel iframe.adaptable{height:var(--hauteur-etroite)}}\n"
+)
+
 # Pied de page : posé par le compilateur, pas écrit dans le markdown — le compilateur ne
 # rend pas les liens inline (l'étude n'en contient aucun), et ce renvoi est une pièce du
 # livrable plutôt qu'un morceau du texte. Il pointe la note méthodologique, qui dit la même
@@ -376,7 +402,7 @@ def _page(corps: str, titre: str) -> str:
         "<!doctype html>\n"
         '<html lang="fr">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f"<title>{titre}</title>\n<style>{_VARS}{_CSS}</style>\n</head>\n"
+        f"<title>{titre}</title>\n<style>{_VARS}{_CSS}{_CSS_ETROIT}</style>\n</head>\n"
         f"<body>\n<article>\n{corps}\n{_PIED}\n</article>\n</body>\n</html>\n"
     )
 

@@ -2114,6 +2114,51 @@ def test_etude_profil_ete_parts(con):
 
 
 @besoin_courbe
+def test_etude_t1_repere_annuel(con):
+    """Étude/T1 et essentiel : « sur une année, le soleil fournit 9 à 12 % de l'électricité
+    consommée en Corse (2019-2024) ». C'est aussi le repère affiché sous le résultat de
+    T1, que la figure recalcule (repere_annuel_t1) : le texte et le visuel doivent dire
+    la même fourchette. Mesuré le 01/11/2026 : 9,4 % (2019) à 12,4 % (2023).
+
+    Le rapport est celui de T1 : solaire sur électricité CONSOMMÉE, câbles compris. La
+    jauge qu'il remplace affichait 50 % un midi d'octobre sous « quelle part de
+    l'électricité corse vient du soleil ? » — exact pour un quart d'heure, faux comme
+    réponse.
+    """
+    from demonstrateur.figures import repere_annuel_t1
+
+    parts = con.execute(
+        f"""SELECT annee_locale, 100*sum(photovoltaique_mw)/sum(production_totale_mw)
+            FROM '{COURBE.as_posix()}' GROUP BY 1 ORDER BY 1"""
+    ).fetchall()
+    assert [a for a, _ in parts] == list(range(2019, 2025)), (
+        f"années {[a for a, _ in parts]} — l'étude écrit 2019-2024")
+    assert (round(min(p for _, p in parts)), round(max(p for _, p in parts))) == (9, 12), (
+        f"part annuelle du solaire {[round(p, 1) for _, p in parts]} — l'étude écrit 9 à 12 %")
+    assert repere_annuel_t1(con) == (9, 12), "le repère de T1 a divergé du texte de l'étude"
+
+
+@besoin_courbe
+def test_etude_t1_jours_au_dela_de_40(con):
+    """Étude/T1 : le solaire « peut dépasser 40 % autour de midi par beau temps : en 2024,
+    c'est arrivé au moins une heure pendant 178 jours, près d'un jour sur deux ».
+
+    La phrase est là pour qu'un lecteur averti ne prenne pas un résultat de midi pour une
+    aberration ; elle doit donc rester exacte, et « près d'un jour sur deux » ne tient
+    que tant que le compte reste juste sous la moitié de l'année.
+    """
+    jours, total = con.execute(
+        f"""SELECT count(*) FILTER (WHERE m > 0.40), count(*) FROM (
+              SELECT CAST(date_heure_locale AS DATE) AS j,
+                     max(photovoltaique_mw / production_totale_mw) AS m
+              FROM '{COURBE.as_posix()}' WHERE annee_locale = 2024 GROUP BY 1)"""
+    ).fetchone()
+    assert (jours, total) == (178, 366), (
+        f"2024 : {jours} jours sur {total} au-delà de 40 % — l'étude écrit 178")
+    assert 0.45 <= jours / total < 0.5, "« près d'un jour sur deux » ne tient plus"
+
+
+@besoin_courbe
 def test_etude_soleil_remplace_les_cables(con):
     """Étude/T4 (encadré) : de 8 h à 13 h, les imports reculent de ~77 à ~43 MW pendant
     que le thermique ne bouge pas.

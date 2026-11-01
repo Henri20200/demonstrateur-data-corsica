@@ -38,8 +38,9 @@
 - Plus du quart de l'électricité consommée en Corse arrive par des câbles
   sous-marins. Le reste est produit sur l'île, en grande partie par des centrales
   thermiques qui brûlent du combustible.
-- À midi, le soleil fournit jusqu'à un tiers du courant. Mais même en été, il ne
-  dépasse pas le thermique en moyenne.
+- Sur une année, le soleil fournit 9 à 12 % de l'électricité consommée en Corse
+  (2019-2024). Sa part culmine entre 12 et 13 heures : 36 % en moyenne l'été, sans
+  dépasser le thermique.
 - Le créneau où l'électricité est la plus renouvelable est entre 12 et 13 heures.
   C'est aussi le moment où la Corse dépend le moins des câbles qui la relient à
   l'extérieur.
@@ -56,8 +57,8 @@
 
 Cette étude repose sur des données publiques d'EDF et d'ENTSO-E. L'historique de
 production couvre 2019 à 2024 ; les données de bridage solaire s'arrêtent en 2023.
-La jauge du dernier relevé est rafraîchie toutes les six heures lorsque la source
-est disponible. Chaque graphique indique sa période et sa date de collecte.
+Le visuel des six dernières heures de relevés dépend d'une collecte programmée toutes
+les six heures, lorsque la source est disponible. Chaque graphique indique sa période et sa date de collecte.
 Une nouvelle compilation ne rend pas les observations historiques plus récentes.
 
 ## 2. Pourquoi cette étude
@@ -127,43 +128,51 @@ Les deux chiffres ne portent donc pas sur le même périmètre. Pour la suite, n
 concentrerons uniquement sur l'électricité et sur la façon dont elle est produite au fil
 des heures et des saisons.
 
-### Au dernier relevé
+### Sur les six dernières heures
 
-#### Quelle part de l'électricité corse vient du soleil ?
+#### Quelle place le solaire occupe-t-il dans l'électricité consommée en Corse ?
 
-*La jauge indique la part du solaire au dernier relevé disponible.*
+*La part du solaire sur les six dernières heures de relevés publiés par EDF, avec un
+repère annuel.*
 
 {{visuel:t1_soleil_live}}
 
-Cette jauge montre la part du solaire dans l'électricité produite en Corse au dernier
-relevé disponible. L'heure du relevé est indiquée sous le titre.
+Ce visuel porte sur une période, pas sur un instant : les 24 quarts d'heure associés
+aux six dernières heures de relevés publiés par EDF. Il donne la part du solaire dans
+l'électricité consommée en Corse, câbles sous-marins compris, et les quantités
+correspondantes. L'heure du dernier relevé est indiquée sous le titre, avec son âge au
+moment où vous ouvrez la page.
 
-EDF publie de nouvelles données toutes les quinze minutes et nous les récupérons
-plusieurs fois par jour. La jauge reflète donc une situation récente. Elle peut
-dépasser 30 % au milieu d'une journée d'été ensoleillée et revient naturellement à
-zéro la nuit.
+Cette part change beaucoup au fil de la journée. Elle est presque nulle la nuit et
+peut dépasser 40 % autour de midi par beau temps : en 2024, c'est arrivé au moins une
+heure pendant 178 jours, près d'un jour sur deux. Sur une année entière, en revanche,
+le solaire fournit 9 à 12 % de l'électricité consommée (2019-2024). C'est ce repère
+que le visuel affiche sous le résultat.
 
-Cette mesure donne une photo à un instant précis. Elle ne permet pas, à elle seule, de
-déterminer le meilleur moment pour consommer de l'électricité renouvelable. Pour cela,
-le chapitre consacré à midi compare les différentes heures de la journée sur six
-années de données.
+Le résultat des six dernières heures ne permet donc pas, à lui seul, de juger la place
+du solaire, ni de choisir le meilleur moment pour consommer de l'électricité
+renouvelable. Pour cela, le chapitre consacré à midi compare les heures de la journée
+sur six années de données.
 
-> **Pour aller plus loin — que mesure exactement la jauge ?** Pour cet indicateur en
-> temps réel, nous reprenons la définition utilisée par EDF pour les énergies
-> renouvelables « distribuées » : solaire, éolien, bioénergies, petite hydraulique et
-> restitution des batteries. Les grands barrages et les échanges par câble ne sont pas
-> inclus.
+> **Pour aller plus loin — que mesure exactement ce visuel ?** La part du solaire est
+> rapportée à toute l'électricité consommée en Corse : la production de l'île
+> (centrales thermiques, barrages, solaire, éolien, bioénergies et autres
+> renouvelables) et l'électricité arrivée par les câbles sous-marins. Les quantités
+> additionnent les 24 quarts d'heure, en mégawattheures (1 MWh = 1 000 kWh, l'unité de
+> votre facture d'électricité). Elles sont arrondies à la dizaine : ces données sont
+> estimées par EDF et consolidées chaque année.
 >
-> Dans les comparaisons entre périodes présentées plus loin, nous utilisons une
-> définition légèrement différente, qui exclut les batteries. Ce choix permet de
-> comparer les périodes sur une base identique. Sur les deux semaines vérifiées en
-> juillet 2026, la différence entre les deux méthodes est restée inférieure à deux
-> points.
+> Si un ou deux relevés manquent au milieu de la période, ils sont estimés à partir des
+> relevés voisins, et le visuel le signale. S'il en manque davantage, les quantités ne
+> sont pas affichées et le pourcentage ne porte que sur les relevés disponibles. La
+> note méthodologique précise comment les relevés sont datés et ce que recouvre la
+> production classée « photovoltaïque » après le coucher du soleil.
 >
-> **Comment savoir si la donnée est encore récente ?** La jauge affiche l'âge du
-> dernier relevé, recalculé au moment où vous ouvrez la page. Au-delà de 12 heures,
-> elle signale que la donnée est ancienne ; au-delà de 24 heures, qu'elle est trop
-> ancienne pour représenter la situation actuelle.
+> **Comment savoir si la donnée est encore récente ?** La collecte est programmée
+> toutes les six heures. Le visuel affiche l'âge du dernier relevé, recalculé au moment
+> où vous ouvrez la page. Au-delà de 12 heures, il signale que la donnée est ancienne ;
+> au-delà de 24 heures, qu'elle est trop ancienne pour représenter la situation
+> actuelle.
 
 ### Au fil de la journée
 
@@ -595,7 +604,8 @@ Trois étapes sont appliquées à chaque mise à jour.
 La chaîne s'exécute toutes les six heures : elle rafraîchit les sources glissantes et
 contrôle les fichiers historiques conservés. Ce rythme est celui de la publication,
 pas celui de toutes les observations. Si une source est temporairement indisponible,
-la dernière version complète est conservée ; la jauge signale un relevé trop ancien.
+la dernière version complète est conservée ; le visuel des six dernières heures
+signale un relevé trop ancien.
 
 Le résultat « +22 % entre juin et juillet » dispose d'un
 [dossier de vérification](verification-demande.html) : mesures horaires utilisées,
@@ -720,7 +730,7 @@ différentes.
 ### Les périodes couvertes ne sont pas toutes les mêmes
 
 Les données historiques de production couvrent 2019 à 2024. Les données en temps réel
-utilisées par la jauge commencent en 2026. La période intermédiaire n'est pas utilisée
+utilisées par le visuel des six dernières heures commencent en 2026. La période intermédiaire n'est pas utilisée
 pour relier les deux séries.
 
 Les données sur le bridage photovoltaïque s'arrêtent quant à elles en 2023, dernière
