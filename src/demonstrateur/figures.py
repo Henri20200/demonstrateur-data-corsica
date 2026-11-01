@@ -15,6 +15,7 @@ présent en aucun cas.
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -122,9 +123,34 @@ def _heure_fr(t) -> str:
     return f"{t.hour}h{t.minute:02d}"
 
 
-def _mwh_fr(x: float) -> str:
-    """MWh arrondis à la dizaine (donnée estimée), milliers séparés à la française."""
-    return f"{round(x, -1):,.0f}".replace(",", " ")
+def _arrondi(x: float) -> int:
+    """Entier le plus proche, demi vers le haut : l'arrondi que fait le lecteur."""
+    return math.floor(x + 0.5)
+
+
+def _mwh_fr(mwh: int) -> str:
+    """Un nombre entier de MWh, milliers séparés à la française."""
+    return f"{mwh:,d}".replace(",", " ")
+
+
+def part_affichee_t1(f: dict) -> int:
+    """Le pourcentage entier qu'affiche T1 (convention validée le 01/11/2026).
+
+    - MWh affichés : arrondis à l'unité, puis pourcentage calculé sur CES quantités. Le
+      lecteur le retrouve à partir des chiffres affichés. Arrondis à la dizaine, les MWh
+      le contredisaient : 47,96 sur 1 085,88 MWh font 4 %, affichés « 50 sur 1 090 »,
+      qui font 5 % (page publiée le 01/11/2026 ; 13 % des fenêtres sur 14 jours).
+    - MWh masqués (relevés manquants) : pourcentage calculé sur les valeurs disponibles,
+      sans arrondi intermédiaire.
+
+    Les valeurs non arrondies restent dans la fenêtre (fenetre_t1), pour les calculs et
+    les vérifications ; seul l'affichage arrondit.
+    """
+    if f["mwh_total"] is None:
+        return _arrondi(f["part"])
+    solaire, total = _arrondi(f["mwh_solaire"]), _arrondi(f["mwh_total"])
+    # Demi vers le haut, en entiers exacts : 9 MWh sur 200 font 4,5 %, affichés 5 %.
+    return (200 * solaire + total) // (2 * total)
 
 
 def fenetre_t1(con) -> dict:
@@ -262,8 +288,9 @@ def textes_t1(f: dict, bas: int, haut: int) -> dict:
                    "le solaire a fourni")
     if f["mwh_total"] is not None:
         # L'unité est expliquée : le public visé connaît le kWh de sa facture, pas le MWh.
-        quantites = (f"Sur cette période : {_mwh_fr(f['mwh_solaire'])} MWh d'origine "
-                     f"solaire, sur {_mwh_fr(f['mwh_total'])} MWh consommés.<br>"
+        solaire, total = _arrondi(f["mwh_solaire"]), _arrondi(f["mwh_total"])
+        quantites = (f"Sur cette période : {_mwh_fr(solaire)} MWh d'origine "
+                     f"solaire, sur {_mwh_fr(total)} MWh consommés.<br>"
                      "1 MWh = 1 000 kWh, l'unité de votre facture d'électricité.")
         if f["estimes"]:
             s = "s" if f["estimes"] > 1 else ""
@@ -275,7 +302,7 @@ def textes_t1(f: dict, bas: int, haut: int) -> dict:
                      "affichées.")
     return dict(
         periode=periode,
-        part=f"<b>{f['part']:.0f} %</b>",
+        part=f"<b>{part_affichee_t1(f)} %</b>",
         phrase="de l'électricité consommée en Corse.",
         quantites=quantites,
         repere=(f"Repère : sur une année entière, le solaire fournit {bas} à {haut} %<br>"
@@ -504,6 +531,13 @@ def fig_t1_soleil() -> tuple[go.Figure, str, str, float, str]:
     con = _con()
     f = fenetre_t1(con)
     bas, haut = repere_annuel_t1(con)
+    # Les valeurs non arrondies, au journal du run : ce qu'on vérifie derrière l'affiché.
+    if f["mwh_total"] is not None:
+        print(f"[i] t1 — {f['mwh_solaire']:.2f} MWh solaire sur {f['mwh_total']:.2f} MWh, "
+              f"part {f['part']:.2f} % (affichée {part_affichee_t1(f)} %).")
+    else:
+        print(f"[i] t1 — quantités masquées ({f['disponibles']} relevés sur {T1_RELEVES}), "
+              f"part {f['part']:.2f} % (affichée {part_affichee_t1(f)} %).")
     fin = f["fin"]
     quand = f"{_jour_fr(fin)} {fin.year} à {_heure_fr(fin)}"
     # Le sous-titre et le pied sont ceux que main() posera : la mise en page étroite les

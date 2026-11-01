@@ -137,30 +137,20 @@ repère annuel.*
 
 {{visuel:t1_soleil_live}}
 
-Ce visuel porte sur une période, pas sur un instant : les 24 quarts d'heure associés
-aux six dernières heures de relevés publiés par EDF. Il donne la part du solaire dans
-l'électricité consommée en Corse, câbles sous-marins compris, et les quantités
-correspondantes. L'heure du dernier relevé est indiquée sous le titre, avec son âge au
-moment où vous ouvrez la page.
-
 Cette part change beaucoup au fil de la journée. Elle est presque nulle la nuit et
 peut dépasser 40 % autour de midi par beau temps : en 2024, c'est arrivé au moins une
-heure pendant 178 jours, près d'un jour sur deux. Sur une année entière, en revanche,
-le solaire fournit 9 à 12 % de l'électricité consommée (2019-2024). C'est ce repère
-que le visuel affiche sous le résultat.
-
-Le résultat des six dernières heures ne permet donc pas, à lui seul, de juger la place
-du solaire, ni de choisir le meilleur moment pour consommer de l'électricité
-renouvelable. Pour cela, le chapitre consacré à midi compare les heures de la journée
-sur six années de données.
+heure pendant 178 jours, près d'un jour sur deux. Six heures de relevés ne suffisent
+donc pas à juger la place du solaire : la partie suivante, « Au fil de la journée »,
+compare les heures de la journée sur six années de données.
 
 > **Pour aller plus loin — que mesure exactement ce visuel ?** La part du solaire est
 > rapportée à toute l'électricité consommée en Corse : la production de l'île
 > (centrales thermiques, barrages, solaire, éolien, bioénergies et autres
 > renouvelables) et l'électricité arrivée par les câbles sous-marins. Les quantités
 > additionnent les 24 quarts d'heure, en mégawattheures (1 MWh = 1 000 kWh, l'unité de
-> votre facture d'électricité). Elles sont arrondies à la dizaine : ces données sont
-> estimées par EDF et consolidées chaque année.
+> votre facture d'électricité). Elles sont arrondies au mégawattheure, et le
+> pourcentage est calculé sur ces valeurs arrondies : on le retrouve à partir des
+> chiffres affichés. Ces données sont estimées par EDF et consolidées chaque année.
 >
 > Si un ou deux relevés manquent au milieu de la période, ils sont estimés à partir des
 > relevés voisins, et le visuel le signale. S'il en manque davantage, les quantités ne

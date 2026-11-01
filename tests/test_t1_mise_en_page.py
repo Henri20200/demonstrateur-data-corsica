@@ -11,7 +11,9 @@ qui casserait ici casserait le cron, donc la publication de tout le livrable.
 
 import itertools
 import json
+import re
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 import pytest
 
@@ -92,6 +94,53 @@ def test_textes_valides_le_31_10():
     deux_jours = F.textes_t1(
         dict(part=2.0, debut=PERIODES[1][0], fin=PERIODES[1][1], **QUANTITES[0]), 9, 12)
     assert "allant du 30 septembre à 20h15<br>au 1er octobre à 2h00" in deux_jours["periode"]
+
+
+# --- Le pourcentage se retrouve à partir des MWh affichés (convention du 01/11/2026) ---
+
+
+def _lu(f: dict) -> tuple[int, list[int]]:
+    """Ce que lit le lecteur : le pourcentage et les MWh, relus dans les textes posés."""
+    t = F.textes_t1(f, 9, 12)
+    part = int(re.search(r"<b>(\d+) %</b>", t["part"]).group(1))
+    ligne = t["quantites"].split("<br>")[0]
+    # Milliers séparés par une espace fine insécable (U+202F), comme à l'affichage.
+    return part, [int(n.replace("\u202f", ""))
+                  for n in re.findall(r"(\d[\d\u202f]*) MWh", ligne)]
+
+
+def _fenetre(solaire, total, part=None, disponibles=24):
+    debut, fin = PERIODES[0]
+    if part is None:
+        part = 100 * solaire / total
+    return dict(part=part, mwh_solaire=solaire, mwh_total=total, estimes=0,
+                disponibles=disponibles, debut=debut, fin=fin)
+
+
+def test_le_cas_publie_le_01_11_se_recalcule():
+    """Page publiée le 01/11/2026 : 47,96 MWh sur 1 085,88 font 4 %, mais les MWh à la
+    dizaine affichaient « 50 sur 1 090 », qui font 5 %."""
+    assert _lu(_fenetre(47.96, 1085.88)) == (4, [48, 1086])
+
+
+def test_le_pourcentage_se_retrouve_a_partir_des_mwh_affiches():
+    """Pour toute fenêtre complète, le pourcentage affiché est celui que le lecteur
+    calcule sur les MWh affichés, arrondi demi vers le haut ; et il ne s'écarte jamais
+    d'un point entier de la part exacte, qui reste celle de la fenêtre."""
+    for solaire in [x / 7 for x in range(0, 2100, 11)]:
+        for total in (180.4, 499.5, 1085.88, 1500.5, 2999.49):
+            f = _fenetre(solaire, total)
+            part, (s, t) = _lu(f)
+            attendu = (Decimal(100 * s) / Decimal(t)).quantize(Decimal(1), ROUND_HALF_UP)
+            assert part == int(attendu), (solaire, total)
+            assert abs(part - f["part"]) < 1, (solaire, total)
+    assert _lu(_fenetre(9, 200))[0] == 5          # 4,5 % : demi vers le haut
+
+
+def test_sans_mwh_le_pourcentage_porte_sur_les_valeurs_disponibles():
+    """Quantités masquées : pas d'arrondi intermédiaire, la part exacte s'arrondit seule."""
+    assert _lu(_fenetre(None, None, part=23.49, disponibles=21)) == (23, [])
+    assert _lu(_fenetre(None, None, part=23.5, disponibles=21)) == (24, [])
 
 
 def test_le_sous_titre_avertit_aux_seuils_du_code():
