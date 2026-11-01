@@ -86,6 +86,24 @@ sans conversion (voir « Le fuseau horaire » plus bas).</p>
     Sardaigne exporte, et les données européennes ne lui donnent pas d'importations. Sans
     ce calage, les deux barres ne diraient pas la même chose.</li>
 </ul>
+<p>Le visuel des six dernières heures additionne les 24 derniers relevés de 15 minutes
+du temps réel, et rapporte le solaire à toute l'électricité consommée sur l'île, câbles
+compris. <strong>EDF ne précise pas si l'heure d'un relevé marque le début ou la fin du
+quart d'heure mesuré</strong>, et la donnée ne permet pas de trancher : comparé au midi
+solaire, le centre de la production photovoltaïque varie trop d'un jour à l'autre pour
+conclure. Le visuel désigne donc la période par ses relevés (« les 24 quarts d'heure
+associés aux relevés de 7h45 à 13h30 »), ce qui reste vrai dans les deux cas. Un ou deux
+relevés manquants, encadrés par des relevés disponibles, sont estimés à partir de leurs
+voisins, et le visuel le signale. S'il en manque davantage, les quantités ne sont pas
+affichées et le pourcentage ne porte que sur les relevés disponibles.</p>
+<p>La production classée « photovoltaïque » après le coucher du soleil pourrait
+correspondre à une restitution d'énergie stockée. Les appels d'offres de la Commission
+de régulation de l'énergie pour le solaire avec stockage dans les îles, Corse comprise,
+rémunèrent une injection sur un créneau de deux heures à la pointe du soir (rapport de
+synthèse du 17 septembre 2020). Mais EDF ne dit pas comment il classe ces injections, et
+son registre des installations ne signale aucune centrale solaire avec stockage : c'est
+une hypothèse, pas un constat. Le visuel compte ces injections avec le solaire, comme
+EDF les classe.</p>
 <p>Le seuil qui permet de débrancher une installation solaire ou éolienne sans stockage
 est lui aussi recopié. Il vient de l'arrêté du 23 avril 2008 : 30 %
 ailleurs, 35 % en Corse. Le relèvement à 45 %, prévu pour
@@ -195,9 +213,10 @@ l'étude. Elle n'ajoute aucun résultat : elle décrit les mécanismes qui les p
     — celle du fuseau horaire ci-dessus — a fait céder sept de ces verrous d'un coup ;
     les fenêtres horaires ont été <em>remesurées</em> sur la donnée corrigée, jamais
     translatées.</li>
-<li><strong>L'âge de l'instantané est calculé chez vous.</strong> La page est fabriquée
+<li><strong>L'âge du dernier relevé est calculé chez vous.</strong> La page est fabriquée
     plusieurs fois par jour puis servie telle quelle : elle ne peut pas vieillir toute
-    seule. La jauge du temps réel embarque donc l'instant exact de son dernier relevé et
+    seule. Le visuel des six dernières heures embarque donc l'instant exact de son dernier
+    relevé et
     recalcule son âge à l'ouverture, puis toutes les cinq minutes. Sans cela, une page
     fabriquée le matin aurait continué d'afficher le même âge tout l'après-midi.</li>
 </ul>
