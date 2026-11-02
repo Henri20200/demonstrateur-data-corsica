@@ -1604,22 +1604,70 @@ def test_le_controle_croise_2020_recolle_a_la_publication_de_l_oreges(con):
 
     L'OREGES publie, pour 2020 : 36 % de thermique et 29,8 % de liaisons électriques.
     C'est le contrôle croisé le plus fort dont dispose l'étude — une source officielle,
-    indépendante de notre chaîne, sur exactement le même périmètre. Il est affiché en note
-    du visuel : s'il se met à diverger, la note ment.
+    indépendante de notre chaîne, sur exactement le même périmètre. Il est écrit dans la
+    note méthodologique (dans le pied de t7 jusqu'au 02/11/2026) : s'il se met à
+    diverger, la note ment.
     """
+    from demonstrateur.figures import OREGES_ELEC_2020
+
     th, im = con.execute(
         f"""SELECT 100.0*sum(thermique_mw)/sum(production_totale_mw),
                    100.0*sum(importations_mw)/sum(production_totale_mw)
             FROM '{COURBE.as_posix()}'
             WHERE annee_locale = 2020"""
     ).fetchone()
-    assert th == pytest.approx(36.0, abs=0.5), (
+    assert th == pytest.approx(OREGES_ELEC_2020["thermique"], abs=0.5), (
         f"thermique 2020 = {th:.1f} %, l'OREGES publie 36 % — écart trop grand pour "
-        "que le contrôle croisé affiché en note du visuel tienne"
+        "que le contrôle croisé écrit dans la note méthodologique tienne"
     )
-    assert im == pytest.approx(29.8, abs=0.5), (
+    assert im == pytest.approx(OREGES_ELEC_2020["liaisons"], abs=0.5), (
         f"liaisons 2020 = {im:.1f} %, l'OREGES publie 29,8 %"
     )
+
+
+@besoin_courbe
+def test_t7_annonce_son_resultat_et_decompose_l_electricite_importee(con):
+    """Le vocabulaire de t7, tranché le 02/11/2026, lu dans la page publiée.
+
+    Le titre annonce les deux taux que portent les repères. « — zéro kilowattheure »,
+    faux à la lettre (un carburant se compte aussi en kWh), devient « hors
+    électricité ». Sous la barre du bas, ses 67,8 % se décomposent : produits en Corse
+    avec du combustible importé, ou arrivés par les câbles — la légende, commune aux
+    deux barres, laissait confondre les deux. Le pied garde sources, années et statut
+    des données ; le contrôle croisé est parti dans la note méthodologique.
+    """
+    import json
+
+    from demonstrateur.figures import OREGES_DEPENDANCE, _arrondi
+
+    th, im = con.execute(
+        f"""SELECT 100.0*sum(thermique_mw)/sum(production_totale_mw),
+                   100.0*sum(importations_mw)/sum(production_totale_mw)
+            FROM '{COURBE.as_posix()}'"""
+    ).fetchone()
+    page = (OUTPUTS / "t7_dependance_perimetres.html").read_text(encoding="utf-8")
+    dec = json.JSONDecoder()
+    i = page.index("Plotly.newPlot(")
+    traces, j = dec.raw_decode(page, page.index("[", i))
+    layout, _ = dec.raw_decode(page, page.index("{", j))
+
+    assert layout["title"]["text"] == (
+        f"La Corse dépend de l'extérieur pour {_arrondi(OREGES_DEPENDANCE)} % de son "
+        f"énergie<br>et {_arrondi(th + im)} % de son électricité")
+    assert "hors électricité" in traces[0]["text"][0]
+    assert "kilowattheure" not in json.dumps(traces + [layout], ensure_ascii=False)
+    pct = lambda v: f"{v:.1f} %".replace(".", ",")  # noqa: E731
+    decomposition = (f"{pct(th)} produits en Corse avec du combustible importé, "
+                     f"{pct(im)} arrivés par les câbles")
+    textes = [a["text"] for a in layout["annotations"]]
+    assert decomposition in textes, textes
+    etroit = [a["text"].replace("<br>", " ").replace(" ", " ")
+              for a in layout["meta"]["etroit"]["disposition"]["annotations"]]
+    assert decomposition in etroit, "la décomposition doit rester lisible sur téléphone"
+    pied = textes[-1].replace("<br>", " ")
+    for garde in ("OREGES", "données 2020", "EDF", "estimées à partir de 2021"):
+        assert garde in pied, f"le pied de t7 a perdu « {garde} »"
+    assert "Contrôle croisé" not in pied
 
 
 # --- Titre 8 : le seuil de déconnexion est déjà franchi, de plus en plus ------

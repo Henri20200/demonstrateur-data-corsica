@@ -28,6 +28,7 @@ from .figures import (
     ANNEE_VISEE,
     OREGES_CARBURANTS,
     OREGES_DEPENDANCE,
+    OREGES_ELEC_2020,
     SEUIL_CORSE,
     SEUIL_NATIONAL,
     SEUIL_VISE,
@@ -72,6 +73,12 @@ def _chiffres() -> dict:
     mois, ec1, ec2 = con.execute(
         f"SELECT count(*), min(annee), max(annee) FROM '{ECRET}'"
     ).fetchone()
+    # Le contrôle croisé avec l'OREGES, recalculé à chaque run : écrit en dur, il
+    # continuerait d'annoncer l'accord le jour où une révision d'EDF le romprait.
+    th2020, im2020 = con.execute(f"""
+        SELECT 100.0*sum(thermique_mw)/sum(production_totale_mw),
+               100.0*sum(importations_mw)/sum(production_totale_mw)
+        FROM '{COURBE}' WHERE annee_locale = 2020""").fetchone()
 
     c = dict(
         heures=heures, an1=int(an1), an2=int(an2), estimees=estimees,
@@ -79,7 +86,7 @@ def _chiffres() -> dict:
         part_estimee=round(100 * estimees / heures),
         couvertes=couvertes, manquantes=couvertes - heures,
         sans_micro=sans_micro, pas=pas, mix_d1=mix_d1, mix_d2=mix_d2,
-        mois=mois, ec1=int(ec1), ec2=int(ec2),
+        mois=mois, ec1=int(ec1), ec2=int(ec2), th2020=th2020, im2020=im2020,
         collecte_hist=date_collecte("edf_courbe_charge_horaire"),
         collecte_mix=date_collecte("edf_mix_temps_reel"),
         collecte_ecret=date_collecte("edf_ecretement_corse"),
@@ -114,6 +121,7 @@ def _chiffres() -> dict:
 def _html(c: dict) -> str:
     n = lambda v: f"{v:,}".replace(",", " ")  # noqa: E731 — séparateur de milliers français
     virgule = lambda v: f"{v}".replace(".", ",")  # noqa: E731
+    un_chiffre = lambda v: f"{v:.1f}".replace(".", ",")  # noqa: E731 — une décimale
     s = c["sard"]
     ligne_sard = "" if not s else f"""
 <tr><td>Production sarde par filière, {n(s["heures"])} heures ({s["an1"]}-{s["an2"]})</td>
@@ -156,8 +164,9 @@ raccordée au réseau français continental. EDF exploite son système électriq
 les mesures. Ce sont celles-là.</p>
 <p>Seule l'<strong>électricité</strong> est traitée. Les carburants, le fioul et le gaz du
 chauffage sont hors sujet. La différence est grande : dans toute l'énergie consommée en
-Corse, les carburants pèsent {virgule(OREGES_CARBURANTS)} % à eux seuls, et ils ne
-contiennent aucun kilowattheure.</p>
+Corse, les carburants pèsent {virgule(OREGES_CARBURANTS)} % à eux seuls. Ces carburants
+sont comptés dans la consommation totale d'énergie, mais pas dans la consommation
+d'électricité.</p>
 
 <h2>D'où viennent les mesures</h2>
 <p>Quatre jeux de données, tous publiés en accès libre, tous téléchargés par programme
@@ -184,6 +193,10 @@ dernier téléchargement, {n(c["pas"])} relevés de 15 minutes, du {c["mix_d1"]}
 (Agence d'aménagement durable, d'urbanisme et d'énergie de la Corse), édition 2021,
 données 2020. Il couvre toute l'énergie, pas seulement l'électricité. Les données EDF ne
 permettent pas de le recalculer.</p>
+<p>Contrôle croisé : pour 2020, l'OREGES publie
+{virgule(round(OREGES_ELEC_2020["thermique"]))} % de thermique et
+{virgule(OREGES_ELEC_2020["liaisons"])} % de câbles dans l'électricité consommée en Corse ;
+les données EDF donnent {un_chiffre(c["th2020"])} % et {un_chiffre(c["im2020"])} %.</p>
 
 <h2>Comment les chiffres sont calculés</h2>
 <p>Une part de mix se calcule toujours pareil : les mégawatts d'une filière, divisés par
