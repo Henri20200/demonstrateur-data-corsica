@@ -586,7 +586,7 @@ def script_etroit(div_id: str) -> str:
   // L'ajustement automatique de la page large se rétablit donc avec elle.
   Object.keys(E.disposition).forEach(function (k) {
     LARGE[k] = copie(lire(gd.layout, k));
-    if (/\.range$/.test(k)) {
+    if (/\\.range$/.test(k)) {
       var a = k.replace(/range$/, 'autorange');
       LARGE[a] = copie(lire(gd.layout, a));
     }
