@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "439998a4a764d526e4429e788ddd1ba8c70236a2a050afc1bf3b0e6d0823aef1",
+    "sha256": "a6b8d94924d5c1d715b4042fb8efccf477e99ae080c97edf223e2e10cc13e098",
     "date_collecte": "2026-11-02",
-    "taille_octets": 367002
+    "taille_octets": 366936
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -217,9 +217,9 @@
     "licence": "Réutilisation libre (CC-BY 4.0) — attribution : Agence européenne pour l'environnement (AEE). Donnée produite par Qualitair Corse, rapportée par le LCSQA/Ineris",
     "format": "parquet",
     "content_type": "application/octet-stream",
-    "sha256": "bad3390613d806363947818ba9361ef226ba34d13eb247f0273e6471847b0877",
+    "sha256": "4ca5cc56faa720079faba0dcc2b02be7691ac3a3fa0d9bf627d8cb58fd3df9e1",
     "date_collecte": "2026-11-02",
-    "taille_octets": 128390
+    "taille_octets": 128400
   },
   "aee_o3_bastia_giraud_valide": {
     "url": "https://eeadmz1batchservice02.blob.core.windows.net/airquality-p-e1a/FR/SPO-FR41002_7.parquet",
