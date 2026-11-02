@@ -463,6 +463,34 @@ def test_la_note_electricite_dit_une_seule_convention_horaire_pour_edf():
     )
 
 
+@besoin_note_elec_et_courbe
+def test_la_note_electricite_porte_le_controle_croise_et_dit_ou_comptent_les_carburants():
+    """Ce que le pied de t7 a cédé à la note le 02/11/2026, et ce qu'elle disait faux.
+
+    Le contrôle croisé avec l'OREGES y est recalculé : écrit en dur, il annoncerait
+    l'accord après une révision d'EDF qui le romprait. Et « ils ne contiennent aucun
+    kilowattheure » était faux à la lettre : un carburant se compte aussi en kWh, il
+    n'entre simplement pas dans la consommation d'électricité.
+    """
+    from demonstrateur.figures import OREGES_ELEC_2020
+
+    h = _texte_note_elec()
+    assert "aucun kilowattheure" not in h
+    assert ("Ces carburants sont comptés dans la consommation totale d'énergie, mais pas "
+            "dans la consommation d'électricité.") in h
+    courbe = (DATA_PROCESSED / "edf_courbe_corse.parquet").as_posix()
+    th, im = duckdb.connect().execute(
+        f"""SELECT 100.0*sum(thermique_mw)/sum(production_totale_mw),
+                   100.0*sum(importations_mw)/sum(production_totale_mw)
+            FROM '{courbe}' WHERE annee_locale = 2020""").fetchone()
+    un = lambda v: f"{v:.1f}".replace(".", ",")  # noqa: E731
+    attendu = (f"Contrôle croisé : pour 2020, l'OREGES publie "
+               f"{round(OREGES_ELEC_2020['thermique'])} % de thermique et "
+               f"{un(OREGES_ELEC_2020['liaisons'])} % de câbles dans l'électricité consommée "
+               f"en Corse ; les données EDF donnent {un(th)} % et {un(im)} %.")
+    assert attendu in h, "le contrôle croisé de la note doit être recalculé"
+
+
 @besoin_note_elec
 def test_les_chiffres_de_la_note_electricite_sortent_bien_des_donnees():
     """La propriété qui fait tenir la note : ses chiffres sont LUS, pas recopiés.

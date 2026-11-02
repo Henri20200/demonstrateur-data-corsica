@@ -1141,6 +1141,10 @@ OREGES_2020 = {
 }
 OREGES_CARBURANTS = 39.9   # le poste qui creuse l'écart : 0 kWh d'électricité
 OREGES_DEPENDANCE = 86.1   # taux de dépendance énergétique publié (2020)
+# Le contrôle croisé : ce que la même Lettre publie pour l'électricité seule en 2020, que
+# nos Parquet doivent retrouver. Il est écrit dans la note méthodologique (depuis le
+# 02/11/2026 ; avant, dans le pied de t7, qui en devenait illisible sur téléphone).
+OREGES_ELEC_2020 = {"thermique": 36.0, "liaisons": 29.8}
 
 
 def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
@@ -1209,9 +1213,12 @@ def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
         # segment lui-même (il est assez large) plutôt qu'en annotation flottante :
         # une étiquette posée par-dessus les barres retombe en encre sombre sur fond
         # sombre dès que la figure change de hauteur.
+        # « hors électricité » dit pourquoi ils sont dans la barre du haut et pas dans
+        # celle du bas. Jusqu'au 02/11/2026 : « — zéro kilowattheure », faux à la lettre
+        # (un carburant se compte aussi en kWh) et qui n'expliquait rien.
         if cle == "petrole":
             textes[0] = (f"{pct(OREGES_2020['petrole'])}<br>dont {pct(OREGES_CARBURANTS)} de "
-                         "carburants des transports — zéro kilowattheure")
+                         "carburants pour les transports, hors électricité")
         fig.add_trace(go.Bar(
             y=barres, x=vals, name=libelle, orientation="h",
             marker=dict(color=couleur, line=dict(width=2, color=PALETTE["surface"])),
@@ -1235,17 +1242,45 @@ def fig_t7_dependance_perimetres() -> tuple[go.Figure, float]:
             showarrow=False, xanchor="right", xshift=-4,
             font=dict(family=SANS, size=17, color=PALETTE["ink"]))
 
+    # Sous la barre du bas, ses 67,8 % décomposés. La légende « Produits pétroliers
+    # importés » sert aux deux barres : sans cette ligne, l'électricité produite SUR
+    # L'ÎLE avec un combustible importé se confondait avec celle qui arrive par les
+    # câbles (02/11/2026). Posée sous le bord de la barre, en unités d'axe : elle suit la
+    # barre quelle que soit la hauteur de la figure.
+    bargap = 0.52
+    fig.add_annotation(
+        x=0, xref="paper", xanchor="left", y=1 + (1 - bargap) / 2, yref="y",
+        yanchor="top", yshift=-6, showarrow=False, align="left",
+        text=(f"{pct(elec['petrole'])} produits en Corse avec du combustible importé, "
+              f"{pct(elec['liaisons'])} arrivés par les câbles"),
+        font=dict(family=SANS, size=16, color=PALETTE["ink_soft"]))
+
     fig.update_layout(
-        title=dict(text="Dépendance corse : 86 % de l'énergie, 68 % de l'électricité"),
-        barmode="stack", bargap=0.52,
+        # Le résultat dit d'emblée ; les périodes, différentes d'une barre à l'autre,
+        # restent dans le sous-titre et sur les barres. Les deux taux sont ceux qu'affichent
+        # les repères, arrondis comme le lecteur les arrondit.
+        title=dict(text=f"La Corse dépend de l'extérieur pour {_arrondi(OREGES_DEPENDANCE)} % "
+                        f"de son énergie<br>et {_arrondi(importe_elec)} % de son électricité",
+                   # Ancré au conteneur (cf. `viz.centrer_titre_ancre`) : centré par Plotly,
+                   # le titre de deux lignes faisait descendre le sous-titre sur le repère
+                   # « 86,1 % vient… ». Mesuré dans Chrome, Plotly remonte alors le bloc
+                   # d'une ligne au-dessus de l'ancre calculée, sous la barre d'outils :
+                   # `pad` l'en redescend.
+                   yref="container", pad=dict(t=30)),
+        barmode="stack", bargap=bargap,
         # Axe X masqué : les segments portent leur %, les deux barres font 100 %.
         xaxis=dict(range=[0, 100], showgrid=False, showticklabels=False,
                    ticks="", showline=False, zeroline=False),
         yaxis=dict(showgrid=False, ticks="", autorange="reversed"),
         legend=dict(orientation="h", y=-0.16, yanchor="top", x=0, traceorder="normal"),
-        # t : titre + trois lignes de sous-titre. À 150, le tracé remontait dans le texte.
-        margin=dict(t=180, b=330, l=250, r=56),
-        height=740,
+        # t : deux lignes de titre + trois de sous-titre, puis le repère « 86,1 % vient
+        # de l'extérieur ». Avec un titre centré par Plotly, ce repère se lisait sur la
+        # dernière ligne du sous-titre ; à 150 pour une ligne de titre, le tracé
+        # remontait dans le texte.
+        # b : légende puis pied de quatre lignes (sept avant que le contrôle croisé passe
+        # dans la note, le 02/11/2026). Tracé : 230 px.
+        margin=dict(t=224, b=240, l=250, r=56),
+        height=694,
     )
     return fig, importe_elec
 
@@ -1685,13 +1720,15 @@ def script_fraicheur(instant_iso: str, sous_titre: str) -> str:
 def etroit_t7(fig) -> dict:
     """t7 : les libellés des barres passent AU-DESSUS d'elles, suivis de « … vient de
     l'extérieur ▾ » ; la grande barre ne garde que son pourcentage, et « dont … de
-    carburants des transports — zéro kilowattheure » passe sur une ligne juste en
-    dessous. Laissés à gauche, les libellés ne laissaient au tracé que 28 px."""
+    carburants pour les transports, hors électricité » passe sur une ligne juste en
+    dessous. La décomposition de la barre du bas (produits en Corse / arrivés par les
+    câbles) se replie sous elle, dans la place que la demi-bande y laisse. Laissés à
+    gauche, les libellés ne laissaient au tracé que 28 px."""
     taille = ETROIT_TAILLES["annotation"]
     ligne = taille * INTERLIGNE
     marge_gauche = ETROIT_MARGE_PX + 4
     bord = -(marge_gauche - ETROIT_MARGE_PX)
-    trace_px, ecart = 460, 0.75
+    trace_px, ecart, zone_axe = 460, 0.75, 24
     bande = trace_px / 2
     demi_barre = bande * (1 - ecart) / 2
     largeur_trace = ETROIT_FIGURE_PX - marge_gauche - ETROIT_MARGE_DROITE_PX
@@ -1700,7 +1737,11 @@ def etroit_t7(fig) -> dict:
     textes = [list(t.text) for t in fig.data]
     valeur, detail = textes[0][0].split("<br>", 1)
     textes[0][0] = valeur
-    detail = replier_equilibre(detail, taille, ETROIT_DISPO_PX)
+    detail = replier_equilibre(insecables(detail), taille, ETROIT_DISPO_PX)
+    decomposition = replier_equilibre(insecables(fig.layout.annotations[2].text), taille,
+                                      ETROIT_DISPO_PX)
+    if 6 + (decomposition.count("<br>") + 1) * ligne > bande / 2 - demi_barre + zone_axe - 8:
+        raise ValueError("t7 étroit : la décomposition ne tient pas sous la barre du bas")
 
     reperes, ajouts = {}, []
     for rang, (a, barre) in enumerate(zip(list(fig.layout.annotations)[:2], barres)):
@@ -1735,7 +1776,9 @@ def etroit_t7(fig) -> dict:
         centre = (s.y0 + s.y1) / 2
         frontieres.append(dict(s.to_plotly_json(), y0=centre - (1 - ecart) / 2 - 0.04,
                                y1=centre + (1 - ecart) / 2 + 0.04))
-    return dict(l=marge_gauche, trace_px=trace_px, zone_axe_x=24, annotations=reperes,
+    reperes[2] = dict(text=decomposition, xshift=bord, y=1 + (1 - ecart) / 2,
+                      font=dict(size=taille))
+    return dict(l=marge_gauche, trace_px=trace_px, zone_axe_x=zone_axe, annotations=reperes,
                 ajouts=ajouts, traces={"text": textes},
                 disposition={"yaxis.showticklabels": False, "bargap": ecart,
                              "shapes": frontieres})
@@ -1899,9 +1942,10 @@ def main() -> int:
                    "Corse, puis l'électricité seule.<br>En haut : toute l'énergie consommée en "
                    "2020, transports et chauffage compris.<br>En bas : l'électricité consommée "
                    "en Corse entre 2019 et 2024.",
-        note="Les 86,1 % de l'OREGES couvrent toute l'énergie — carburants et chauffage "
-             "compris.<br>Contrôle croisé 2020 : OREGES 36 % / 29,8 % (thermique / "
-             "liaisons) ; nos données EDF, 36,0 % / 29,8 %.<br>" + NOTE_ESTIME,
+        # Le pied garde les sources, leurs années et le statut des données EDF. Le
+        # périmètre des 86,1 % est dit par le sous-titre ; le contrôle croisé avec
+        # l'OREGES est passé dans la note méthodologique (02/11/2026).
+        note=NOTE_ESTIME,
         pied_decalage_px=-130, etroit=etroit_t7)
 
     fig8, an8, hausse8 = fig_t8_seuil_deconnexion()
