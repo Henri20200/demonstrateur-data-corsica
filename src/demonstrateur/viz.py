@@ -263,6 +263,269 @@ def replier_equilibre(texte: str, taille: int, dispo: float) -> str:
     return "<br>".join(lignes)
 
 
+MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août",
+              "septembre", "octobre", "novembre", "décembre"]
+
+
+def insecables(t: str) -> str:
+    """Espaces où une mise en page étroite ne coupe pas : avant %, : et ?, dans une date
+    (« 30 octobre »), entre « à » et une heure, et dans « (statut EDF : estimé) »."""
+    nb = "\u00a0"
+    t = t.replace(" %", nb + "%").replace(" :", nb + ":").replace(" ?", nb + "?")
+    t = re.sub(rf"(\d+(?:er)?) ({'|'.join(MOIS_LONGS)})", rf"\1{nb}\2", t)
+    t = re.sub(r" à (\d+h\d\d)", rf" à{nb}\1", t)
+    return t.replace(f"(statut EDF{nb}: ", f"(statut{nb}EDF{nb}:{nb}")
+
+
+def dissoudre_br(t: str) -> str:
+    """Retire les retours à la ligne qui ne servaient qu'à la largeur : un `<br>` qui suit
+    un point, un deux-points ou un point d'interrogation finit une phrase et se garde."""
+    return re.sub(r"(?<![.:?])<br>", " ", t or "")
+
+
+# --- Mise en page étroite GÉNÉRIQUE (toutes les figures, depuis le 01/11/2026) --------
+# T1 a la sienne, écrite à la main parce que son message est du texte. Les autres
+# figures se faisaient rogner sur téléphone de la même façon : titres, sous-titres et
+# sources coupés, légendes posées sur le titre, zone de tracé réduite à 28 px (t7).
+# La seconde mise en page en est DÉRIVÉE ici, à l'export, puis vérifiée : chaque ligne
+# de texte est mesurée à la largeur du plus petit cadre, et une ligne qui ne tient pas
+# fait lever la génération plutôt que de partir rognée. Ce qui ne se dérive pas (des
+# libellés de barres trop longs, une barre de couleur, un encadré qui recouvre des
+# barres) se déclare figure par figure dans `reglages` — cf. figures.etroit_t7.
+ETROIT_FIGURE_PX = CADRE_ETROIT_MIN_PX - 2 * MARGE_PAGE_PX
+"""Largeur de la figure dans le plus petit cadre étroit : c'est à elle que tout tient."""
+ETROIT_MARGE_PX = 8
+"""Marge latérale des textes en étroit (titre, légende, pied)."""
+ETROIT_DISPO_PX = ETROIT_FIGURE_PX - 2 * ETROIT_MARGE_PX - 6
+"""Largeur d'une ligne de texte pleine largeur, avec 6 px de garde à droite."""
+ETROIT_TAILLES = dict(titre=22, sous_titre=16, legende=15, pied=TAILLE_PIED, graduations=14,
+                      axe=15, annotation=14, valeurs=12)
+"""Corps des textes en étroit. Le pied garde son plancher de 16 px ; les étiquettes de
+valeurs descendent à 12 px, faute de quoi elles se chevauchent sur un tracé de 220 px."""
+ETROIT_HAUT_TITRE_PX = 44
+"""Haut du titre étroit : sous la barre d'outils de Plotly (28 px)."""
+ETROIT_MARGE_GAUCHE_PX = 52
+"""Marge gauche du tracé quand l'axe vertical est numérique : ses graduations seules, son
+titre passant à l'horizontale au-dessus de l'axe."""
+ETROIT_MARGE_DROITE_PX = 16
+ETROIT_ZONE_AXE_X_PX = 96
+"""Sous le tracé, avant le pied : graduations de l'axe horizontal (éventuellement
+tournées par Plotly faute de place) et son titre."""
+ETROIT_TRACE_MIN_PX = 220
+ETROIT_LIBELLES_MAX_PX = 120
+"""Au-delà, des libellés de catégories mangeraient le tracé : la figure doit déclarer
+un réglage (les poser au-dessus des barres, par exemple)."""
+
+
+def pied_etroit(source: str, collecte: str, note: str = "") -> str:
+    """Le pied d'une figure en étroit, avant repli : la source et sa date d'un seul tenant,
+    puis la note, dont seuls les retours à la ligne de fin de phrase sont gardés."""
+    pied = f"Source : {source} — données collectées le {collecte}"
+    if note:
+        pied += "<br>" + dissoudre_br(note)
+    return pied
+
+
+def _taille_annotation(a: dict) -> int:
+    return int((a.get("font") or {}).get("size") or 17)
+
+
+def _fusionner(base: dict, ajout: dict) -> dict:
+    """Fusion récursive de deux dictionnaires Plotly (l'ajout l'emporte)."""
+    out = dict(base)
+    for k, v in ajout.items():
+        out[k] = _fusionner(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
+
+
+def disposition_etroite(fig, source: str, collecte: str, note: str = "",
+                        reglages: dict | None = None) -> dict:
+    """La mise en page étroite d'une figure déjà préparée (preparer_figure), au format de
+    `layout.meta.etroit` : seuil, hauteur, attributs de traces et `Plotly.update`.
+
+    Dérivation : titre et sous-titre repliés à ETROIT_DISPO_PX ; légende en liste
+    verticale sous le sous-titre ; titres des axes verticaux à l'horizontale au-dessus
+    de leur axe ; graduations, étiquettes de valeurs et annotations à des corps réduits ;
+    pied replié en entier, sans rien en retirer (il porte le sourçage obligatoire et les
+    réserves de méthode). Marges FIXES (`autoexpand` coupé) : sans quoi Plotly élargit la
+    marge gauche pour loger la légende et pousse tracé et pied hors du cadre. Hauteur
+    fixe, que l'étude donne au cadre (compile_etude).
+
+    `reglages`, propres à une figure, tous facultatifs :
+    - `l`, `trace_px`, `zone_axe_x`, `marge_haute_px` : remplacent les valeurs dérivées ;
+    - `annotations` : {rang: dict à fusionner, ou None pour la retirer}, rang compté
+      dans les annotations de la figure hors pied ; `ajouts` : annotations en plus ;
+    - `traces` : {attribut: valeur par trace} ; `disposition` : clés de layout en plus.
+    Toute annotation, ajoutée ou non, est mesurée : une ligne trop large lève.
+    """
+    r = reglages or {}
+    T = ETROIT_TAILLES
+    dispo = ETROIT_DISPO_PX
+    L = fig.layout
+
+    titre = replier_equilibre(insecables(dissoudre_br(L.title.text)), T["titre"], dispo)
+    st_brut = L.title.subtitle.text if L.title.subtitle else ""
+    st = replier_equilibre(insecables(dissoudre_br(st_brut)), T["sous_titre"], dispo) if st_brut else ""
+    haut_titre = ETROIT_HAUT_TITRE_PX + (titre.count("<br>") + 1) * T["titre"] * INTERLIGNE
+    if st:
+        haut_titre += (st.count("<br>") + 1) * T["sous_titre"] * INTERLIGNE + 6
+
+    # Légende : une entrée par ligne, noms repliés au besoin (44 px pour le symbole).
+    noms, haut_legende = [], 0.0
+    legende = L.showlegend is not False
+    for t in fig.data:
+        nom = t.name
+        if legende and nom and t.showlegend is not False:
+            if largeur_px(nom, T["legende"]) > dispo - 44:
+                nom = replier_equilibre(nom, T["legende"], dispo - 44)
+            haut_legende += (nom.count("<br>") + 1) * T["legende"] * INTERLIGNE + 7
+        noms.append(nom)
+
+    # Marge gauche : graduations numériques, ou libellés de barres horizontales.
+    l_marge = ETROIT_MARGE_GAUCHE_PX
+    for t in fig.data:
+        if getattr(t, "orientation", None) == "h" and t.y is not None:
+            libelles = max(largeur_px(li, T["graduations"]) for v in t.y for li in str(v).split("<br>"))
+            l_marge = max(l_marge, round(libelles + 14))
+    l_marge = r.get("l", l_marge)
+    if l_marge > ETROIT_LIBELLES_MAX_PX:
+        raise ValueError(f"libellés de {l_marge} px en étroit : la figure doit déclarer un "
+                         "réglage (cf. viz.disposition_etroite, `l`).")
+    r_marge = ETROIT_MARGE_DROITE_PX
+    trace_large = (L.height or template().layout.height or 600) - (
+        L.margin.t if L.margin.t is not None else template().layout.margin.t) - (
+        L.margin.b if L.margin.b is not None else template().layout.margin.b)
+    trace_px = r.get("trace_px", max(ETROIT_TRACE_MIN_PX, round(trace_large)))
+    largeur_trace = ETROIT_FIGURE_PX - l_marge - r_marge
+
+    # Annotations de la figure (hors pied), au corps réduit, repliées si trop larges.
+    annotations = []
+    for a in list(L.annotations)[:-1]:
+        d = a.to_plotly_json()
+        d["font"] = dict(d.get("font") or {}, size=min(_taille_annotation(d), T["annotation"]))
+        limite = largeur_trace * 0.8
+        if max(largeur_px(li, _taille_annotation(d)) for li in d.get("text", "").split("<br>")) > limite:
+            d["text"] = replier_equilibre(dissoudre_br(d["text"]), _taille_annotation(d), limite)
+        annotations.append(d)
+    for rang, ajout in (r.get("annotations") or {}).items():
+        annotations[rang] = None if ajout is None else _fusionner(annotations[rang], ajout)
+    annotations = [a for a in annotations if a is not None] + list(r.get("ajouts", []))
+
+    # Titres des axes verticaux : à l'horizontale, au-dessus de leur axe.
+    titres_y = []
+    for cle in L:
+        axe = L[cle] if re.match(r"yaxis\d*$", cle) else None
+        if axe is not None and axe.title and axe.title.text and axe.visible is not False:
+            titres_y.append(dict(
+                text=axe.title.text, xref="paper", x=0, xanchor="left",
+                xshift=-(l_marge - ETROIT_MARGE_PX), yref=f"y{cle[5:]} domain", y=1,
+                yanchor="bottom", yshift=6, showarrow=False, align="left",
+                font=dict(family=SANS, size=T["axe"] - 1, color=PALETTE["ink_soft"])))
+
+    pied = replier_equilibre(insecables(pied_etroit(source, collecte, note)), T["pied"], dispo)
+    zone_x = r.get("zone_axe_x", ETROIT_ZONE_AXE_X_PX)
+    pied_annotation = L.annotations[-1].to_plotly_json()
+    pied_annotation.update(text=pied, yshift=-zone_x + 8, xshift=-(l_marge - ETROIT_MARGE_PX),
+                           font=dict(pied_annotation.get("font") or {}, size=T["pied"]))
+    annotations += titres_y + [pied_annotation]
+
+    # Mesure de TOUTES les annotations : pleine largeur si elles partent du bord de la
+    # figure (xshift jusqu'à la marge), largeur du tracé sinon.
+    for a in annotations:
+        bord = a.get("xref") == "paper" and a.get("xshift") == -(l_marge - ETROIT_MARGE_PX)
+        limite = dispo if bord else largeur_trace
+        trop = [li for li in str(a.get("text", "")).split("<br>")
+                if largeur_px(li.replace("\u00a0", " "), _taille_annotation(a)) > limite]
+        if trop:
+            raise ValueError(f"annotation étroite plus large que {limite:.0f} px : {trop}")
+
+    haut_legende_px = haut_titre + 12
+    marge_haute = haut_legende_px + (haut_legende + 18 if haut_legende else 6)
+    marge_haute += (24 if titres_y else 0) + r.get("marge_haute_px", 0)
+    marge_haute = round(marge_haute)
+    marge_basse = round(zone_x + (pied.count("<br>") + 1) * T["pied"] * INTERLIGNE + GARDE_BASSE_PX)
+    hauteur = marge_haute + trace_px + marge_basse
+
+    disposition = {
+        "title": dict(text=titre, xref="container", x=0, xanchor="left",
+                      pad=dict(l=ETROIT_MARGE_PX, t=0), yref="container",
+                      y=1 - ETROIT_HAUT_TITRE_PX / hauteur, yanchor="top",
+                      font=dict(size=T["titre"]),
+                      subtitle=dict(text=st, font=dict(size=T["sous_titre"]))),
+        "margin": dict(t=marge_haute, b=marge_basse, l=l_marge, r=r_marge, autoexpand=False),
+        "height": hauteur,
+        "annotations": annotations,
+    }
+    if haut_legende:
+        disposition["legend"] = dict(
+            orientation="v", xref="container", x=ETROIT_MARGE_PX / ETROIT_FIGURE_PX,
+            xanchor="left", yref="container", y=1 - haut_legende_px / hauteur, yanchor="top",
+            font=dict(family=SANS, size=T["legende"], color=PALETTE["ink"]),
+            tracegroupgap=0, itemsizing="constant", traceorder=L.legend.traceorder or "normal")
+    for cle in L:
+        if re.match(r"[xy]axis\d*$", cle):
+            disposition[f"{cle}.tickfont.size"] = T["graduations"]
+            disposition[f"{cle}.title.font.size"] = T["axe"]
+            disposition[f"{cle}.title.standoff"] = 6
+            # Sans `automargin` coupé, Plotly place le titre d'un axe vertical au milieu
+            # du tracé quand les marges sont figées (constaté le 01/11/2026).
+            disposition[f"{cle}.automargin"] = False
+            if cle.startswith("yaxis"):
+                disposition[f"{cle}.title.text"] = ""
+    disposition.update(r.get("disposition", {}))
+
+    a_du_texte = [getattr(t, "text", None) is not None or bool(getattr(t, "texttemplate", None))
+                  for t in fig.data]
+    traces = {"name": noms,
+              "textfont.size": [T["valeurs"] if oui else None for oui in a_du_texte]}
+    traces.update(r.get("traces", {}))
+    return dict(seuil=SEUIL_ETROIT_PX, hauteur=hauteur, traces=traces, disposition=disposition)
+
+
+def script_etroit(div_id: str) -> str:
+    """Le script qui choisit, chez le lecteur, entre la mise en page large et l'étroite
+    (`layout.meta.etroit`), au même seuil que le cadre de l'étude. Il garde de la page
+    large exactement les clés que l'étroite change, pour les rétablir à l'identique ; il
+    ne compose aucun texte."""
+    return """
+(function () {
+  var gd = document.getElementById(%s);
+  if (!gd || !gd.layout) return;
+  var E = gd.layout.meta && gd.layout.meta.etroit;
+  if (!E) return;
+  function copie(o) { return o === undefined ? null : JSON.parse(JSON.stringify(o)); }
+  function lire(o, chemin) {
+    return chemin.split('.').reduce(function (a, k) { return a == null ? undefined : a[k]; }, o);
+  }
+  var LARGE = {}, TRACES = {};
+  Object.keys(E.disposition).forEach(function (k) { LARGE[k] = copie(lire(gd.layout, k)); });
+  Object.keys(E.traces).forEach(function (k) {
+    TRACES[k] = gd.data.map(function (t) { return copie(lire(t, k)); });
+  });
+  LARGE.height = gd.layout.height;
+  var HAUTEUR_DIV = gd.style.height;
+  // Plotly ne recalcule pas une barre de couleur dont l'orientation change sur une
+  // figure déjà dessinée (t5 : barre horizontale de 668 px de haut, constaté le
+  // 01/11/2026) ; un nouveau tracé complet la dessine juste.
+  var redessiner = Object.keys(E.traces).some(function (k) { return k.indexOf('colorbar.') === 0; });
+  var etroit = false;
+  function adapter() {
+    var e = window.innerWidth < E.seuil;
+    if (e === etroit) return;
+    etroit = e;
+    var d = copie(e ? E.disposition : LARGE);
+    gd.style.height = e ? d.height + 'px' : HAUTEUR_DIV;
+    var fait = Plotly.update(gd, copie(e ? E.traces : TRACES), d);
+    if (redessiner) fait.then(function () {
+      return Plotly.newPlot(gd, copie(gd.data), copie(gd.layout), gd._context);
+    });
+  }
+  adapter();
+  window.addEventListener('resize', adapter);
+})();
+""" % json.dumps(div_id)
+
+
 # --- Légende : la zone que rien ne surveillait ---------------------------------
 # Deux fois en une journée (T4, T6), une légende horizontale a recouvert soit le
 # sous-titre, soit le titre d'axe, sans qu'aucune garde ne s'en aperçoive : elle vit
@@ -493,7 +756,8 @@ def ecrire_bundle_plotly(dossier: Path) -> str:
 
 def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = "",
                 note: str = "", pied_decalage_px: int = -85,
-                script_apres: str | None = None, pied_largeur_px: int | None = None) -> str:
+                script_apres: str | None = None, pied_largeur_px: int | None = None,
+                etroit=None) -> str:
     """Écrit outputs/<name>.html avec un bundle Plotly local partagé, nommé par empreinte.
 
     Applique le template, incruste la mention de source obligatoire.
@@ -521,9 +785,21 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     pied_largeur_px : largeur, en pixels, à laquelle replier le pied en lignes
                 équilibrées (cf. replier_equilibre). Par défaut, repli commun à
                 LARGEUR_PIED caractères.
+    etroit    : réglages de la mise en page étroite propres à cette figure (dict, ou
+                fonction de la figure qui le rend ; cf. disposition_etroite). Toute
+                figure reçoit une mise en page étroite et son script de bascule, sauf
+                celle qui déclare déjà la sienne dans `layout.meta.etroit` (T1) et celle
+                qui passe `etroit=False` (figures air, pas encore traitées).
     """
     preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px, nom=name,
                     pied_largeur_px=pied_largeur_px)
+    scripts = [script_apres] if script_apres else []
+    meta = fig.layout.meta if isinstance(fig.layout.meta, dict) else {}
+    if "etroit" not in meta and etroit is not False:
+        reglages = etroit(fig) if callable(etroit) else etroit
+        fig.update_layout(meta=dict(meta, etroit=disposition_etroite(
+            fig, source, collecte, note, reglages)))
+        scripts.append(script_etroit(name))
     dest = OUTPUTS / f"{name}.html"
     # Une URL par contenu : le cache immutable ne peut pas conserver un ancien bundle
     # sous le nom d'une version nouvelle. L'export "directory" conservait ce défaut.
@@ -532,7 +808,7 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
     # que ce qui a réellement changé.
     bundle = ecrire_bundle_plotly(OUTPUTS)
     fig.write_html(dest, include_plotlyjs=bundle, full_html=True, div_id=name,
-                   post_script=script_apres)
+                   post_script=scripts or None)
     print(f"[ok] {dest}")
     return str(dest)
 
