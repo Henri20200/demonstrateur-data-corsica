@@ -155,7 +155,7 @@ def test_l_export_pose_la_mise_en_page_et_l_etude_adapte_son_cadre(tmp_path, mon
     fig.update_layout(title=dict(text="Même en été, le solaire ne dépasse pas le thermique"),
                       margin=dict(t=144, b=330, l=116, r=56), height=760)
     page = _exporter(tmp_path, monkeypatch, fig, sous_titre="Une journée d'été.", note=NOTE)
-    assert '"etroit"' in page and "window.innerWidth < E.seuil" in page
+    assert '"etroit"' in page and "gd.getBoundingClientRect().width + 2 * MARGE < E.seuil" in page
     hauteur = fig.layout.meta["etroit"]["hauteur"]
     iframe = compile_etude._iframe("t_essai")
     assert 'class="adaptable"' in iframe and f"--hauteur-etroite:{hauteur + 16}px" in iframe
@@ -186,3 +186,103 @@ def test_le_script_choisit_sans_composer_de_texte():
     assert "gd.layout.meta && gd.layout.meta.etroit" in s
     assert "Plotly.update" in s and "Plotly.newPlot" in s and "colorbar." in s
     assert not re.search(r"Source|données|relevé", s)
+
+
+# --- Figures air et pleine largeur (02/11/2026) ------------------------------------
+
+
+def test_un_nombre_ne_se_separe_pas_de_son_unite():
+    """« 120 / µg/m³ » se lisait sur deux lignes dans le pied d'a1."""
+    assert insecables("dépasse 120 µg/m³ au-delà de 35 °C") == (
+        "dépasse 120 µg/m³ au-delà de 35 °C")
+
+
+def test_un_titre_d_axe_horizontal_trop_long_se_replie_et_la_zone_grandit():
+    """a1 : « Journées où l'ozone dépasse l'objectif de qualité (120 µg/m³), station par
+    station » sortait de la figure. Un titre court ne bouge pas."""
+    court = disposition_etroite(_courbes(), SOURCE, "2026-07-22")
+    assert "xaxis.title.text" not in court["disposition"]
+    fig = _courbes()
+    fig.update_layout(xaxis=dict(title=dict(
+        text="Journées où l'ozone dépasse l'objectif de qualité (120 µg/m³), station par "
+             "station")))
+    e = disposition_etroite(fig, SOURCE, "2026-07-22")
+    titre = e["disposition"]["xaxis.title.text"]
+    assert "<br>" in titre and "120 µg/m³" in titre
+    assert all(largeur_px(li.replace(" ", " "), ETROIT_TAILLES["axe"]) <= ETROIT_DISPO_PX
+               for li in titre.split("<br>"))
+    assert e["disposition"]["margin"]["b"] > court["disposition"]["margin"]["b"]
+
+
+def test_les_libelles_longs_passent_au_dessus_des_barres():
+    """Le réglage d'a1 et a4 : libellés en annotations au-dessus de chaque barre, axe
+    vertical sans libellé, et une bande trop étroite pour une ligne lève."""
+    libelles = ["Bastia Montesoro (périurbaine)", "Venaco (rurale régionale)"]
+    reglages = viz.libelles_au_dessus(_barres_h(libelles), trace_px=160, ecart=0.55)
+    e = disposition_etroite(_barres_h(libelles), SOURCE, "2026-07-22", reglages=reglages)
+    textes = [a["text"] for a in e["disposition"]["annotations"]]
+    assert all(lib in textes for lib in libelles)
+    assert e["disposition"]["yaxis.showticklabels"] is False
+    assert e["disposition"]["margin"]["l"] < ETROIT_MARGE_GAUCHE_PX
+    with pytest.raises(ValueError, match="place d'une ligne"):
+        viz.libelles_au_dessus(_barres_h(libelles), trace_px=60, ecart=0.55)
+
+
+def test_un_titre_d_axe_vertical_peut_etre_reecrit_en_etroit():
+    """a3 : ses graduations imposées perdent leur « % », le titre d'axe le porte."""
+    e = disposition_etroite(_courbes(), SOURCE, "2026-07-22",
+                            reglages=dict(titres_y={"yaxis": "Part du mix (en %)"}))
+    assert "Part du mix (en %)" in [a["text"] for a in e["disposition"]["annotations"]]
+
+
+def test_le_script_mesure_la_figure_et_non_la_fenetre():
+    """Dans la page air, sans iframe, la fenêtre peut dépasser le seuil quand la figure
+    n'en a pas la largeur (862 px à 900 px d'écran : sous-titre d'a3 coupé). La figure
+    plus deux marges de page, c'est exactement la largeur du cadre d'un visuel."""
+    s = script_etroit("a3")
+    assert "MARGE = 8" in s and "getBoundingClientRect().width + 2 * MARGE < E.seuil" in s
+    assert "window.innerWidth" not in s
+
+
+def test_le_script_laisse_la_largeur_au_cadre_et_rend_la_page_large_a_l_identique():
+    """Trois défauts trouvés le 02/11/2026 en redimensionnant SANS recharger, ce qu'aucun
+    banc ne faisait : (1) la hauteur imposée figeait la largeur — un téléphone ouvert en
+    paysage puis tourné en portrait gardait des figures de 684 px dans des cadres de
+    304 ; (2) l'enveloppe de Plotly gardait la hauteur large — dans la page air, le bas
+    de la figure passait derrière un défilement intérieur ; (3) l'étendue d'axe imposée
+    par l'étroite, rétablie seule, figeait l'axe large d'a1."""
+    s = script_etroit("a1")
+    assert "d.autosize = true;" in s and "d.width = null;" in s
+    assert "Plotly.Plots.resize(gd)" in s
+    assert "ENVELOPPE.style.height" in s
+    assert "autorange" in s
+
+
+def test_la_page_air_joint_la_bascule_aux_figures_qui_en_ont_une(monkeypatch):
+    from demonstrateur import page_air
+
+    monkeypatch.setattr(page_air.fa, "phrase_actualite_courte", lambda: "")
+    avec = go.Figure(go.Scatter(x=[0, 1], y=[1, 2]))
+    avec.update_layout(meta=dict(etroit={"seuil": SEUIL_ETROIT_PX, "hauteur": 800,
+                                         "traces": {}, "disposition": {"height": 800}}))
+    page = page_air._html([("<p>a</p>", "a1", avec), ("<p>b</p>", "a2", go.Figure())],
+                          "01/01/2026", "plotly-test.min.js")
+    assert page.count("getBoundingClientRect") == 1 and json.dumps("a1") in page
+
+
+def test_sous_le_seuil_les_figures_prennent_la_largeur_de_l_ecran(monkeypatch):
+    """À 320 px d'écran, l'étude ne laissait que 264 px à une figure mesurée pour 304.
+    Les deux pages élargissent la figure, pas le texte ; l'étude part de la largeur de
+    l'article, jamais de `100vw`, qui compte la barre de défilement. Et rien ne fait
+    défiler la page de côté : ni le tableau des sources de l'étude (406 px), qui défile
+    seul, ni le lexique de la page air, dont la colonne descend sous 19rem."""
+    from demonstrateur import page_air
+
+    seuil = f"@media (max-width:{SEUIL_ETROIT_PX - 0.02:.2f}px)"
+    css = compile_etude._CSS_ETROIT
+    assert (seuil + "{.visuel{width:max(calc(100% + 2.5rem),calc(100vw - 2.5rem))}"
+            "table{display:block;overflow-x:auto}}") in css
+    monkeypatch.setattr(page_air.fa, "phrase_actualite_courte", lambda: "")
+    page = page_air._html([], "01/01/2026", "plotly-test.min.js")
+    assert seuil in page and "margin-left:calc(7px - 1.2rem)" in page
+    assert "minmax(min(19rem, 100%), 1fr)" in page

@@ -25,7 +25,8 @@ import sys
 from .config import OUTPUTS
 from .navigation import AIR, pied as pied_navigation
 from .prepare import verifier_sorties
-from .viz import PALETTE, SANS, date_collecte, ecrire_bundle_plotly, preparer_figure
+from .viz import (PALETTE, SANS, SEUIL_ETROIT_PX, date_collecte, ecrire_bundle_plotly,
+                  poser_etroit, preparer_figure, script_etroit)
 from . import figures_air as fa
 
 TITRE = "L'air corse les jours où rien n'est signalé"
@@ -36,6 +37,16 @@ HORS = "Hors fenêtre d'analyse."
 # `_blocs` : le sommaire les vise, les figures les portent, et les deux ne peuvent pas
 # diverger tant qu'il n'y a qu'une liste.
 SECTIONS = ("a1", "a2", "a3", "a4", "a5")
+
+
+def _figure(section: str, fig, source: str, collecte: str, sous_titre: str = "",
+            note: str = "", **k):
+    """Une figure de la page : préparée comme son fichier de visuel (source, pied), avec
+    la même mise en page étroite (`figures_air.ETROIT_AIR`). Jusqu'au 02/11/2026, la page
+    n'en posait aucune : sur un téléphone, ses cinq figures étaient coupées."""
+    preparer_figure(fig, source, collecte, sous_titre=sous_titre, note=note, **k)
+    poser_etroit(fig, source, collecte, note, fa.ETROIT_AIR[section], div_id=section)
+    return fig
 
 
 def _blocs() -> list[tuple[str, str, str]]:
@@ -54,8 +65,8 @@ def _blocs() -> list[tuple[str, str, str]]:
             "médias relaient. Ce dispositif fonctionne. Mais il ne se déclenche qu'au-delà "
             "d'un seuil rarement atteint sur l'île. Voici ce qui se passe en dessous.</p>",
             a1,
-            preparer_figure(
-                fa.fig_a1_depassements_sans_alerte(), fa.SRC_AIR, d_air,
+            _figure(
+                a1, fa.fig_a1_depassements_sans_alerte(), fa.SRC_AIR, d_air,
                 sous_titre=fa.st_a1(), note=fa.note_a1(),
             ),
         ),
@@ -64,8 +75,8 @@ def _blocs() -> list[tuple[str, str, str]]:
             "s'attend donc à en trouver davantage les jours de forte chaleur — c'est le cas, "
             "mais pas indéfiniment.</p>",
             a2,
-            preparer_figure(
-                fa.fig_a2_ozone_et_chaleur(), fa.SRC_AIR_METEO, d_meteo,
+            _figure(
+                a2, fa.fig_a2_ozone_et_chaleur(), fa.SRC_AIR_METEO, d_meteo,
                 sous_titre=fa.ST_A2, note=fa.NOTE_A2,
                 pied_decalage_px=fa.PIED_A2,
             ),
@@ -74,8 +85,8 @@ def _blocs() -> list[tuple[str, str, str]]:
             "<p>Reste à savoir quand. Le dioxyde d'azote et l'ozone n'atteignent pas "
             "leur maximum au même moment de la journée.</p>",
             a3,
-            preparer_figure(
-                fa.fig_a3_ozone_contre_azote(), fa.SRC_AIR, d_air,
+            _figure(
+                a3, fa.fig_a3_ozone_contre_azote(), fa.SRC_AIR, d_air,
                 sous_titre=fa.st_a3(),
             ),
         ),
@@ -85,16 +96,16 @@ def _blocs() -> list[tuple[str, str, str]]:
             "<p>Comparons la part des journées d'été dépassant le seuil d'ozone dans les "
             f"stations étudiées. {fa.phrase_resultat_a4()}</p>",
             a4,
-            preparer_figure(
-                fa.fig_a4_campagne_contre_ville(), fa.SRC_AIR, d_air,
+            _figure(
+                a4, fa.fig_a4_campagne_contre_ville(), fa.SRC_AIR, d_air,
                 sous_titre=fa.st_a4(), note=fa.NOTE_A4,
             ),
         ),
         (
             "<p>De cela découle une seule chose utile, et la voici.</p>",
             a5,
-            preparer_figure(
-                fa.fig_a5_creneau_a_eviter(), fa.SRC_AIR, d_air,
+            _figure(
+                a5, fa.fig_a5_creneau_a_eviter(), fa.SRC_AIR, d_air,
                 sous_titre=fa.ST_A5, note=fa.NOTE_A5,
             ),
         ),
@@ -219,7 +230,11 @@ def _html(blocs, collecte: str, bundle: str) -> str:
     for i, (texte, div_id, fig) in enumerate(blocs):
         # include_plotlyjs=False sur TOUS les blocs : la balise <script> est posée une
         # seule fois dans l'en-tête, vers les octets exacts de la version utilisée.
-        graphique = fig.to_html(full_html=False, include_plotlyjs=False, div_id=div_id)
+        # Le script de bascule suit la figure qui porte une mise en page étroite : il mesure
+        # la figure, pas la fenêtre (cf. viz.script_etroit).
+        etroit = isinstance(fig.layout.meta, dict) and "etroit" in fig.layout.meta
+        graphique = fig.to_html(full_html=False, include_plotlyjs=False, div_id=div_id,
+                                post_script=script_etroit(div_id) if etroit else None)
         corps.append(f'<section>{texte}\n<figure>{graphique}</figure></section>')
         if i in CLES:
             corps.append(f'<p class="cle">{CLES[i]}</p>')
@@ -239,6 +254,14 @@ def _html(blocs, collecte: str, bundle: str) -> str:
   section p {{ max-width:44em; margin:0 0 .2rem; }}
   figure {{ margin:.4rem 0 0; background:{PALETTE["surface"]};
             border:1px solid {PALETTE["rule"]}; border-radius:6px; overflow-x:auto; }}
+  /* Sous le seuil étroit, la figure prend la largeur de l'écran moins 7 px de chaque
+     côté (bordure comprise, le graphique en garde 8, comme dans un cadre de visuel) :
+     c'est la largeur pour laquelle sa mise en page étroite est mesurée — 304 px sur un
+     écran de 320. Avec la marge du texte (1,2rem), il ne lui en restait que 280. Le
+     texte, lui, garde ses marges. */
+  @media (max-width:{SEUIL_ETROIT_PX - 0.02:.2f}px) {{
+    figure {{ margin-left:calc(7px - 1.2rem); margin-right:calc(7px - 1.2rem); }}
+  }}
   /* L'encart d'actualité se distingue des deux phrases-clés : filet neutre et non
      l'accent, corps réduit — c'est un repère daté, pas un résultat de l'étude. */
   .actu {{ max-width:44em; margin:1.1rem 0 0; padding:.75rem 1rem; font-size:15.5px;
@@ -252,9 +275,11 @@ def _html(blocs, collecte: str, bundle: str) -> str:
   .lexique h2 {{ font-size:1.35rem; margin:0 0 .3rem; }}
   .lexique dl {{ margin:1.2rem 0 0; }}
   /* Deux colonnes quand la place existe, une seule sur téléphone — les définitions
-     restent courtes, donc aucune ne se coupe en colonne étroite. */
+     restent courtes, donc aucune ne se coupe en colonne étroite. `min()` : sous 19rem
+     de place (304 px), la colonne unique prend la largeur disponible ; sans lui, elle
+     débordait de 3 px à 320 px d'écran et la page défilait de côté (02/11/2026). */
   .lexique dl {{ display:grid; gap:1.1rem 2.2rem;
-                 grid-template-columns:repeat(auto-fit, minmax(19rem, 1fr)); }}
+                 grid-template-columns:repeat(auto-fit, minmax(min(19rem, 100%), 1fr)); }}
   .lexique dt {{ font-weight:600; margin:0 0 .15rem; }}
   .lexique dd {{ margin:0; color:{PALETTE["ink_soft"]}; }}
   footer {{ margin-top:3rem; padding-top:1.2rem; border-top:1px solid {PALETTE["rule"]};

@@ -108,7 +108,15 @@ sous `SEUIL_ETROIT_PX`) que la page choisit chez le lecteur et dont l'étude rè
 du cadre. Chaque ligne y est mesurée au plus petit cadre de téléphone : une figure neuve dont
 un texte ne tient pas fait LEVER l'export. Ce qui ne se dérive pas (libellés de barres longs,
 barre de couleur, encadré) se déclare par `export_html(..., etroit=réglages)` — cf.
-`figures.etroit_t7`. Les figures air passent `etroit=False` : elles restent à traiter.
+`figures.etroit_t7`. Les figures air ont la leur depuis le 02/11/2026
+(`figures_air.ETROIT_AIR`), dans leurs fichiers comme dans la page air, qui les insère sans
+iframe (`viz.poser_etroit`). Trois leçons de ce jour-là : une ligne étroite se mesure au
+gabarit avec 10 % de marge (`ETROIT_POLICE`), car le gabarit est relevé sur Segoe UI et les
+polices des téléphones et de Linux rendent plus large ; sous le seuil, l'étude et la page air
+donnent aux figures toute la largeur de l'écran (sinon 264 px à 320 px d'écran) ; et une
+mise en page étroite se valide sur les PAGES complètes, chaque figure mesurée contre sa
+propre boîte, en redimensionnant aussi sans recharger. Un banc qui chargeait chaque visuel
+seul n'a vu ni les coupures à 320 px, ni la largeur figée après la rotation d'un téléphone.
 
 **`config.py`** → tous les chemins (`DATA_RAW`, `DATA_PROCESSED`, `OUTPUTS`, `MANIFEST_FILE`,
 `BUILD_FILE`, `SOURCES_FILE`) sont dérivés de `ROOT`. **Aucun chemin en dur ailleurs** — importer depuis
@@ -137,7 +145,8 @@ dans `src/` pour rester reproductible. Ne pas dépendre d'un notebook dans le pi
   réellement changé » est une propriété qu'on met en avant : ces diffs fantômes la
   décrédibilisent. Ce qui se committe à la main, c'est le CODE de la figure ; sa sortie
   arrive au prochain run. **Deux exceptions, et deux seulement.**
-  La première : `outputs/etude.html` accompagne une modification de `docs/etude.md` dans le
+  La première : `outputs/etude.html` accompagne une modification de `docs/etude.md`, ou de
+  sa mise en page (`compile_etude.py`, compilée alors sur les visuels déjà publiés), dans le
   même commit, parce qu'un test les lie sans skip — cette page est du HTML de texte, pas du
   JSON Plotly, donc elle échappe au diff d'accents qui motive la règle.
   La seconde : la **première** entrée au dépôt d'une figure NEUVE citée par l'étude.

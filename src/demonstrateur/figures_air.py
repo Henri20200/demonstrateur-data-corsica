@@ -26,7 +26,8 @@ import plotly.graph_objects as go
 
 from .config import DATA_PROCESSED
 from .prepare import verifier_sorties
-from .viz import AIR_AZOTE, AIR_OZONE, PALETTE, SANS, date_collecte, export_html
+from .viz import (AIR_AZOTE, AIR_OZONE, PALETTE, SANS, date_collecte, export_html,
+                  libelles_au_dessus)
 
 SERIE = (DATA_PROCESSED / "air_serie.parquet").as_posix()
 MDA8 = (DATA_PROCESSED / "air_o3_mda8.parquet").as_posix()
@@ -971,25 +972,74 @@ def fig_a5_creneau_a_eviter() -> go.Figure:
     return fig
 
 
+# --- Mise en page étroite (téléphone), validée sur maquettes le 02/11/2026 ------------
+# Jusque-là, les cinq figures passaient `etroit=False` : sur un téléphone, titres,
+# sous-titres et sources y étaient coupés, et les tracés d'a1 et a4 réduits à 2-4 px par
+# les noms de stations. Ce qui se dérive se dérive (viz.disposition_etroite) ; ce qui
+# suit ne se dérive pas. Les mêmes réglages servent aux fichiers de visuels et à la page
+# air (cf. ETROIT_AIR).
+def etroit_a1(fig) -> dict:
+    """a1 : noms de stations au-dessus des barres ; l'axe s'allonge pour que la valeur de
+    la barre la plus longue, posée hors barre, ne se fasse pas couper au bord du tracé."""
+    return libelles_au_dessus(fig, trace_px=300, ecart=0.55,
+                              disposition={"xaxis.range": [0, max(fig.data[0].x) * 1.18]})
+
+
+def etroit_a2(fig) -> dict:
+    """a2 : les tranches de température à l'horizontale, sur deux lignes (« 25 à /
+    30 °C ») ; inclinées par Plotly, elles se chevauchaient à 320 et 360 px."""
+    tranches = list(fig.data[0].x)
+    textes = [t.replace(" à ", " à<br>").replace(" °C", "\u00a0°C") for t in tranches]
+    return dict(disposition={"xaxis.tickangle": 0, "xaxis.tickvals": tranches,
+                             "xaxis.ticktext": textes})
+
+
+def _une_graduation_toutes_les_6_h() -> dict:
+    """a3, a5 : toutes les 3 h, « 12 h15 h18 h » se touchaient sur un tracé de 236 px."""
+    return {"xaxis.dtick": 6}
+
+
+def etroit_a3(fig) -> dict:
+    """a3 : graduation toutes les 6 h ; flèches des pics raccourcies et une bande au-dessus
+    de 100 % pour loger « 8 h » et « 16 h » sous le titre d'axe, qu'ils touchaient. Les
+    graduations s'arrêtent à 100 % et perdent leur « % » (valeurs imposées) : le titre
+    d'axe le porte."""
+    return dict(annotations={0: dict(ay=-24), 1: dict(ay=-24)},
+                titres_y={"yaxis": "Part du maximum (%)"},
+                disposition={**_une_graduation_toutes_les_6_h(), "yaxis.range": [0, 127],
+                             "yaxis.tickvals": [0, 20, 40, 60, 80, 100]})
+
+
+def etroit_a4(fig) -> dict:
+    """a4 : noms de stations au-dessus des barres ; l'axe s'allonge pour loger, à droite
+    des barres, « 15 % / 83 / 545 jours »."""
+    haut = fig.layout.xaxis.range[1] / 1.14     # cf. le `range` d'origine
+    return libelles_au_dessus(fig, trace_px=380, ecart=0.55,
+                              disposition={"xaxis.range": [0, haut * 1.5]})
+
+
+def etroit_a5(fig) -> dict:
+    return dict(disposition=_une_graduation_toutes_les_6_h())
+
+
+ETROIT_AIR = dict(a1=etroit_a1, a2=etroit_a2, a3=etroit_a3, a4=etroit_a4, a5=etroit_a5)
+
+
 def main() -> int:
     verifier_sorties()
     d_air = date_collecte("aee_o3_venaco_continu")
     d_meteo = date_collecte("meteo_horaire_corse")
-
-    # Pas de mise en page étroite pour l'instant (`etroit=False`) : la refonte mobile du
-    # 01/11/2026 a porté sur les figures de l'étude électricité ; celles-ci demandent
-    # leurs propres choix (libellés de stations de 205 px, page air sans cadres).
     export_html(fig_a1_depassements_sans_alerte(), "a1_depassements_sans_alerte",
-                SRC_AIR, d_air, sous_titre=st_a1(), note=note_a1(), etroit=False)
+                SRC_AIR, d_air, sous_titre=st_a1(), note=note_a1(), etroit=etroit_a1)
     export_html(fig_a2_ozone_et_chaleur(), "a2_ozone_et_chaleur",
                 SRC_AIR_METEO, d_meteo, sous_titre=ST_A2, note=NOTE_A2,
-                pied_decalage_px=PIED_A2, etroit=False)
+                pied_decalage_px=PIED_A2, etroit=etroit_a2)
     export_html(fig_a3_ozone_contre_azote(), "a3_ozone_contre_azote",
-                SRC_AIR, d_air, sous_titre=st_a3(), etroit=False)
+                SRC_AIR, d_air, sous_titre=st_a3(), etroit=etroit_a3)
     export_html(fig_a4_campagne_contre_ville(), "a4_campagne_contre_ville",
-                SRC_AIR, d_air, sous_titre=st_a4(), note=NOTE_A4, etroit=False)
+                SRC_AIR, d_air, sous_titre=st_a4(), note=NOTE_A4, etroit=etroit_a4)
     export_html(fig_a5_creneau_a_eviter(), "a5_creneau_a_eviter",
-                SRC_AIR, d_air, sous_titre=ST_A5, note=NOTE_A5, etroit=False)
+                SRC_AIR, d_air, sous_titre=ST_A5, note=NOTE_A5, etroit=etroit_a5)
     return 0
 
 
