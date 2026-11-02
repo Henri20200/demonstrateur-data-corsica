@@ -216,8 +216,11 @@ SEUIL_ETROIT_PX = 900
 change de hauteur : deux seuils, et entre les deux le cadre couperait la figure."""
 
 CADRE_ETROIT_MIN_PX = 320
-"""Plus petit cadre pour lequel une mise en page étroite est conçue : l'étude sur un
-téléphone de 360 px de large (le cadre y perd 2,5rem)."""
+"""Plus petit cadre pour lequel une mise en page étroite est conçue : un téléphone de
+320 px de large. Sous SEUIL_ETROIT_PX, l'étude et la page air donnent aux figures toute la
+largeur de l'écran (leurs textes gardent leurs marges) : jusqu'au 02/11/2026, l'étude
+retirait 2,5rem au cadre, et une figure n'y avait que 264 px à 320 px d'écran — neuf
+figures sur onze y perdaient des bouts de ligne."""
 
 MARGE_PAGE_PX = 8
 """Marge du `<body>` de la page d'un visuel (défaut des navigateurs, que Plotly garde) :
@@ -267,12 +270,19 @@ MOIS_LONGS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", 
               "septembre", "octobre", "novembre", "décembre"]
 
 
+UNITES = ("µg/m³", "°C")
+"""Unités qu'une mise en page étroite ne sépare pas de leur nombre : « 120 / µg/m³ » se
+lisait sur deux lignes dans les figures air (constaté le 02/11/2026)."""
+
+
 def insecables(t: str) -> str:
     """Espaces où une mise en page étroite ne coupe pas : avant %, : et ?, dans une date
-    (« 30 octobre »), entre « à » et une heure, et dans « (statut EDF : estimé) »."""
+    (« 30 octobre »), entre un nombre et son unité (UNITES), entre « à » et une heure, et
+    dans « (statut EDF : estimé) »."""
     nb = "\u00a0"
     t = t.replace(" %", nb + "%").replace(" :", nb + ":").replace(" ?", nb + "?")
     t = re.sub(rf"(\d+(?:er)?) ({'|'.join(MOIS_LONGS)})", rf"\1{nb}\2", t)
+    t = re.sub(rf"(\d) ({'|'.join(map(re.escape, UNITES))})", rf"\1{nb}\2", t)
     t = re.sub(r" à (\d+h\d\d)", rf" à{nb}\1", t)
     return t.replace(f"(statut EDF{nb}: ", f"(statut{nb}EDF{nb}:{nb}")
 
@@ -296,8 +306,13 @@ ETROIT_FIGURE_PX = CADRE_ETROIT_MIN_PX - 2 * MARGE_PAGE_PX
 """Largeur de la figure dans le plus petit cadre étroit : c'est à elle que tout tient."""
 ETROIT_MARGE_PX = 8
 """Marge latérale des textes en étroit (titre, légende, pied)."""
-ETROIT_DISPO_PX = ETROIT_FIGURE_PX - 2 * ETROIT_MARGE_PX - 6
-"""Largeur d'une ligne de texte pleine largeur, avec 6 px de garde à droite."""
+ETROIT_POLICE = 1.10
+"""Marge pour la police du lecteur : le gabarit est relevé sur Segoe UI (Windows), et les
+polices système des téléphones et de Linux rendent plus large — Noto Sans de 5 à 8 %
+(mesuré le 02/11/2026 : une ligne de 279 px au gabarit en faisait 297 et sortait de la
+figure), SF Pro aussi. Une ligne étroite se mesure donc avec 10 % de marge."""
+ETROIT_DISPO_PX = int((ETROIT_FIGURE_PX - 2 * ETROIT_MARGE_PX) / ETROIT_POLICE)
+"""Largeur d'une ligne de texte pleine largeur AU GABARIT : 261 px, pour 288 de place."""
 ETROIT_TAILLES = dict(titre=22, sous_titre=16, legende=15, pied=TAILLE_PIED, graduations=14,
                       axe=15, annotation=14, valeurs=12)
 """Corps des textes en étroit. Le pied garde son plancher de 16 px ; les étiquettes de
@@ -355,8 +370,10 @@ def disposition_etroite(fig, source: str, collecte: str, note: str = "",
     - `l`, `trace_px`, `zone_axe_x`, `marge_haute_px` : remplacent les valeurs dérivées ;
     - `annotations` : {rang: dict à fusionner, ou None pour la retirer}, rang compté
       dans les annotations de la figure hors pied ; `ajouts` : annotations en plus ;
+    - `titres_y` : {clé d'axe: texte} remplace le titre d'un axe vertical en étroit ;
     - `traces` : {attribut: valeur par trace} ; `disposition` : clés de layout en plus.
-    Toute annotation, ajoutée ou non, est mesurée : une ligne trop large lève.
+    Toute annotation, ajoutée ou non, est mesurée : une ligne trop large lève. Le titre
+    d'un axe horizontal trop long pour le tracé se replie, et sa zone s'agrandit d'autant.
     """
     r = reglages or {}
     T = ETROIT_TAILLES
@@ -390,7 +407,8 @@ def disposition_etroite(fig, source: str, collecte: str, note: str = "",
     l_marge = r.get("l", l_marge)
     if l_marge > ETROIT_LIBELLES_MAX_PX:
         raise ValueError(f"libellés de {l_marge} px en étroit : la figure doit déclarer un "
-                         "réglage (cf. viz.disposition_etroite, `l`).")
+                         "réglage (cf. viz.disposition_etroite, `l`, ou "
+                         "viz.libelles_au_dessus).")
     r_marge = ETROIT_MARGE_DROITE_PX
     trace_large = (L.height or template().layout.height or 600) - (
         L.margin.t if L.margin.t is not None else template().layout.margin.t) - (
@@ -417,13 +435,30 @@ def disposition_etroite(fig, source: str, collecte: str, note: str = "",
         axe = L[cle] if re.match(r"yaxis\d*$", cle) else None
         if axe is not None and axe.title and axe.title.text and axe.visible is not False:
             titres_y.append(dict(
-                text=axe.title.text, xref="paper", x=0, xanchor="left",
+                text=(r.get("titres_y") or {}).get(cle, axe.title.text),
+                xref="paper", x=0, xanchor="left",
                 xshift=-(l_marge - ETROIT_MARGE_PX), yref=f"y{cle[5:]} domain", y=1,
                 yanchor="bottom", yshift=6, showarrow=False, align="left",
                 font=dict(family=SANS, size=T["axe"] - 1, color=PALETTE["ink_soft"])))
 
+    # Titres des axes horizontaux : centrés sous le tracé, ils se replient quand ils en
+    # sortiraient, et la zone sous le tracé s'agrandit des lignes ajoutées. Celui d'a1
+    # (« Journées où l'ozone dépasse l'objectif de qualité… ») sortait de la figure.
+    titres_x, lignes_x = {}, 1
+    centre = l_marge + largeur_trace / 2
+    limite_x = min(dispo, 2 * (min(centre, ETROIT_FIGURE_PX - centre) - ETROIT_MARGE_PX)
+                   / ETROIT_POLICE)
+    for cle in L:
+        axe = L[cle] if re.match(r"xaxis\d*$", cle) else None
+        if axe is not None and axe.title and axe.title.text and axe.visible is not False:
+            texte = insecables(dissoudre_br(axe.title.text))
+            if largeur_px(texte.replace(" ", " "), T["axe"]) > limite_x:
+                titres_x[f"{cle}.title.text"] = replier_equilibre(texte, T["axe"], limite_x)
+                lignes_x = max(lignes_x, titres_x[f"{cle}.title.text"].count("<br>") + 1)
+
     pied = replier_equilibre(insecables(pied_etroit(source, collecte, note)), T["pied"], dispo)
-    zone_x = r.get("zone_axe_x", ETROIT_ZONE_AXE_X_PX)
+    zone_x = r.get("zone_axe_x", round(ETROIT_ZONE_AXE_X_PX
+                                        + (lignes_x - 1) * T["axe"] * INTERLIGNE))
     pied_annotation = L.annotations[-1].to_plotly_json()
     pied_annotation.update(text=pied, yshift=-zone_x + 8, xshift=-(l_marge - ETROIT_MARGE_PX),
                            font=dict(pied_annotation.get("font") or {}, size=T["pied"]))
@@ -433,7 +468,7 @@ def disposition_etroite(fig, source: str, collecte: str, note: str = "",
     # figure (xshift jusqu'à la marge), largeur du tracé sinon.
     for a in annotations:
         bord = a.get("xref") == "paper" and a.get("xshift") == -(l_marge - ETROIT_MARGE_PX)
-        limite = dispo if bord else largeur_trace
+        limite = dispo if bord else largeur_trace / ETROIT_POLICE
         trop = [li for li in str(a.get("text", "")).split("<br>")
                 if largeur_px(li.replace("\u00a0", " "), _taille_annotation(a)) > limite]
         if trop:
@@ -472,6 +507,7 @@ def disposition_etroite(fig, source: str, collecte: str, note: str = "",
             disposition[f"{cle}.automargin"] = False
             if cle.startswith("yaxis"):
                 disposition[f"{cle}.title.text"] = ""
+    disposition.update(titres_x)
     disposition.update(r.get("disposition", {}))
 
     a_du_texte = [getattr(t, "text", None) is not None or bool(getattr(t, "texttemplate", None))
@@ -482,14 +518,61 @@ def disposition_etroite(fig, source: str, collecte: str, note: str = "",
     return dict(seuil=SEUIL_ETROIT_PX, hauteur=hauteur, traces=traces, disposition=disposition)
 
 
+def libelles_au_dessus(fig, trace_px: int, ecart: float, disposition: dict | None = None) -> dict:
+    """Réglage étroit d'une figure en barres horizontales à libellés longs (une trace) :
+    chaque libellé passe AU-DESSUS de sa barre, aligné sur le bord gauche de la figure, et
+    l'axe vertical n'en porte plus. Laissés à gauche, les noms de stations des figures air
+    (205 px) ne laissaient au tracé que 2 à 4 px. `trace_px` et `ecart` (bargap) règlent
+    la bande de chaque barre : elle doit loger une ligne de libellé au-dessus d'elle.
+    `disposition` : clés de layout en plus (ex. l'axe allongé qui loge les valeurs)."""
+    taille = ETROIT_TAILLES["annotation"]
+    barres = list(fig.data[0].y)
+    bande = trace_px / len(barres)
+    demi_barre = bande * (1 - ecart) / 2
+    if bande - 2 * demi_barre < taille * INTERLIGNE + 6:
+        raise ValueError("libellés au-dessus des barres : la bande n'a pas la place d'une "
+                         f"ligne ({bande - 2 * demi_barre:.0f} px)")
+    marge_gauche = ETROIT_MARGE_PX + 4
+    ajouts = [dict(text=insecables(str(lib)), xref="paper", x=0, xanchor="left",
+                   xshift=-(marge_gauche - ETROIT_MARGE_PX), yref="y", y=lib,
+                   yanchor="bottom", yshift=demi_barre + 2, showarrow=False, align="left",
+                   font=dict(family=SANS, size=taille, color=PALETTE["ink"]))
+              for lib in barres]
+    return dict(l=marge_gauche, trace_px=trace_px, ajouts=ajouts,
+                disposition={"yaxis.showticklabels": False, "bargap": ecart,
+                             **(disposition or {})})
+
+
+def poser_etroit(fig, source: str, collecte: str, note: str = "", etroit=None,
+                 div_id: str = "") -> str | None:
+    """Pose la mise en page étroite dans `layout.meta.etroit` et rend le script de bascule
+    à joindre à la figure ; rien si la figure déclare déjà la sienne (T1, avec son propre
+    script) ou passe `etroit=False`. Un seul chemin pour les fichiers de visuels
+    (export_html) et la page air, qui insère ses figures sans iframe : jusqu'au
+    02/11/2026, celle-ci n'en recevait aucune."""
+    meta = fig.layout.meta if isinstance(fig.layout.meta, dict) else {}
+    if "etroit" in meta or etroit is False:
+        return None
+    reglages = etroit(fig) if callable(etroit) else etroit
+    fig.update_layout(meta=dict(meta, etroit=disposition_etroite(
+        fig, source, collecte, note, reglages)))
+    return script_etroit(div_id)
+
+
 def script_etroit(div_id: str) -> str:
     """Le script qui choisit, chez le lecteur, entre la mise en page large et l'étroite
     (`layout.meta.etroit`), au même seuil que le cadre de l'étude. Il garde de la page
     large exactement les clés que l'étroite change, pour les rétablir à l'identique ; il
-    ne compose aucun texte."""
+    ne compose aucun texte.
+
+    Il mesure la FIGURE, plus deux marges de page, et non la fenêtre : dans le cadre d'un
+    visuel, c'est la même chose (la figure fait la fenêtre moins ses deux marges) ; dans
+    la page air, qui insère ses figures sans iframe, la fenêtre peut dépasser le seuil
+    quand la figure, elle, n'en a pas la largeur — à 900 px d'écran, 862 px, où le
+    sous-titre large d'a3 se coupait (mesuré le 02/11/2026)."""
     return """
 (function () {
-  var gd = document.getElementById(%s);
+  var gd = document.getElementById(%s), MARGE = %d;
   if (!gd || !gd.layout) return;
   var E = gd.layout.meta && gd.layout.meta.etroit;
   if (!E) return;
@@ -498,32 +581,57 @@ def script_etroit(div_id: str) -> str:
     return chemin.split('.').reduce(function (a, k) { return a == null ? undefined : a[k]; }, o);
   }
   var LARGE = {}, TRACES = {};
-  Object.keys(E.disposition).forEach(function (k) { LARGE[k] = copie(lire(gd.layout, k)); });
+  // Imposer l'étendue d'un axe coupe son ajustement automatique : rétablie seule (vide),
+  // elle laissait l'axe large figé sur l'étendue étroite (a1, constaté le 02/11/2026).
+  // L'ajustement automatique de la page large se rétablit donc avec elle.
+  Object.keys(E.disposition).forEach(function (k) {
+    LARGE[k] = copie(lire(gd.layout, k));
+    if (/\\.range$/.test(k)) {
+      var a = k.replace(/range$/, 'autorange');
+      LARGE[a] = copie(lire(gd.layout, a));
+    }
+  });
   Object.keys(E.traces).forEach(function (k) {
     TRACES[k] = gd.data.map(function (t) { return copie(lire(t, k)); });
   });
   LARGE.height = gd.layout.height;
   var HAUTEUR_DIV = gd.style.height;
+  // Plotly enveloppe la figure dans un bloc à la hauteur de la page large. Dans un cadre,
+  // ce qui en dépasse reste visible ; dans la page air, la figure (`overflow-x:auto`) le
+  // cachait derrière un défilement intérieur (constaté le 02/11/2026). L'enveloppe suit
+  // donc la hauteur de la mise en page choisie.
+  var ENVELOPPE = gd.parentElement, HAUTEUR_ENVELOPPE = ENVELOPPE ? ENVELOPPE.style.height : '';
   // Plotly ne recalcule pas une barre de couleur dont l'orientation change sur une
   // figure déjà dessinée (t5 : barre horizontale de 668 px de haut, constaté le
   // 01/11/2026) ; un nouveau tracé complet la dessine juste.
   var redessiner = Object.keys(E.traces).some(function (k) { return k.indexOf('colorbar.') === 0; });
   var etroit = false;
   function adapter() {
-    var e = window.innerWidth < E.seuil;
+    var e = gd.getBoundingClientRect().width + 2 * MARGE < E.seuil;
     if (e === etroit) return;
     etroit = e;
     var d = copie(e ? E.disposition : LARGE);
+    // Une hauteur imposée coupe chez Plotly l'ajustement automatique, et la largeur du
+    // moment restait figée : ouvert en paysage puis tourné en portrait, un téléphone
+    // gardait des figures de 684 px dans des cadres de 304 (constaté le 02/11/2026).
+    // La largeur continue donc de suivre le cadre ; seule la hauteur est imposée.
+    d.autosize = true;
+    d.width = null;
     gd.style.height = e ? d.height + 'px' : HAUTEUR_DIV;
+    if (HAUTEUR_ENVELOPPE) ENVELOPPE.style.height = e ? d.height + 'px' : HAUTEUR_ENVELOPPE;
     var fait = Plotly.update(gd, copie(e ? E.traces : TRACES), d);
-    if (redessiner) fait.then(function () {
+    if (redessiner) fait = fait.then(function () {
       return Plotly.newPlot(gd, copie(gd.data), copie(gd.layout), gd._context);
     });
+    // Mesure reprise une fois la bascule faite : pendant qu'elle se fait, l'ancien dessin
+    // peut déborder et faire paraître une barre de défilement (page air, sur un
+    // ordinateur) ; la largeur prise à cet instant laissait 15 px de vide.
+    fait.then(function () { return Plotly.Plots.resize(gd); });
   }
   adapter();
   window.addEventListener('resize', adapter);
 })();
-""" % json.dumps(div_id)
+""" % (json.dumps(div_id), MARGE_PAGE_PX)
 
 
 # --- Légende : la zone que rien ne surveillait ---------------------------------
@@ -789,17 +897,14 @@ def export_html(fig, name: str, source: str, collecte: str, sous_titre: str = ""
                 fonction de la figure qui le rend ; cf. disposition_etroite). Toute
                 figure reçoit une mise en page étroite et son script de bascule, sauf
                 celle qui déclare déjà la sienne dans `layout.meta.etroit` (T1) et celle
-                qui passe `etroit=False` (figures air, pas encore traitées).
+                qui passe `etroit=False` (cf. poser_etroit).
     """
     preparer_figure(fig, source, collecte, sous_titre, note, pied_decalage_px, nom=name,
                     pied_largeur_px=pied_largeur_px)
     scripts = [script_apres] if script_apres else []
-    meta = fig.layout.meta if isinstance(fig.layout.meta, dict) else {}
-    if "etroit" not in meta and etroit is not False:
-        reglages = etroit(fig) if callable(etroit) else etroit
-        fig.update_layout(meta=dict(meta, etroit=disposition_etroite(
-            fig, source, collecte, note, reglages)))
-        scripts.append(script_etroit(name))
+    bascule = poser_etroit(fig, source, collecte, note, etroit, div_id=name)
+    if bascule:
+        scripts.append(bascule)
     dest = OUTPUTS / f"{name}.html"
     # Une URL par contenu : le cache immutable ne peut pas conserver un ancien bundle
     # sous le nom d'une version nouvelle. L'export "directory" conservait ce défaut.

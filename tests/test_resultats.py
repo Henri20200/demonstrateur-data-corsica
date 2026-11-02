@@ -766,6 +766,59 @@ def test_chaque_visuel_de_l_etude_a_sa_mise_en_page_etroite():
 
 
 @besoin_air
+def test_les_figures_air_ont_leur_mise_en_page_etroite_dans_leurs_fichiers_et_la_page():
+    """Les cinq figures air, en fichier de visuel ET dans la page air (02/11/2026).
+
+    Jusque-là, toutes passaient `etroit=False` et la page air, qui insère ses figures sans
+    iframe, n'en posait aucune : sur un téléphone, titres et sources étaient coupés et les
+    tracés d'a1 et a4 faisaient 2 à 4 px. Chaque figure doit porter sa mise en page
+    étroite et son script de bascule, et chaque ligne de texte pleine largeur tenir au
+    plus petit cadre ; la page doit en porter cinq, une par figure.
+    """
+    import json
+    import re
+
+    from demonstrateur.viz import ETROIT_DISPO_PX, largeur_px
+
+    dec = json.JSONDecoder()
+
+    def dispositions(page: str) -> list:
+        # Les appels qui tracent une figure nommée ; le script de bascule en contient un
+        # autre (`Plotly.newPlot(gd, …)`), qui ne porte pas de données.
+        out = []
+        for m in re.finditer(r'Plotly\.newPlot\(\s*"[^"]+",', page):
+            _, j = dec.raw_decode(page, page.index("[", m.end()))
+            layout, _ = dec.raw_decode(page, page.index("{", j))
+            out.append((layout.get("meta") or {}).get("etroit"))
+        return out
+
+    fautes = []
+    noms = ["a1_depassements_sans_alerte", "a2_ozone_et_chaleur", "a3_ozone_contre_azote",
+            "a4_campagne_contre_ville", "a5_creneau_a_eviter"]
+    pages = {n: (OUTPUTS / f"{n}.html").read_text(encoding="utf-8") for n in noms}
+    pages["air_ozone"] = (OUTPUTS / "air_ozone.html").read_text(encoding="utf-8")
+    for nom, page in pages.items():
+        etroits = dispositions(page)
+        attendu = 5 if nom == "air_ozone" else 1
+        if len(etroits) != attendu or not all(etroits):
+            fautes.append(f"{nom} : {sum(map(bool, etroits))} mise(s) en page étroite(s) "
+                          f"sur {attendu}")
+            continue
+        if page.count("getBoundingClientRect().width + 2 * MARGE") != attendu:
+            fautes.append(f"{nom} : script de bascule absent")
+        for e in etroits:
+            d = e["disposition"]
+            lignes = [(li, d["title"]["font"]["size"]) for li in d["title"]["text"].split("<br>")]
+            lignes += [(li, d["title"]["subtitle"]["font"]["size"])
+                       for li in d["title"]["subtitle"]["text"].split("<br>") if li]
+            lignes += [(li, a["font"]["size"]) for a in d["annotations"]
+                       if a.get("xref") == "paper" for li in a["text"].split("<br>")]
+            fautes += [f"{nom} : « {li} »" for li, taille in lignes
+                       if largeur_px(li.replace("\u00a0", " "), taille) > ETROIT_DISPO_PX]
+    assert not fautes, fautes
+
+
+@besoin_air
 def test_air_corse_ne_garde_que_des_mesures_valides(con):
     """Le Parquet air ne contient que des lignes portant une VRAIE mesure.
 

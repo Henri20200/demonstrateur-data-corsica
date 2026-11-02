@@ -158,6 +158,9 @@ def test_le_script_choisit_la_mise_en_page_sans_composer_de_texte():
     script = F.script_fraicheur("2026-10-30T12:30:00Z", "Dernières données disponibles : x.")
     assert "L.meta && L.meta.etroit" in script
     assert "window.innerWidth < E.seuil" in script
+    # La largeur reste au cadre : une hauteur imposée la figeait, et un téléphone tourné
+    # du paysage au portrait gardait une figure plus large que son cadre (02/11/2026).
+    assert "d.autosize = true;" in script and "d.width = null;" in script
     mots = json.dumps(F.T1_MOTS_AGE)
     assert mots in script
     # Les mots ne sont écrits qu'une fois, dans la table mesurée par le code.
@@ -228,7 +231,8 @@ def test_un_seuil_qui_diverge_est_refuse(tmp_path, monkeypatch):
 
 
 def test_l_enumeration_couvre_bien_le_pire_cas():
-    """Le pire cas mesuré (1 076 px le 01/11/2026) tient sous la constante, avec moins de
+    """Le pire cas mesuré (1 076 px le 01/11/2026 ; 1 094 depuis la marge de police du
+    02/11/2026, et 1 120 pour le statut « Estimé ») tient sous la constante, avec moins de
     5 % de marge : une constante gonflée laisserait sur téléphone un vide sous la source."""
     pire = 0
     for (debut, fin), q, age in itertools.product(PERIODES, QUANTITES, AGES):

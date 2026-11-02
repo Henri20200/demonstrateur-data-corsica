@@ -25,7 +25,7 @@ import plotly.graph_objects as go
 
 from .config import DATA_PROCESSED
 from .prepare import verifier_sorties
-from .viz import (CADRE_ETROIT_MIN_PX, ETROIT_DISPO_PX, ETROIT_FIGURE_PX,
+from .viz import (CADRE_ETROIT_MIN_PX, ETROIT_DISPO_PX, ETROIT_FIGURE_PX, ETROIT_POLICE,
                   ETROIT_MARGE_DROITE_PX, ETROIT_MARGE_GAUCHE_PX, ETROIT_MARGE_PX,
                   ETROIT_TAILLES, GARDE_BASSE_PX, INTERLIGNE, MARGE_PAGE_PX, MOIS_LONGS,
                   NEUTRE_ZERO, PALETTE, RAMPE_SOLAIRE, RETRAIT_TITRE_PX, SANS,
@@ -105,7 +105,9 @@ T1_ETROIT = dict(titre=24, sous_titre=16, periode=18, part=64, phrase=18, texte=
                  collecte=16, pied=16, ecarts=(0, -10, 14, 16, 14, 10, 0))
 T1_MARGE_ETROITE_PX = 8
 T1_TITRE_ETROIT_PX = 48         # haut du titre étroit : sous la barre d'outils (28 px)
-T1_HAUTEUR_ETROITE_PX = 1080    # pire cas inventé : 1 076 px (cf. tests/test_t1_mise_en_page.py)
+# Pire cas inventé : 1 120 px depuis la marge de police du 02/11/2026 (viz.ETROIT_POLICE),
+# qui replie les lignes plus court ; 1 076 px avant (cf. tests/test_t1_mise_en_page.py).
+T1_HAUTEUR_ETROITE_PX = 1120
 # Largeur du texte de la mise en page large, au seuil étroit : corps et pied s'y replient.
 T1_CORPS_LARGE_PX = SEUIL_ETROIT_PX - 2 * MARGE_PAGE_PX - 2 * 24 - RETRAIT_TITRE_PX
 # Les mots de l'âge du relevé, écrits par le script chez le lecteur et mesurés ici.
@@ -395,8 +397,9 @@ def disposition_etroite_t1(textes: dict, sous_titre: str, pied: str) -> dict:
     """
     g = T1_ETROIT
     marge = T1_MARGE_ETROITE_PX
-    # 6 px de garde à droite, comme RETRAIT_TITRE_PX pour les titres larges.
-    dispo = CADRE_ETROIT_MIN_PX - 2 * MARGE_PAGE_PX - 2 * marge - 6
+    # Marge de police (viz.ETROIT_POLICE) : jusqu'au 02/11/2026, 6 px de garde seulement,
+    # et une police plus large que Segoe UI faisait sortir une ligne de la figure.
+    dispo = int((CADRE_ETROIT_MIN_PX - 2 * MARGE_PAGE_PX - 2 * marge) / ETROIT_POLICE)
 
     def replier(texte: str, taille: int) -> str:
         return _replier_etroit(texte, taille, dispo)
@@ -1699,6 +1702,11 @@ def script_fraicheur(instant_iso: str, sous_titre: str) -> str:
     if (e === etroit) return false;
     etroit = e;
     var d = copie(e ? E.disposition : LARGE);
+    // Largeur laissée au cadre : une hauteur imposée coupait l'ajustement automatique
+    // de Plotly, et la figure gardait sa largeur au changement d'orientation d'un
+    // téléphone (cf. viz.script_etroit, 02/11/2026).
+    d.autosize = true;
+    d.width = null;
     cible.style.height = d.height + 'px';
     Plotly.relayout(cible, d).then(poser);
     return true;
@@ -1748,7 +1756,8 @@ def etroit_t7(fig) -> dict:
         nu = re.sub(r"</?b>", "", a.text)
         lignes = nu.replace(" vient de ", " vient<br>de ").split("<br>")
         # Ancré à droite sur la frontière : la ligne la plus large doit tenir à sa gauche.
-        if max(largeur_px(li, taille) * 1.06 for li in lignes) > a.x / 100 * largeur_trace - 4:
+        if max(largeur_px(li, taille) * ETROIT_POLICE for li in lignes) > (
+                a.x / 100 * largeur_trace - 4):
             raise ValueError(f"t7 étroit : « {nu} » déborde à gauche de sa frontière")
         reperes[rang] = dict(text="<br>".join(f"<b>{li}</b>" for li in lignes),
                              yanchor="bottom", yshift=demi_barre + 4, font=dict(size=taille))
@@ -1778,8 +1787,11 @@ def etroit_t7(fig) -> dict:
                                y1=centre + (1 - ecart) / 2 + 0.04))
     reperes[2] = dict(text=decomposition, xshift=bord, y=1 + (1 - ecart) / 2,
                       font=dict(size=taille))
+    # Valeurs non contraintes à leur part de barre : à 320 px d'écran, Plotly réduisait
+    # « 6,2 % », posé à la verticale dans 17 px, à 7,8 px rendus (mesuré le 02/11/2026).
+    # À 12 px, il tient tourné dans sa part.
     return dict(l=marge_gauche, trace_px=trace_px, zone_axe_x=zone_axe, annotations=reperes,
-                ajouts=ajouts, traces={"text": textes},
+                ajouts=ajouts, traces={"text": textes, "constraintext": ["none"] * len(textes)},
                 disposition={"yaxis.showticklabels": False, "bargap": ecart,
                              "shapes": frontieres})
 
@@ -1884,7 +1896,13 @@ def main() -> int:
                 # figure ne permet de le lire. La réserve est portée ici, au plus près du
                 # chiffre qu'elle borne, plutôt que laissée au seul texte de l'étude.
                 note="Moyennes mensuelles : elles ne classent pas les pointes, qui se "
-                     "comportent différemment.<br>" + NOTE_ESTIME)
+                     "comportent différemment.<br>" + NOTE_ESTIME,
+                # En étroit, Plotly réduisait « 231 » et « 281 » à la largeur de leur
+                # barre : 7 px rendus (mesuré le 02/11/2026). Libres, ils gardent 12 px ;
+                # leurs hauteurs les séparent. La flèche de juin à juillet, partie du
+                # sommet d'une barre de 12 px, traversait alors « 231 » : elle se retire,
+                # « +22 % » reste au-dessus des deux barres rouges.
+                etroit=dict(traces={"constraintext": ["none"]}, annotations={0: None}))
     export_html(fig_t2b_surcroit_horaire(), "t2b_surcroit_horaire", SRC_HIST, d_hist,
                 sous_titre="Écart de demande moyenne juillet − juin, heure par heure — Corse, "
                            "2019-2024.<br>Ce graphique montre quand la demande augmente, pas ce "

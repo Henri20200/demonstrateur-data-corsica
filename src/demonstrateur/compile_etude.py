@@ -375,8 +375,20 @@ footer a{color:var(--accent)}
 # navigateurs qui n'en connaissent pas (avant 2023), en supposant 2,5rem = 40 px — la
 # marge que `.visuel` retire à l'écran. Les deux ne peuvent qu'agrandir le cadre : au
 # pire, il reste de la place sous la figure, jamais une figure coupée.
+#
+# Sous le seuil, le cadre prend toute la largeur de l'article, marges comprises (le texte
+# garde les siennes) : avec 2,5rem retirés, une figure n'avait que 264 px sur un écran de
+# 320, pour une mise en page étroite mesurée à 304 — neuf figures sur onze y perdaient
+# des bouts de ligne (mesuré le 02/11/2026). `100%` est la largeur de l'article, pas de la
+# fenêtre : `100vw` compterait la barre de défilement d'un ordinateur et ferait défiler la
+# page latéralement. `max()` garde, de 760 à 900 px, la largeur d'avant.
+# Le tableau des sources, lui, a une largeur minimale de 406 px : sur un téléphone, il
+# faisait défiler toute la page de côté (36 à 106 px). Il défile désormais seul.
 _CSS_ETROIT = (
     ".visuel{container-type:inline-size}"
+    f"@media (max-width:{SEUIL_ETROIT_PX - 0.02:.2f}px)"
+    "{.visuel{width:max(calc(100% + 2.5rem),calc(100vw - 2.5rem))}"
+    "table{display:block;overflow-x:auto}}"
     f"@media (max-width:{SEUIL_ETROIT_PX + 40 - 0.02:.2f}px)"
     "{.visuel iframe.adaptable{height:var(--hauteur-etroite)}}"
     f"@container (max-width:{SEUIL_ETROIT_PX - 0.02:.2f}px)"
