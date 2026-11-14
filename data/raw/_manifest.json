@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "1b4353cb98795055564ec396d9acaa1f0d35d831d0d52f427f35bc099b51c2ba",
+    "sha256": "f0c69368f1b92bdb5eb2e8b292d4331549dadc72f7eb60f7264fcdee99a42735",
     "date_collecte": "2026-11-14",
-    "taille_octets": 379899
+    "taille_octets": 380855
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -162,9 +162,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv",
-    "sha256": "7238865b930f931ddd962d16d097cf78bf8db5a55abbd55ede40619aefb24d54",
+    "sha256": "631a2a3e0cbf73bb972971c89edfb4ddd10969874f967c2b8876fec50c5f9fe2",
     "date_collecte": "2026-11-14",
-    "taille_octets": 12791199
+    "taille_octets": 12804303
   },
   "meteo_horaire_corse": {
     "url": "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz",
