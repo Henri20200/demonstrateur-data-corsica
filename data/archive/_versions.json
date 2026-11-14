@@ -40377,8 +40377,21 @@
       "resolved_url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv",
       "revision_policy": "unknown",
       "sha256": "52687cda3a2fa9f871da22406a73c6b8b87447ceb74243ad0439989914fdf967",
-      "superseded_at": null,
+      "superseded_at": "2026-11-14T06:46:48.584569Z",
       "taille_octets": 378392
+    },
+    {
+      "fichier_archive": "20261114T064648Z_1b4353cb.csv",
+      "first_observed_at": "2026-11-14T06:46:48.584569Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/edf_mix_temps_reel/2026/11/20261114T064648Z_1b4353cb98795055564ec396d9acaa1f0d35d831d0d52f427f35bc099b51c2ba.csv",
+      "payload_sha256": "1b4353cb98795055564ec396d9acaa1f0d35d831d0d52f427f35bc099b51c2ba",
+      "resolved_url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv",
+      "revision_policy": "unknown",
+      "sha256": "1b4353cb98795055564ec396d9acaa1f0d35d831d0d52f427f35bc099b51c2ba",
+      "superseded_at": null,
+      "taille_octets": 379899
     }
   ],
   "entsoe_charge_sardaigne_2019": [
@@ -43540,8 +43553,21 @@
       "resolved_url": "https://files.data.gouv.fr/ineris/lcsqa/concentrations-de-polluants-atmospheriques-reglementes/temps-reel/2026/FR_E2_2026-11-11.csv",
       "revision_policy": "unknown",
       "sha256": "c490f5fed451f619974d514a5c5cb4cb7a1225c0987c8e8343b0e0c5e9801d18",
-      "superseded_at": null,
+      "superseded_at": "2026-11-14T06:46:57.353492Z",
       "taille_octets": 12807283
+    },
+    {
+      "fichier_archive": "20261114T064657Z_7238865b.csv",
+      "first_observed_at": "2026-11-14T06:46:57.353492Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/lcsqa_temps_reel/2026/11/20261114T064657Z_7238865b930f931ddd962d16d097cf78bf8db5a55abbd55ede40619aefb24d54.csv",
+      "payload_sha256": "7238865b930f931ddd962d16d097cf78bf8db5a55abbd55ede40619aefb24d54",
+      "resolved_url": "https://files.data.gouv.fr/ineris/lcsqa/concentrations-de-polluants-atmospheriques-reglementes/temps-reel/2026/FR_E2_2026-11-12.csv",
+      "revision_policy": "unknown",
+      "sha256": "7238865b930f931ddd962d16d097cf78bf8db5a55abbd55ede40619aefb24d54",
+      "superseded_at": null,
+      "taille_octets": 12791199
     }
   ],
   "meteo_horaire_corse": [

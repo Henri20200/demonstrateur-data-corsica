@@ -39,9 +39,9 @@
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv; charset=utf-8",
-    "sha256": "52687cda3a2fa9f871da22406a73c6b8b87447ceb74243ad0439989914fdf967",
-    "date_collecte": "2026-11-13",
-    "taille_octets": 378392
+    "sha256": "1b4353cb98795055564ec396d9acaa1f0d35d831d0d52f427f35bc099b51c2ba",
+    "date_collecte": "2026-11-14",
+    "taille_octets": 379899
   },
   "edf_courbe_charge_horaire": {
     "url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/courbe-de-charge-de-la-production-delectricite-par-filiere/exports/csv",
@@ -156,15 +156,15 @@
     "taille_octets": 5912656
   },
   "lcsqa_temps_reel": {
-    "url": "https://files.data.gouv.fr/ineris/lcsqa/concentrations-de-polluants-atmospheriques-reglementes/temps-reel/2026/FR_E2_2026-11-11.csv",
+    "url": "https://files.data.gouv.fr/ineris/lcsqa/concentrations-de-polluants-atmospheriques-reglementes/temps-reel/2026/FR_E2_2026-11-12.csv",
     "filename": "lcsqa_temps_reel.csv",
     "producteur": "LCSQA / Ineris — mesures des AASQA (Qualitair Corse pour l'île)",
     "licence": "Licence Ouverte 2.0 (Etalab) — https://www.etalab.gouv.fr/licence-ouverte-open-licence",
     "format": "csv",
     "content_type": "text/csv",
-    "sha256": "c490f5fed451f619974d514a5c5cb4cb7a1225c0987c8e8343b0e0c5e9801d18",
-    "date_collecte": "2026-11-13",
-    "taille_octets": 12807283
+    "sha256": "7238865b930f931ddd962d16d097cf78bf8db5a55abbd55ede40619aefb24d54",
+    "date_collecte": "2026-11-14",
+    "taille_octets": 12791199
   },
   "meteo_horaire_corse": {
     "url": "https://meteofrance.s3.sbg.io.cloud.ovh.net/data/synchro_ftp/BASE/HOR/H_20_latest-2025-2026.csv.gz",
@@ -174,7 +174,7 @@
     "format": "csv.gz",
     "content_type": "application/gzip",
     "sha256": "d8ff71c89eda87b79419d539c7b0641b28af9100621a76ee88b8385449c30056",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 32281945
   },
   "aee_o3_ajaccio_canetto_valide": {
@@ -185,7 +185,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "bc95475c3efaa7a5836ca4dfb7e6cd9f016b569090557a3bef29cbe6de327f0d",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 1688635
   },
   "aee_o3_ajaccio_canetto_continu": {
@@ -196,7 +196,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "606d4b91bf6e05834639073b6d197e43e9395d800d1052b7d123458781c787c5",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 132540
   },
   "aee_o3_ajaccio_confina2_valide": {
@@ -207,7 +207,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "8af0d3889b8e5e5d426977795352ae2e4bdc120b72899e12ef71d247857ec695",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 248109
   },
   "aee_o3_ajaccio_confina2_continu": {
@@ -218,7 +218,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "6822b80b89e7b6185260940b310800235b2592a59c761216ed7c2c0583b41379",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 132317
   },
   "aee_o3_bastia_giraud_valide": {
@@ -229,7 +229,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "95856a727aa6fe540468479dc593c3ff39f3fb68d6bebd85630b3e3be821c45c",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 1647525
   },
   "aee_o3_bastia_giraud_continu": {
@@ -240,7 +240,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "cbfcd3c417a2eea35ff76748d341b1f38db13a31a1952fa527f37b57e70ab90c",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 128186
   },
   "aee_o3_bastia_montesoro_valide": {
@@ -251,7 +251,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "04824971e1714c3ac89e554c4202961cd3483c03b0cda9d614c2e2abb2565259",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 1647749
   },
   "aee_o3_bastia_montesoro_continu": {
@@ -262,7 +262,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "ef3d6b502045c4268120a9b29f954f4da9257bbc53cd2101e337ee9cc283cdbd",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 131632
   },
   "aee_o3_bastia_marana_valide": {
@@ -273,7 +273,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "816d2f2e961abadfb0335fa84e27fb8dd3639042c1b90e398b763eeb4bd114d1",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 1295969
   },
   "aee_o3_bastia_marana_continu": {
@@ -284,7 +284,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "5e6a00b48721c2e86ea5185a1a3a10e899a4fee7a2157a3db21f520c5ec839dd",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 134174
   },
   "aee_o3_venaco_valide": {
@@ -295,7 +295,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "6cadb18e2e3876af760a7328dd1a1d21f53e8c9f3baaf5a4e60362eefcb4113c",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 1593681
   },
   "aee_o3_venaco_continu": {
@@ -306,7 +306,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "7a363de93a13a4d968a1518a11f1af0d5c03fe3956a638c1156473b8cf843ef5",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 129654
   },
   "aee_no2_ajaccio_canetto_valide": {
@@ -317,7 +317,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "92e7b2844a1404c4d92f463bba7441d8705c1ccecdc48b84d7b9345de7d99369",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 1577742
   },
   "aee_no2_ajaccio_canetto_continu": {
@@ -328,7 +328,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "b441fb34244bb8a5f05349dc43d6fca0a1685444d9489f92011eed7212df9066",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 124104
   },
   "aee_no2_ajaccio_confina2_valide": {
@@ -339,7 +339,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "6cb4003f8dc7a991df00a0a4e2eab70e383d1afcca89d4858d44e87a686b1ec2",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 228728
   },
   "aee_no2_ajaccio_confina2_continu": {
@@ -350,7 +350,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "303ce608d7cc947f56f4a043c5a452bda50145bda10cca124559d73ee492e35a",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 120418
   },
   "aee_no2_bastia_giraud_valide": {
@@ -361,7 +361,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "7012eca56309683af39e1f9dea4601cf2a0eab20ee6424e64943863583c50979",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 1517072
   },
   "aee_no2_bastia_giraud_continu": {
@@ -372,7 +372,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "71f4f33524bcab56450d1c2b96db2434ab279d8d0ee7e9c051c607c8f30442b1",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 120900
   },
   "aee_no2_bastia_montesoro_valide": {
@@ -383,7 +383,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "30918ea81da6f84648a8bf63da0ff17f50ae98cf9e37cdb17aa866b50d6c527d",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 1464289
   },
   "aee_no2_bastia_montesoro_continu": {
@@ -394,7 +394,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "fc263d28922ca0641d9149bfb81f4f771406942a7f0bfce5133cc5121ac37015",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 120653
   },
   "aee_no2_bastia_marana_valide": {
@@ -405,7 +405,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "346b84c38ef24fbe53f60f4381f9bbf688cb3a2f3af086d3c83d2a4ad25155d3",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 1487751
   },
   "aee_no2_bastia_marana_continu": {
@@ -416,7 +416,7 @@
     "format": "parquet",
     "content_type": "application/octet-stream",
     "sha256": "26360fd0c59d7e9b612eb85512fe4d11ef38958910e7ccc1e8e00e1d60a85cd6",
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 120441
   },
   "meteo_horaire_corse_2020_2024": {
@@ -442,7 +442,7 @@
     "entetes": {
       "apikey": "${GEODAIR_KEY}"
     },
-    "date_collecte": "2026-11-13",
+    "date_collecte": "2026-11-14",
     "taille_octets": 4984
   },
   "entsoe_sarco_2020_entrant": {
