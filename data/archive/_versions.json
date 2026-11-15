@@ -40429,8 +40429,21 @@
       "resolved_url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv",
       "revision_policy": "unknown",
       "sha256": "e7558b72d8d2604172fbfa757ccfe699947942dcda42a38b7dec30be48fc5d40",
-      "superseded_at": null,
+      "superseded_at": "2026-11-15T18:58:57.468924Z",
       "taille_octets": 381720
+    },
+    {
+      "fichier_archive": "20261115T185857Z_cb45c6e8.csv",
+      "first_observed_at": "2026-11-15T18:58:57.468924Z",
+      "origine": "collecte",
+      "payload_archived": true,
+      "payload_key": "archive/edf_mix_temps_reel/2026/11/20261115T185857Z_cb45c6e8ac3e723c690d86bd69b077e69fd1f3398a5e9ad740c5dd5a47470081.csv",
+      "payload_sha256": "cb45c6e8ac3e723c690d86bd69b077e69fd1f3398a5e9ad740c5dd5a47470081",
+      "resolved_url": "https://opendata.edf.fr/api/explore/v2.1/catalog/datasets/production-delectricite-par-filiere-en-temps-reel/exports/csv",
+      "revision_policy": "unknown",
+      "sha256": "cb45c6e8ac3e723c690d86bd69b077e69fd1f3398a5e9ad740c5dd5a47470081",
+      "superseded_at": null,
+      "taille_octets": 382726
     }
   ],
   "entsoe_charge_sardaigne_2019": [
